@@ -1,0 +1,9 @@
+node_modules
+.next
+.git
+.playwright-cli
+.impeccable
+deploy/pocketbase/data
+deploy/pocketbase/.env
+.env*
+*.png

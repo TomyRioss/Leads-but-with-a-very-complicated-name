@@ -32,10 +32,32 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+!.env.example
 
 # vercel
 .vercel
+/.impeccable/
+
+# Local PocketBase database and generated browser QA evidence
+/deploy/pocketbase/data/
+/.playwright-cli/
+/.playwright-mcp/
+/dogfood-output/
+/.impeccable/review/*.png
+/leadta-desktop.png
+/leadta-mobile.png
 
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Ruflo local secrets and runtime data
+.env
+.env.local
+.env.*.local
+.claude-flow/data/
+.claude-flow/logs/
+.claude-flow/sessions/
+.claude-flow/
+.claude/
+.swarm/

@@ -11,6 +11,7 @@ const eslintConfig = defineConfig([
     ".next/**",
     "out/**",
     "build/**",
+    "deploy/pocketbase/data/**",
     "next-env.d.ts",
   ]),
 ]);
