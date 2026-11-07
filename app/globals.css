@@ -32,14 +32,14 @@
   --success: var(--lime-dark);
   --error: var(--ash-800);
   --font-ui: Arial, Helvetica, sans-serif;
-  --font-data: var(--font-geist-mono), "Courier New", monospace;
+  --font-data: ui-monospace, "Cascadia Code", "Segoe UI Mono", "Courier New", monospace;
 }
 
 @theme inline {
   --color-background: var(--canvas);
   --color-foreground: var(--ink);
   --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-mono: ui-monospace, "Cascadia Code", "Segoe UI Mono", "Courier New", monospace;
 }
 
 * { box-sizing: border-box; }
