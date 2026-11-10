@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 import { getCurrentUser, withRefreshedSession } from "@/lib/server/auth";
 import { createLeadRecords, isPocketBaseConfigured, pocketBaseFetch } from "@/lib/server/pocketbase";
 import { CREDITS_PER_LEAD, CreditOperationBusyError, InsufficientCreditsError, reserveLeadCredits } from "@/lib/server/credits";
+import { uiError } from "@/lib/server/public-error";
 
 export const maxDuration = 300;
 
@@ -197,10 +198,10 @@ export async function POST(request: Request) {
 
   const token = process.env.APIFY_TOKEN;
   if (!token) {
-    return NextResponse.json({ error: "Falta APIFY_TOKEN en la configuración del servidor." }, { status: 503 });
+    return NextResponse.json({ error: uiError("Falta APIFY_TOKEN en la configuración del servidor.") }, { status: 503 });
   }
   if (!isPocketBaseConfigured()) {
-    return NextResponse.json({ error: "Falta configurar PocketBase en el servidor." }, { status: 503 });
+    return NextResponse.json({ error: uiError("Falta configurar PocketBase en el servidor.") }, { status: 503 });
   }
 
   let body: {
@@ -311,7 +312,7 @@ export async function POST(request: Request) {
           if (leads.size >= count) break;
         }
       } catch (error) {
-        actorError = error instanceof Error ? error.message : "Falló una búsqueda de Apify.";
+        actorError = uiError(error instanceof Error ? error.message : "Falló una búsqueda de Apify.");
         break;
       }
     }
@@ -339,9 +340,9 @@ export async function POST(request: Request) {
     try {
       const persistence = await createLeadRecords(batch.id, records);
       persistedCount = persistence.created;
-      if (persistence.failed > 0) persistenceError = "No se pudieron guardar todos los leads en PocketBase.";
+      if (persistence.failed > 0) persistenceError = uiError("No se pudieron guardar todos los leads en PocketBase.", "No se pudieron guardar todos los leads.");
     } catch {
-      persistenceError = "No se pudieron guardar los leads en PocketBase.";
+      persistenceError = uiError("No se pudieron guardar los leads en PocketBase.", "No se pudieron guardar los leads.");
     }
 
     const shortfall = leads.size < count;
@@ -394,7 +395,8 @@ export async function POST(request: Request) {
     if (error instanceof CreditOperationBusyError) {
       return NextResponse.json({ error: error.message }, { status: 409 });
     }
-    const message = error instanceof Error ? error.message : "No se pudo completar la búsqueda.";
+    console.error("Search failed:", error instanceof Error ? error.message : "unknown");
+    const message = uiError(error instanceof Error ? error.message : "No se pudo completar la búsqueda.", "No se pudo completar la búsqueda. Intentá de nuevo en unos minutos.");
     return NextResponse.json({ error: message, credits }, { status: 502 });
   } finally {
     if (creditReservation) await creditReservation.release().catch(() => undefined);

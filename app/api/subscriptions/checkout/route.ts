@@ -4,6 +4,7 @@ import { getCurrentUser } from "@/lib/server/auth";
 import { getSubscriptionPlan } from "@/lib/plans";
 import { getApplicationUrl, getMercadoPagoClient } from "@/lib/server/mercadopago";
 import { isPocketBaseConfigured, PocketBaseRequestError, pocketBaseFetch } from "@/lib/server/pocketbase";
+import { uiError } from "@/lib/server/public-error";
 
 type SubscriptionRecord = { id: string; status: string };
 
@@ -35,13 +36,13 @@ export async function POST(request: Request) {
 
   const trustedOffer = typeof body.planId === "string" ? getSubscriptionPlan(body.planId) : undefined;
   if (!trustedOffer) return NextResponse.json({ error: "El plan seleccionado no existe." }, { status: 400 });
-  if (!isPocketBaseConfigured()) return NextResponse.json({ error: "La conexión con PocketBase no está lista." }, { status: 503 });
+  if (!isPocketBaseConfigured()) return NextResponse.json({ error: uiError("La conexión con PocketBase no está lista.") }, { status: 503 });
 
   const mercadoPago = getMercadoPagoClient();
-  if (!mercadoPago) return NextResponse.json({ error: "Falta configurar MP_ACCESS_TOKEN en el servidor." }, { status: 503 });
+  if (!mercadoPago) return NextResponse.json({ error: uiError("Falta configurar MP_ACCESS_TOKEN en el servidor.") }, { status: 503 });
   const accessToken = process.env.MP_ACCESS_TOKEN?.trim();
-  if (!process.env.MP_WEBHOOK_SECRET?.trim() || !accessToken) return NextResponse.json({ error: "Falta configurar el token y el secreto de Webhooks antes de habilitar pagos." }, { status: 503 });
-  if (process.env.NODE_ENV === "production" && !process.env.APP_URL?.trim()) return NextResponse.json({ error: "Falta configurar APP_URL para volver del checkout." }, { status: 503 });
+  if (!process.env.MP_WEBHOOK_SECRET?.trim() || !accessToken) return NextResponse.json({ error: uiError("Falta configurar el token y el secreto de Webhooks antes de habilitar pagos.") }, { status: 503 });
+  if (process.env.NODE_ENV === "production" && !process.env.APP_URL?.trim()) return NextResponse.json({ error: uiError("Falta configurar APP_URL para volver del checkout.") }, { status: 503 });
   let appUrl: URL;
   try {
     appUrl = new URL(getApplicationUrl(request));

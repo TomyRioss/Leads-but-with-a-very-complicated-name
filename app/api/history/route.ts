@@ -1,6 +1,7 @@
 import { connection, NextResponse } from "next/server";
 import { getCurrentUser, withRefreshedSession } from "@/lib/server/auth";
 import { isPocketBaseConfigured, pocketBaseFetch } from "@/lib/server/pocketbase";
+import { uiError } from "@/lib/server/public-error";
 import type { Lead } from "@/lib/types";
 
 const perPage = 100;
@@ -15,7 +16,7 @@ export async function GET(request: Request) {
   }
   if (!session) return NextResponse.json({ error: "Iniciá sesión para ver tu historial." }, { status: 401 });
   if (!isPocketBaseConfigured()) {
-    return NextResponse.json({ error: "PocketBase todavía no está configurado." }, { status: 503 });
+    return NextResponse.json({ error: uiError("PocketBase todavía no está configurado.") }, { status: 503 });
   }
 
   const page = Number(new URL(request.url).searchParams.get("page") || 1);

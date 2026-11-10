@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getCurrentUser, withRefreshedSession } from "@/lib/server/auth";
 import { CreditOperationBusyError, CREDITS_PER_PAIN_ANALYSIS, InsufficientCreditsError, reserveCreditAmount } from "@/lib/server/credits";
 import { isPocketBaseConfigured, pocketBaseFetch } from "@/lib/server/pocketbase";
+import { uiError } from "@/lib/server/public-error";
 import type { AnalysisDetail, AnalysisEvidence, Lead, LeadReview, SocialNetwork } from "@/lib/types";
 
 export const maxDuration = 300;
@@ -553,8 +554,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "No se pudo conectar con el servicio de cuentas." }, { status: 503 });
   }
   if (!session) return NextResponse.json({ error: "Iniciá sesión para analizar estos leads." }, { status: 401 });
-  if (!isPocketBaseConfigured()) return NextResponse.json({ error: "PocketBase todavía no está configurado." }, { status: 503 });
-  if (!process.env.OPENROUTER_API_KEY) return NextResponse.json({ error: "Falta configurar OPENROUTER_API_KEY en el servidor." }, { status: 503 });
+  if (!isPocketBaseConfigured()) return NextResponse.json({ error: uiError("PocketBase todavía no está configurado.") }, { status: 503 });
+  if (!process.env.OPENROUTER_API_KEY) return NextResponse.json({ error: uiError("Falta configurar OPENROUTER_API_KEY en el servidor.") }, { status: 503 });
 
   let body: { batchId?: unknown; action?: unknown; leadId?: unknown; socialNetworks?: unknown; focus?: unknown };
   try {
@@ -574,7 +575,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Seleccioná un lote y un análisis válidos." }, { status: 400 });
   }
   if (action === "pain_points" && !process.env.APIFY_TOKEN?.trim()) {
-    return NextResponse.json({ error: "Falta configurar APIFY_TOKEN para buscar reseñas." }, { status: 503 });
+    return NextResponse.json({ error: uiError("Falta configurar APIFY_TOKEN para buscar reseñas.") }, { status: 503 });
   }
   if (action === "enrichment" && socialNetworks.length === 0) {
     return NextResponse.json({ error: "Seleccioná al menos una red social para enriquecer el lead." }, { status: 400 });
@@ -619,7 +620,7 @@ export async function POST(request: Request) {
           updated.set(lead.id, record);
           if (action === "pain_points" && /^https?:\/\//i.test(text(lead.maps_url, 2000))) completedPainSearches.add(lead.id);
         } catch (error) {
-          failures.push({ id: lead.id, message: error instanceof Error ? error.message.slice(0, 240) : "No se pudo guardar el estado del análisis." });
+          failures.push({ id: lead.id, message: uiError(error instanceof Error ? error.message.slice(0, 240) : "No se pudo guardar el estado del análisis.") });
         }
         if (isDevelopmentEnvironment) {
           diagnostics.push({ leadId: lead.id, leadName: lead.name, model: models[action], webSearchEngine: "exa", webFetchEngine: "exa", webSearchRequests: 0, toolCallsExecuted: 0, savedReviewCount: 0, detailsStatus: text(lead.source_context?.details_status), mapsUrl: "", response: "No se envió consulta: el lead no tiene URL de Google Maps ni reseñas guardadas." });
@@ -671,9 +672,10 @@ export async function POST(request: Request) {
       } catch (error) {
         const message = error instanceof Error ? error.message.slice(0, 240) : "Error desconocido durante el análisis.";
         const modelError = error instanceof OpenRouterResponseError ? error : null;
+        console.error("Lead analysis failed:", message);
         failures.push({
           id: lead.id,
-          message,
+          message: uiError(message, "No se pudo completar el análisis de este lead."),
         });
         const summaryField = action === "pain_points" ? "pain_points" : "enrichment";
         const detailField = action === "pain_points" ? "pain_points_detail" : "enrichment_detail";
@@ -736,7 +738,8 @@ export async function POST(request: Request) {
     if (error instanceof CreditOperationBusyError) {
       return withRefreshedSession(NextResponse.json({ error: error.message, credits }, { status: 409 }), session.token);
     }
-    const message = error instanceof Error ? error.message : "No se pudo completar el análisis del lote.";
+    console.error("Batch analysis failed:", error instanceof Error ? error.message : "unknown");
+    const message = uiError(error instanceof Error ? error.message : "No se pudo completar el análisis del lote.", "No se pudo completar el análisis. Intentá de nuevo en unos minutos.");
     return withRefreshedSession(NextResponse.json({ error: message, ...(credits === undefined ? {} : { credits }) }, { status: 503 }), session.token);
   }
 }

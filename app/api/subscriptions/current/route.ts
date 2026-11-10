@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/server/auth";
 import { isPocketBaseConfigured, pocketBaseFetch } from "@/lib/server/pocketbase";
+import { uiError } from "@/lib/server/public-error";
 
 type SubscriptionRecord = {
   id: string;
@@ -14,7 +15,7 @@ type SubscriptionRecord = {
 export async function GET(request: Request) {
   const session = await getCurrentUser(request).catch(() => null);
   if (!session) return NextResponse.json({ subscription: null });
-  if (!isPocketBaseConfigured()) return NextResponse.json({ error: "La conexión con PocketBase no está lista." }, { status: 503 });
+  if (!isPocketBaseConfigured()) return NextResponse.json({ error: uiError("La conexión con PocketBase no está lista.") }, { status: 503 });
 
   const filter = encodeURIComponent(`user = "${session.user.id}"`);
   try {
@@ -31,6 +32,6 @@ export async function GET(request: Request) {
       checkoutUrl: subscription.checkout_url,
     } : null });
   } catch {
-    return NextResponse.json({ error: "Aplicá las migraciones de PocketBase para activar suscripciones." }, { status: 503 });
+    return NextResponse.json({ error: uiError("Aplicá las migraciones de PocketBase para activar suscripciones.") }, { status: 503 });
   }
 }

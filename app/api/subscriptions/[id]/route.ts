@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/server/auth";
 import { getMercadoPagoClient, mapMercadoPagoSubscriptionStatus } from "@/lib/server/mercadopago";
 import { isPocketBaseConfigured, pocketBaseFetch } from "@/lib/server/pocketbase";
+import { uiError } from "@/lib/server/public-error";
 
 type SubscriptionRecord = {
   id: string;
@@ -28,7 +29,7 @@ async function getOwnedSubscription(id: string, userId: string) {
 export async function GET(request: Request, context: { params: Promise<{ id: string }> }) {
   const session = await getCurrentUser(request).catch(() => null);
   if (!session) return NextResponse.json({ error: "Iniciá sesión para ver tu suscripción." }, { status: 401 });
-  if (!isPocketBaseConfigured()) return NextResponse.json({ error: "La conexión con PocketBase no está lista." }, { status: 503 });
+  if (!isPocketBaseConfigured()) return NextResponse.json({ error: uiError("La conexión con PocketBase no está lista.") }, { status: 503 });
   const { id } = await context.params;
   const subscription = await getOwnedSubscription(id, session.user.id);
   if (!subscription) return NextResponse.json({ error: "No encontramos esa suscripción." }, { status: 404 });
@@ -63,7 +64,7 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
 export async function PATCH(request: Request, context: { params: Promise<{ id: string }> }) {
   const session = await getCurrentUser(request).catch(() => null);
   if (!session) return NextResponse.json({ error: "Iniciá sesión para administrar tu suscripción." }, { status: 401 });
-  if (!isPocketBaseConfigured()) return NextResponse.json({ error: "La conexión con PocketBase no está lista." }, { status: 503 });
+  if (!isPocketBaseConfigured()) return NextResponse.json({ error: uiError("La conexión con PocketBase no está lista.") }, { status: 503 });
 
   let body: { action?: unknown };
   try {
@@ -81,7 +82,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
   const subscription = await getOwnedSubscription(id, session.user.id);
   if (!subscription || !subscription.mp_subscription_id) return NextResponse.json({ error: "No encontramos esa suscripción." }, { status: 404 });
   const client = getMercadoPagoClient();
-  if (!client) return NextResponse.json({ error: "Falta configurar MP_ACCESS_TOKEN en el servidor." }, { status: 503 });
+  if (!client) return NextResponse.json({ error: uiError("Falta configurar MP_ACCESS_TOKEN en el servidor.") }, { status: 503 });
 
   try {
     const status = statusByAction[body.action as keyof typeof statusByAction];
