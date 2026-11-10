@@ -9,6 +9,8 @@ export const metadata: Metadata = {
   description: "Buscá negocios locales por rubro y zona. Revisá tus leads en una hoja y descargá cada lote en CSV o XLSX.",
 };
 
+const demoWhatsappUrl = `https://wa.me/5491134083140?text=${encodeURIComponent("Hola, me gustaría más información sobre Leadta para mi negocio.")}`;
+
 const sampleLeads = [
   { name: "Comercio de ejemplo", category: "Veterinaria", reviews: "128 reseñas", rating: "4,6", email: "hola@ejemplo.com", whatsapp: "+54 11 5555-0101" },
   { name: "Negocio ilustrativo", category: "Clínica veterinaria", reviews: "64 reseñas", rating: "4,2", email: "Sin dato", whatsapp: "+54 11 5555-0142" },
@@ -76,7 +78,7 @@ export default function LandingPage() {
             <h1>Encontrá negocios para <em>empezar la conversación.</em></h1>
             <p className="landing-hero-description">Elegí un rubro y una zona. Leadta organiza negocios de Google Maps en una hoja lista para revisar y descargar.</p>
             <div className="landing-hero-actions">
-              <Link className="landing-button-primary" href="/buscar?signup=1">Crear mi lista <ArrowRight size={17} aria-hidden="true" /></Link>
+              <a className="landing-button-primary" href={demoWhatsappUrl} target="_blank" rel="noreferrer">Agenda Demo <ArrowRight size={17} aria-hidden="true" /></a>
               <a className="landing-button-text" href="#como-funciona">Ver cómo funciona <ArrowDown size={15} aria-hidden="true" /></a>
             </div>
             <p className="landing-hero-footnote"><Check size={14} aria-hidden="true" /> Búsqueda, hoja e historial en un solo lugar</p>

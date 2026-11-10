@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import PricingPage from "./pricing-page";
+import { PriceHero, PriceSections } from "./pricing-sections";
 
 export const metadata: Metadata = {
   title: "Planes y precios | Leadta",
@@ -7,5 +8,5 @@ export const metadata: Metadata = {
 };
 
 export default function Page() {
-  return <PricingPage />;
+  return <PricingPage hero={<PriceHero />}><PriceSections /></PricingPage>;
 }

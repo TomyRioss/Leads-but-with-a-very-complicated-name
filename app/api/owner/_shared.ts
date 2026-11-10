@@ -161,3 +161,15 @@ export async function updateUserCredits(userId: string, compute: (current: numbe
     await releaseCreditLock(lock.id);
   }
 }
+
+export type UserSummary = { id: string; email: string; name?: string; role?: string };
+
+/** Loads the identity fields of a user, or null when it does not exist. */
+export async function findUserSummary(id: string) {
+  const result = await listRecords<UserSummary>("users", { perPage: 1, filter: `id = ${filterString(id)}`, fields: "id,email,name,role" });
+  return result.items[0] ?? null;
+}
+
+export async function countRecords(collection: string, filter: string) {
+  return (await listRecords(collection, { perPage: 1, filter, fields: "id" })).totalItems;
+}

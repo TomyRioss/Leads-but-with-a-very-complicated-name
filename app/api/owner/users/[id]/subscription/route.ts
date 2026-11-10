@@ -1,10 +1,12 @@
 import { NextResponse } from "next/server";
 import { getSubscriptionPlan } from "@/lib/plans";
-import { requireOwner } from "@/lib/server/owner";
+import { getOwnerSession } from "@/lib/server/owner";
+import { recordOwnerAction } from "@/lib/server/owner-audit";
 import { pocketBaseFetch } from "@/lib/server/pocketbase";
 import {
   activeSubscriptionStatuses,
   errorResponse,
+  findUserSummary,
   filterString,
   isNotFound,
   isValidRecordId,
@@ -21,7 +23,9 @@ import {
 const manualPlanIds = ["initial", "pro", "agency"];
 
 export async function POST(request: Request, context: { params: Promise<{ id: string }> }) {
-  const denied = (await requireOwner(request)) ?? pocketBaseNotReady();
+  const session = await getOwnerSession(request);
+  if ("response" in session) return session.response;
+  const denied = pocketBaseNotReady();
   if (denied) return denied;
   const { id } = await context.params;
   if (!isValidRecordId(id)) return errorResponse("No encontramos ese usuario.", 404);
@@ -42,8 +46,8 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     });
 
   try {
-    const userCheck = await listRecords("users", { perPage: 1, filter: `id = ${filterString(id)}`, fields: "id" });
-    if (userCheck.items.length === 0) return errorResponse("No encontramos ese usuario.", 404);
+    const user = await findUserSummary(id);
+    if (!user) return errorResponse("No encontramos ese usuario.", 404);
 
     const existing = await listRecords("subscriptions", { perPage: 1, filter: openSubscriptions, fields: "id" });
     if (existing.items.length > 0) return errorResponse("El usuario ya tiene una suscripción activa, pausada o pendiente.", 409);
@@ -68,9 +72,13 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     }
 
     let credits: number | undefined;
+    let creditsBefore: number | undefined;
     if (body.grantCredits === true) {
       try {
-        credits = (await updateUserCredits(id, (current) => Math.min(current + plan.credits, maxCredits))) ?? undefined;
+        credits = (await updateUserCredits(id, (current) => {
+          creditsBefore = current;
+          return Math.min(current + plan.credits, maxCredits);
+        })) ?? undefined;
       } catch (error) {
         await deleteSubscription(subscription.id);
         const busy = error instanceof OwnerCreditsBusyError;
@@ -81,6 +89,20 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
       }
     }
 
+    await recordOwnerAction(request, session.owner, {
+      action: "subscription.assign",
+      targetType: "subscription",
+      targetId: subscription.id,
+      targetLabel: `${user.email} · ${plan.name}`,
+      details: {
+        userId: id,
+        planId: plan.id,
+        priceArs: plan.priceArs,
+        monthlyCredits: plan.credits,
+        grantCredits: body.grantCredits === true,
+        ...(credits === undefined ? {} : { creditsBefore, creditsAfter: credits }),
+      },
+    });
     return NextResponse.json(
       { subscription: toSubscriptionSummary(subscription), ...(credits === undefined ? {} : { credits }) },
       { status: 201 },

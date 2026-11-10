@@ -1,15 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { BrandLogo } from "@/app/brand-logo";
-import { PricingHero } from "@/app/pricing-hero";
 import { subscriptionPlans } from "@/lib/plans";
 
 type SessionState = "loading" | "guest" | "member";
 type SubscriptionSummary = { id: string; planId: string; status: string; priceArs: number; monthlyCredits: number; checkoutUrl: string };
 
-export default function PricingPage() {
+export default function PricingPage({ hero, children }: { hero: ReactNode; children: ReactNode }) {
   const [session, setSession] = useState<SessionState>("loading");
   const [currentSubscription, setCurrentSubscription] = useState<SubscriptionSummary | null>(null);
   const [subscriptionBusy, setSubscriptionBusy] = useState(false);
@@ -76,9 +75,9 @@ export default function PricingPage() {
         <Link className="pricing-nav-link" href="/buscar">{session === "member" ? "Ir a Leadta" : "Iniciar sesión"}</Link>
       </nav>
 
-      <PricingHero variant="page" />
+      {hero}
 
-      <div className="pricing-workspace">
+      {(currentSubscription || error) && <div className="pricing-workspace">
         {currentSubscription && (
           <section className="pricing-subscription" aria-label="Tu suscripción">
             <div>
@@ -100,7 +99,9 @@ export default function PricingPage() {
         )}
 
         {error && <p className="pricing-error" role="alert">{error}</p>}
-      </div>
+      </div>}
+
+      {children}
     </main>
   );
 }
