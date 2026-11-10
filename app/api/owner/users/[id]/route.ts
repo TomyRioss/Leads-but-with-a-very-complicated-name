@@ -38,7 +38,7 @@ export async function GET(request: Request, context: Context) {
   const owned = `user = ${filterString(id)}`;
   try {
     const [user, subscriptions, payments] = await Promise.all([
-      listRecords<UserRecord>("users", { perPage: 1, filter: `id = ${filterString(id)}`, fields: "id,email,name,credits,created" }),
+      listRecords<UserRecord>("users", { perPage: 1, filter: `id = ${filterString(id)}`, fields: "id,email,name,credits,created,phone,role" }),
       listRecords<SubscriptionRecord>("subscriptions", { perPage: historyLimit + 1, sort: "-created", filter: owned, skipTotal: 1 }),
       listRecords<PaymentRecord>("subscription_payments", { perPage: historyLimit + 1, sort: "-created", filter: owned, skipTotal: 1 }),
     ]);
@@ -46,7 +46,7 @@ export async function GET(request: Request, context: Context) {
     if (!record) return errorResponse("No encontramos ese usuario.", 404);
 
     return NextResponse.json({
-      user: { id: record.id, email: record.email, name: record.name || "", credits: normalizeCredits(record.credits), created: record.created },
+      user: { id: record.id, email: record.email, name: record.name || "", credits: normalizeCredits(record.credits), created: record.created, phone: record.phone || "", role: record.role === "owner" ? "owner" : "user" },
       subscriptionsHasMore: subscriptions.items.length > historyLimit,
       paymentsHasMore: payments.items.length > historyLimit,
       subscriptions: subscriptions.items.slice(0, historyLimit).map((subscription) => ({
@@ -86,26 +86,56 @@ export async function PATCH(request: Request, context: Context) {
   if (!body) return errorResponse("Los créditos no son válidos.", 400);
   const hasAbsolute = body.credits !== undefined;
   const hasDelta = body.addCredits !== undefined;
-  const hasName = body.name !== undefined;
-  if (Number(hasAbsolute) + Number(hasDelta) + Number(hasName) !== 1) {
-    return errorResponse(hasName ? "Enviá solo uno: credits, addCredits o name." : "Enviá credits o addCredits, solo uno de los dos.", 400);
-  }
+  const hasProfile = body.name !== undefined || body.email !== undefined || body.phone !== undefined;
+  if (hasAbsolute && hasDelta) return errorResponse("Enviá credits o addCredits, solo uno de los dos.", 400);
+  if (hasProfile && (hasAbsolute || hasDelta)) return errorResponse("No se pueden cambiar créditos y datos del perfil en el mismo pedido.", 400);
+  if (!hasProfile && !hasAbsolute && !hasDelta) return errorResponse("Enviá credits, addCredits o datos del perfil (name, email, phone).", 400);
 
-  if (hasName) {
-    if (typeof body.name !== "string" || body.name.trim().length > 100) return errorResponse("El nombre debe tener hasta 100 caracteres.", 400);
-    const name = body.name.trim();
+  if (hasProfile) {
+    const changes: { name?: string; email?: string; phone?: string } = {};
+    if (body.name !== undefined) {
+      if (typeof body.name !== "string" || body.name.trim().length > 100) return errorResponse("El nombre debe tener hasta 100 caracteres.", 400);
+      changes.name = body.name.trim();
+    }
+    if (body.email !== undefined) {
+      const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
+      if (!/^\S+@\S+\.\S+$/.test(email) || email.length > 200) return errorResponse("Ingresá un email válido.", 400);
+      changes.email = email;
+    }
+    if (body.phone !== undefined) {
+      // Same free-text storage as registration; the column holds at most 30 characters.
+      const phone = typeof body.phone === "string" ? body.phone.trim() : "";
+      if (typeof body.phone !== "string" || phone.length > 30 || !/^[0-9+().\- ]*$/.test(phone)) {
+        return errorResponse("El teléfono solo puede tener números, espacios y + ( ) - . (hasta 30 caracteres).", 400);
+      }
+      changes.phone = phone;
+    }
+
     try {
       const user = await findUserSummary(id);
       if (!user) return errorResponse("No encontramos ese usuario.", 404);
-      await pocketBaseFetch(`/api/collections/users/records/${id}`, { method: "PATCH", body: JSON.stringify({ name }) });
-      await recordOwnerAction(request, session.owner, {
-        action: "user.update",
-        targetType: "user",
-        targetId: id,
-        targetLabel: user.email,
-        details: { name: { before: user.name || "", after: name } },
-      });
-      return NextResponse.json({ name });
+      const current: Record<string, string> = { name: user.name || "", email: user.email, phone: user.phone || "" };
+      const changed = Object.entries(changes).filter(([field, value]) => value !== current[field]);
+      if (changed.some(([field]) => field === "email") && (user.role === "owner" || user.id === session.owner.id)) {
+        return errorResponse("No se puede cambiar el email del owner.", 403);
+      }
+      if (changed.length > 0) {
+        const patch = Object.fromEntries(changed);
+        try {
+          await pocketBaseFetch(`/api/collections/users/records/${id}`, { method: "PATCH", body: JSON.stringify(patch) });
+        } catch (error) {
+          if (error instanceof Error && error.message.includes("validation_not_unique")) return errorResponse("Ese email ya está en uso.", 409);
+          throw error;
+        }
+        await recordOwnerAction(request, session.owner, {
+          action: "user.update",
+          targetType: "user",
+          targetId: id,
+          targetLabel: changes.email ?? user.email,
+          details: Object.fromEntries(changed.map(([field, value]) => [field, { before: current[field], after: value }])),
+        });
+      }
+      return NextResponse.json(changes);
     } catch (error) {
       console.error("Owner user update failed:", error instanceof Error ? error.name : "unknown");
       return errorResponse("No se pudo actualizar el usuario.", 502);

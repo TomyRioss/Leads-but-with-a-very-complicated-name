@@ -81,7 +81,7 @@ export function AuthForm({ onAuthenticated, initialError = "", initialMode = "lo
         <section className="search-panel auth-panel" aria-labelledby="auth-title">
           <BrandMark className="auth-brand-mark" />
           <h1 id="auth-title">{mode === "register" ? "Creá tu cuenta" : "Ingresá a Leadta"}</h1>
-          <p className="auth-intro">Tus búsquedas y leads quedan guardados en tu historial privado.</p>
+          <p className="auth-intro">{mode === "register" && "Creá tu cuenta y recibí 25 créditos gratis. "}Tus búsquedas y leads quedan guardados en tu historial privado.</p>
           <form className="auth-fields" onSubmit={submit}>
             <label className="field">
               <span className="field-label">Email<span className="required-mark" aria-hidden="true"> *</span></span>

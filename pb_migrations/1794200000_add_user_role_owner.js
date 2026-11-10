@@ -12,7 +12,7 @@ migrate((app) => {
   if (!users.indexes.some((index) => index.includes(indexName))) {
     users.indexes = [...users.indexes, indexSql];
   }
-  users.createRule = "@request.body.credits = 240 && @request.body.role:isset = false";
+  users.createRule = "@request.body.credits = 25 && @request.body.role:isset = false";
   users.updateRule = null;
   app.save(users);
 }, (app) => {

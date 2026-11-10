@@ -7,7 +7,7 @@ export const maxCredits = 1_000_000;
 const recordIdPattern = /^[A-Za-z0-9]{1,30}$/;
 const maxPages = 500;
 
-export type UserRecord = { id: string; email: string; name?: string; credits?: number; created: string };
+export type UserRecord = { id: string; email: string; name?: string; credits?: number; created: string; phone?: string; role?: string };
 export type SubscriptionRecord = {
   id: string;
   user: string;
@@ -162,11 +162,11 @@ export async function updateUserCredits(userId: string, compute: (current: numbe
   }
 }
 
-export type UserSummary = { id: string; email: string; name?: string; role?: string };
+export type UserSummary = { id: string; email: string; name?: string; role?: string; phone?: string };
 
 /** Loads the identity fields of a user, or null when it does not exist. */
 export async function findUserSummary(id: string) {
-  const result = await listRecords<UserSummary>("users", { perPage: 1, filter: `id = ${filterString(id)}`, fields: "id,email,name,role" });
+  const result = await listRecords<UserSummary>("users", { perPage: 1, filter: `id = ${filterString(id)}`, fields: "id,email,name,role,phone" });
   return result.items[0] ?? null;
 }
 

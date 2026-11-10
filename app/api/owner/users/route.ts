@@ -29,7 +29,7 @@ export async function GET(request: Request) {
     page,
     perPage,
     sort: "-created",
-    fields: "id,email,name,credits,created",
+    fields: "id,email,name,credits,created,role",
   };
   if (q) query.filter = `email ~ ${filterString(q)} || name ~ ${filterString(q)}`;
 
@@ -60,6 +60,7 @@ export async function GET(request: Request) {
           name: user.name || "",
           credits: normalizeCredits(user.credits),
           created: user.created,
+          role: user.role === "owner" ? "owner" : "user",
           subscription: subscription ? toSubscriptionSummary(subscription) : null,
         };
       }),

@@ -3,6 +3,8 @@ import { isValidPhoneNumber } from "libphonenumber-js/min";
 import { setSessionCookie, toUserRole } from "@/lib/server/auth";
 import { PocketBaseRequestError, pocketBasePublicFetch } from "@/lib/server/pocketbase";
 
+const signupCredits = 25;
+
 type AuthResponse = { token: string; record: { id: string; email: string; name?: string; credits?: number; role?: unknown } };
 
 export async function POST(request: Request) {
@@ -35,13 +37,13 @@ export async function POST(request: Request) {
   try {
     await pocketBasePublicFetch("/api/collections/users/records", {
       method: "POST",
-      body: JSON.stringify({ email, phone, password, passwordConfirm, name, credits: 240, emailVisibility: false }),
+      body: JSON.stringify({ email, phone, password, passwordConfirm, name, credits: signupCredits, emailVisibility: false }),
     });
     const auth = await pocketBasePublicFetch<AuthResponse>("/api/collections/users/auth-with-password", {
       method: "POST",
       body: JSON.stringify({ identity: email, password }),
     });
-    const response = NextResponse.json({ user: { id: auth.record.id, email: auth.record.email, name: auth.record.name || "", credits: auth.record.credits ?? 240, role: toUserRole(auth.record.role) } }, { status: 201 });
+    const response = NextResponse.json({ user: { id: auth.record.id, email: auth.record.email, name: auth.record.name || "", credits: auth.record.credits ?? signupCredits, role: toUserRole(auth.record.role) } }, { status: 201 });
     setSessionCookie(response, auth.token);
     return response;
   } catch (error) {

@@ -36,7 +36,7 @@ try {
   "Required PocketBase fields: OK"
   $usersSchema = Invoke-RestMethod -Uri "$($settings.POCKETBASE_URL)/api/collections/users" -Headers @{ Authorization = $auth.token }
   $locksSchema = Invoke-RestMethod -Uri "$($settings.POCKETBASE_URL)/api/collections/credit_locks" -Headers @{ Authorization = $auth.token }
-  if ($usersSchema.createRule -ne '@request.body.credits = 240 && @request.body.role:isset = false' -or $usersSchema.updateRule) {
+  if ($usersSchema.createRule -ne '@request.body.credits = 25 && @request.body.role:isset = false' -or $usersSchema.updateRule) {
     "Unsafe user credits write rules"
     exit 1
   }
