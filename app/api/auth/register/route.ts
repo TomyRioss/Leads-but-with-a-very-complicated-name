@@ -1,34 +1,47 @@
 import { NextResponse } from "next/server";
-import { setSessionCookie } from "@/lib/server/auth";
+import { isValidPhoneNumber } from "libphonenumber-js/min";
+import { setSessionCookie, toUserRole } from "@/lib/server/auth";
 import { PocketBaseRequestError, pocketBasePublicFetch } from "@/lib/server/pocketbase";
 
-type AuthResponse = { token: string; record: { id: string; email: string; name?: string } };
+type AuthResponse = { token: string; record: { id: string; email: string; name?: string; credits?: number; role?: unknown } };
 
 export async function POST(request: Request) {
-  let body: { email?: unknown; password?: unknown; name?: unknown };
+  let body: { email?: unknown; password?: unknown; passwordConfirm?: unknown; phone?: unknown; name?: unknown };
   try {
     body = await request.json();
   } catch {
-    return NextResponse.json({ error: "Ingresá un email y una contraseña válidos." }, { status: 400 });
+    return NextResponse.json({ error: "Ingresá los datos requeridos para crear la cuenta." }, { status: 400 });
   }
 
   const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
   const password = typeof body.password === "string" ? body.password : "";
+  const passwordConfirm = typeof body.passwordConfirm === "string" ? body.passwordConfirm : "";
+  const phone = typeof body.phone === "string" ? body.phone : "";
   const name = typeof body.name === "string" ? body.name.trim().slice(0, 120) : "";
-  if (!/^\S+@\S+\.\S+$/.test(email) || password.length < 10 || password.length > 128) {
-    return NextResponse.json({ error: "Usá un email válido y una contraseña de 10 a 128 caracteres." }, { status: 400 });
+
+  if (!/^\S+@\S+\.\S+$/.test(email)) {
+    return NextResponse.json({ error: "Ingresá un email válido." }, { status: 400 });
+  }
+  if (!isValidPhoneNumber(phone)) {
+    return NextResponse.json({ error: "Ingresá un número de teléfono válido." }, { status: 400 });
+  }
+  if (password.length < 6 || password.length > 128) {
+    return NextResponse.json({ error: "La contraseña debe tener entre 6 y 128 caracteres." }, { status: 400 });
+  }
+  if (passwordConfirm !== password) {
+    return NextResponse.json({ error: "Las contraseñas no coinciden." }, { status: 400 });
   }
 
   try {
     await pocketBasePublicFetch("/api/collections/users/records", {
       method: "POST",
-      body: JSON.stringify({ email, password, passwordConfirm: password, name, emailVisibility: false }),
+      body: JSON.stringify({ email, phone, password, passwordConfirm, name, credits: 240, emailVisibility: false }),
     });
     const auth = await pocketBasePublicFetch<AuthResponse>("/api/collections/users/auth-with-password", {
       method: "POST",
       body: JSON.stringify({ identity: email, password }),
     });
-    const response = NextResponse.json({ user: { id: auth.record.id, email: auth.record.email, name: auth.record.name || "" } }, { status: 201 });
+    const response = NextResponse.json({ user: { id: auth.record.id, email: auth.record.email, name: auth.record.name || "", credits: auth.record.credits ?? 240, role: toUserRole(auth.record.role) } }, { status: 201 });
     setSessionCookie(response, auth.token);
     return response;
   } catch (error) {

@@ -24,6 +24,7 @@ services:
     environment:
       NODE_ENV: production
       APIFY_TOKEN: ${APIFY_TOKEN:-}
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
       POCKETBASE_URL: http://pocketbase:8090
       POCKETBASE_SUPERUSER_EMAIL: ${PB_ADMIN_EMAIL}
       POCKETBASE_SUPERUSER_PASSWORD: ${PB_ADMIN_PASSWORD}

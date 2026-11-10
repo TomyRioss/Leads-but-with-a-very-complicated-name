@@ -4,8 +4,14 @@ import { PocketBaseRequestError, pocketBasePublicFetch } from "@/lib/server/pock
 const sessionCookieName = "leadta_session";
 const sessionDurationSeconds = 60 * 60 * 24 * 30;
 
-export type AppUser = { id: string; email: string; name: string };
-type PocketBaseAuthResponse = { token: string; record: { id: string; email: string; name?: string } };
+export type UserRole = "user" | "owner";
+export type AppUser = { id: string; email: string; name: string; credits: number; role: UserRole };
+type PocketBaseAuthResponse = { token: string; record: { id: string; email: string; name?: string; credits?: number; role?: unknown } };
+
+/** Only the exact string "owner" grants the owner role; anything else (missing field included) is a regular user. */
+export function toUserRole(role: unknown): UserRole {
+  return role === "owner" ? "owner" : "user";
+}
 
 function getCookie(request: Request, name: string) {
   const cookie = request.headers.get("cookie");
@@ -50,7 +56,13 @@ export async function getCurrentUser(request: Request) {
     );
     return {
       token: auth.token,
-      user: { id: auth.record.id, email: auth.record.email, name: auth.record.name || "" } satisfies AppUser,
+      user: {
+        id: auth.record.id,
+        email: auth.record.email,
+        name: auth.record.name || "",
+        credits: typeof auth.record.credits === "number" && auth.record.credits >= 0 ? auth.record.credits : 0,
+        role: toUserRole(auth.record.role),
+      } satisfies AppUser,
     };
   } catch (error) {
     if (error instanceof PocketBaseRequestError && [400, 401, 403].includes(error.status)) return null;

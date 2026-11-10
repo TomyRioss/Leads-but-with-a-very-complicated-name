@@ -79,18 +79,28 @@ export async function createLeadRecords(batchId: string, records: Record<string,
   if (records.length === 0) return { created: 0, failed: 0 };
 
   const token = await authenticate();
-  const results = await Promise.allSettled(records.map(async (record) => {
-    const response = await fetch(`${pocketBaseUrl}/api/collections/leads/records`, {
-      method: "POST",
-      headers: { Authorization: token, "Content-Type": "application/json", ...bridgeHeaders() },
-      body: JSON.stringify({ ...record, batch: batchId }),
-      cache: "no-store",
-    });
-    if (!response.ok) throw new Error(`PocketBase rejected a lead with status ${response.status}.`);
+  const maxConcurrency = 10;
+  let nextIndex = 0;
+  let created = 0;
+  let failed = 0;
+
+  await Promise.all(Array.from({ length: Math.min(maxConcurrency, records.length) }, async () => {
+    while (nextIndex < records.length) {
+      const index = nextIndex++;
+      try {
+        const response = await fetch(`${pocketBaseUrl}/api/collections/leads/records`, {
+          method: "POST",
+          headers: { Authorization: token, "Content-Type": "application/json", ...bridgeHeaders() },
+          body: JSON.stringify({ ...records[index], batch: batchId }),
+          cache: "no-store",
+        });
+        if (!response.ok) throw new Error(`PocketBase rejected a lead with status ${response.status}.`);
+        created++;
+      } catch {
+        failed++;
+      }
+    }
   }));
 
-  return {
-    created: results.filter((result) => result.status === "fulfilled").length,
-    failed: results.filter((result) => result.status === "rejected").length,
-  };
+  return { created, failed };
 }

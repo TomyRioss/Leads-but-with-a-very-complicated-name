@@ -1,343 +1,136 @@
-"use client";
-
-import { useEffect, useMemo, useState } from "react";
-import type { FormEvent } from "react";
-import type { Lead, LeadBatch } from "@/lib/types";
-import { LEAD_COLUMNS } from "@/lib/types";
-import { AuthForm } from "./auth-form";
+import type { Metadata } from "next";
+import Link from "next/link";
+import { ArrowDown, ArrowRight, ArrowUpRight, Check, Download, History, MapPin, Search, Sparkles, Table2 } from "lucide-react";
 import { BrandLogo } from "./brand-logo";
+import { PricingHero } from "./pricing-hero";
 
-const productionBatchSizes = [5, 10, 15, 20, 25, 30];
+export const metadata: Metadata = {
+  title: "Leadta | Encontrá negocios para contactar",
+  description: "Buscá negocios locales por rubro y zona. Revisá tus leads en una hoja y descargá cada lote en CSV o XLSX.",
+};
 
-function csvCell(value: unknown) {
-  const text = value == null ? "" : String(value);
-  return `"${text.replaceAll('"', '""')}"`;
-}
+const sampleLeads = [
+  { name: "Comercio de ejemplo", category: "Veterinaria", reviews: "128 reseñas", rating: "4,6", email: "hola@ejemplo.com", whatsapp: "+54 11 5555-0101" },
+  { name: "Negocio ilustrativo", category: "Clínica veterinaria", reviews: "64 reseñas", rating: "4,2", email: "Sin dato", whatsapp: "+54 11 5555-0142" },
+  { name: "Local de muestra", category: "Veterinaria", reviews: "39 reseñas", rating: "4,8", email: "contacto@ejemplo.com", whatsapp: "Sin dato" },
+];
 
-function downloadCsv(leads: Lead[], batch: LeadBatch | null) {
-  const header = LEAD_COLUMNS.map((column) => csvCell(column.label)).join(",");
-  const rows = leads.map((lead) => LEAD_COLUMNS.map((column) => csvCell(lead[column.key])).join(","));
-  const csv = `\uFEFF${[header, ...rows].join("\r\n")}`;
-  const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8;" }));
-  const anchor = document.createElement("a");
-  anchor.href = url;
-  anchor.download = `leadta-${batch?.country.toLowerCase().replace(/[^a-z0-9]+/g, "-") || "leads"}-${new Date().toISOString().slice(0, 10)}.csv`;
-  anchor.click();
-  URL.revokeObjectURL(url);
-}
+const steps = [
+  { title: "Elegí qué buscar", text: "Escribí un rubro o varias keywords, y seleccioná el país, la provincia y la ciudad.", icon: Search },
+  { title: "Definí el tamaño del lote", text: "Elegí cuántos resultados querés recibir, hasta 150 negocios por búsqueda.", icon: MapPin },
+  { title: "Revisá y descargá", text: "Explorá los datos en una hoja, filtrá lo que te sirve y exportá a CSV o XLSX.", icon: Download },
+];
 
-function placeLabel(batch: LeadBatch) {
-  return [batch.district, batch.province, batch.country].filter(Boolean).join(", ");
-}
+const benefits = [
+  "Teléfono, web, mail y perfiles sociales cuando están disponibles.",
+  "Lotes guardados en tu historial, ordenados para volver cuando quieras.",
+  "Análisis opcional de reseñas y búsqueda de perfiles sociales públicos.",
+];
 
-export default function Home() {
-  const [keywordsText, setKeywordsText] = useState("");
-  const [country, setCountry] = useState("");
-  const [province, setProvince] = useState("");
-  const [district, setDistrict] = useState("");
-  const [count, setCount] = useState(10);
-  const [leads, setLeads] = useState<Lead[]>([]);
-  const [batches, setBatches] = useState<LeadBatch[]>([]);
-  const [activeBatch, setActiveBatch] = useState<LeadBatch | null>(null);
-  const [busy, setBusy] = useState(false);
-  const [notice, setNotice] = useState("");
-  const [problem, setProblem] = useState("");
-  const [historyLoading, setHistoryLoading] = useState(true);
-  const [apifyConfigured, setApifyConfigured] = useState(false);
-  const [pocketBaseConfigured, setPocketBaseConfigured] = useState(false);
-  const [isDevelopmentEnvironment, setIsDevelopmentEnvironment] = useState(false);
-  const [currentUser, setCurrentUser] = useState<{ id: string; email: string } | null>(null);
-  const [authLoading, setAuthLoading] = useState(true);
-  const [authProblem, setAuthProblem] = useState("");
-  const batchSizes = isDevelopmentEnvironment ? [1, 2, ...productionBatchSizes] : productionBatchSizes;
-
-  const keywords = useMemo(
-    () => [...new Set(keywordsText.split(/[\n,;]+/).map((keyword) => keyword.trim()).filter(Boolean))],
-    [keywordsText],
-  );
-
-  useEffect(() => {
-    let current = true;
-    async function loadInitialData() {
-      try {
-        const authResponse = await fetch("/api/auth/me", { cache: "no-store" });
-        const authPayload = await authResponse.json();
-        if (!authResponse.ok) throw new Error(authPayload.error || "No se pudo conectar con tu cuenta.");
-        if (!current) return;
-        if (!authPayload.user) {
-          setHistoryLoading(false);
-          setAuthLoading(false);
-          return;
-        }
-        setCurrentUser(authPayload.user);
-        setAuthLoading(false);
-
-        const statusResponse = await fetch("/api/status", { cache: "no-store" });
-        const status = await statusResponse.json();
-        if (current) {
-          setApifyConfigured(Boolean(status.apifyConfigured));
-          setPocketBaseConfigured(Boolean(status.pocketBaseConfigured));
-          setIsDevelopmentEnvironment(status.environment === "dev");
-        }
-
-        const response = await fetch("/api/batches", { cache: "no-store" });
-        const payload = await response.json();
-        if (!response.ok) throw new Error(payload.error || "No se pudo cargar el historial.");
-        if (!current) return;
-
-        const loadedBatches = payload.batches as LeadBatch[];
-        setBatches(loadedBatches);
-        setHistoryLoading(false);
-        if (loadedBatches.length === 0) return;
-
-        const latest = loadedBatches[0];
-        setActiveBatch(latest);
-        const query = new URLSearchParams({ batchId: latest.id });
-        const leadsResponse = await fetch(`/api/leads?${query}`, { cache: "no-store" });
-        const leadsPayload = await leadsResponse.json();
-        if (current && leadsResponse.ok) setLeads(leadsPayload.leads);
-      } catch (error) {
-        if (!current) return;
-        setAuthProblem(error instanceof Error ? error.message : "No se pudo conectar con tu cuenta.");
-        setAuthLoading(false);
-        setHistoryLoading(false);
-        setProblem(error instanceof Error ? error.message : "No se pudo conectar con el historial.");
-      }
-    }
-    void loadInitialData();
-    return () => { current = false; };
-  }, []);
-
-  async function signOut() {
-    await fetch("/api/auth/logout", { method: "POST" });
-    setCurrentUser(null);
-    setBatches([]);
-    setLeads([]);
-    setActiveBatch(null);
-  }
-
-  async function selectBatch(batch: LeadBatch) {
-    setActiveBatch(batch);
-    setProblem("");
-    setNotice("");
-    try {
-      const query = new URLSearchParams({ batchId: batch.id });
-      const response = await fetch(`/api/leads?${query}`, { cache: "no-store" });
-      const payload = await response.json();
-      if (!response.ok) throw new Error(payload.error || "No se pudo cargar el lote.");
-      setLeads(payload.leads);
-    } catch (error) {
-      setProblem(error instanceof Error ? error.message : "No se pudo cargar el lote.");
-    }
-  }
-
-  async function submitSearch(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setProblem("");
-    setNotice("");
-    if (!keywords.length) {
-      setProblem("Ingresá al menos una keyword.");
-      return;
-    }
-    if (!country.trim()) {
-      setProblem("El país es obligatorio para iniciar la búsqueda.");
-      return;
-    }
-
-    setBusy(true);
-    setLeads([]);
-    setActiveBatch(null);
-    setNotice("Buscando negocios y guardando el lote…");
-
-    try {
-      const response = await fetch("/api/search", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ keywords, country, province, district, count }),
-      });
-      const payload = await response.json();
-      if (!response.ok) throw new Error(payload.error || "No se pudo completar la búsqueda.");
-
-      const newBatch = ((await fetch("/api/batches", { cache: "no-store" }).then((result) => result.json())).batches as LeadBatch[])
-        .find((batch) => batch.id === payload.batchId);
-      setLeads(payload.leads as Lead[]);
-      if (newBatch) {
-        setBatches((previous) => [newBatch, ...previous.filter((batch) => batch.id !== newBatch.id)].slice(0, 20));
-        setActiveBatch(newBatch);
-      }
-      setNotice(`${payload.leads.length} leads guardados en el lote.`);
-      if (payload.warning) setProblem(`El lote quedó parcial. ${payload.warning}`);
-    } catch (error) {
-      setNotice("");
-      setProblem(error instanceof Error ? error.message : "No se pudo completar la búsqueda.");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  if (authLoading) return <main className="app-shell auth-loading" aria-live="polite">Conectando con tu cuenta…</main>;
-  if (!currentUser) return <AuthForm initialError={authProblem} onAuthenticated={() => window.location.reload()} />;
-
+function SampleLeadSheet() {
   return (
-    <main className="app-shell">
-      <header className="topbar">
-        <BrandLogo />
-        <div className="topbar-user"><span className="connection-dot" /><span>{currentUser.email}</span><button type="button" className="logout-button" onClick={() => void signOut()}>Salir</button></div>
+    <div className="landing-sheet-wrap" aria-label="Vista ilustrativa de la hoja de leads">
+      <div className="landing-sheet-toolbar">
+        <div className="landing-window-dots" aria-hidden="true"><i /><i /><i /></div>
+        <span>Vista de ejemplo</span>
+        <span className="landing-sheet-date">LOTE RECIENTE</span>
+      </div>
+      <div className="landing-search-summary">
+        <span className="landing-search-icon"><Search size={15} aria-hidden="true" /></span>
+        <div><small>BÚSQUEDA</small><strong>Veterinarias · Buenos Aires</strong></div>
+        <span className="landing-sheet-count">25 leads</span>
+      </div>
+      <div className="landing-sheet-scroll">
+        <table className="landing-sheet-table">
+          <thead><tr><th>Negocio</th><th>Mail</th><th>WhatsApp</th></tr></thead>
+          <tbody>{sampleLeads.map((lead) => <tr key={lead.name}>
+            <td><strong>{lead.name}</strong><small>{lead.category} · {lead.reviews} · ★ {lead.rating}</small></td>
+            <td><span className={`landing-contact-value${lead.email === "Sin dato" ? " is-missing" : ""}`}>{lead.email}</span></td>
+            <td><span className={`landing-contact-value${lead.whatsapp === "Sin dato" ? " is-missing" : ""}`}>{lead.whatsapp}</span></td>
+          </tr>)}</tbody>
+        </table>
+      </div>
+      <div className="landing-sheet-footer"><span><i /> Datos ilustrativos</span><span>CSV <ArrowUpRight size={13} aria-hidden="true" /></span></div>
+    </div>
+  );
+}
+
+export default function LandingPage() {
+  return (
+    <main className="landing-page">
+      <header className="landing-nav-wrap">
+        <nav className="landing-nav" aria-label="Navegación principal">
+          <BrandLogo />
+          <div className="landing-nav-links">
+            <a href="#planes">Planes</a>
+            <a href="#como-funciona">Cómo funciona</a>
+            <a href="#que-incluye">Qué incluye</a>
+          </div>
+          <Link className="landing-nav-cta" href="/buscar">Ingresar <ArrowUpRight size={15} aria-hidden="true" /></Link>
+        </nav>
       </header>
 
-      <div className="workspace">
-        <section className="page-heading" aria-labelledby="page-title">
-          <div>
-            <h1 id="page-title">Encontrá tu próximo lead.</h1>
-            <p className="page-intro">Buscá empresas por rubro y zona. Los resultados quedan guardados para revisar o exportar.</p>
-          </div>
-          <div className="apify-badge"><span className="apify-spark" aria-hidden="true">A</span> Google Maps</div>
-        </section>
-
-        <form className="search-panel" onSubmit={submitSearch}>
-          <div className="panel-heading">
-            <div>
-              <h2>Configurar búsqueda</h2>
-              <p>Elegí qué negocios buscar y hasta dónde.</p>
+      <section className="landing-hero">
+        <div className="landing-hero-inner">
+          <div className="landing-hero-copy">
+            <h1>Encontrá negocios para <em>empezar la conversación.</em></h1>
+            <p className="landing-hero-description">Elegí un rubro y una zona. Leadta organiza negocios de Google Maps en una hoja lista para revisar y descargar.</p>
+            <div className="landing-hero-actions">
+              <Link className="landing-button-primary" href="/buscar?signup=1">Crear mi lista <ArrowRight size={17} aria-hidden="true" /></Link>
+              <a className="landing-button-text" href="#como-funciona">Ver cómo funciona <ArrowDown size={15} aria-hidden="true" /></a>
             </div>
-            <span className="required-note"><span aria-hidden="true">*</span> Obligatorio</span>
+            <p className="landing-hero-footnote"><Check size={14} aria-hidden="true" /> Búsqueda, hoja e historial en un solo lugar</p>
           </div>
+          <div className="landing-hero-visual"><SampleLeadSheet /></div>
+        </div>
+        <div className="landing-hero-bottom" aria-hidden="true"><span>DE LA BÚSQUEDA</span><i /><span>A TU PRÓXIMO CONTACTO</span></div>
+      </section>
 
-          <div className="form-grid">
-            <label className="field field-keywords">
-              <span className="field-label">Keywords <span className="required-mark">*</span></span>
-              <textarea
-                value={keywordsText}
-                onChange={(event) => setKeywordsText(event.target.value)}
-                placeholder={'Ej.: estudios contables\ninmobiliarias'}
-                rows={3}
-                maxLength={1200}
-                aria-describedby="keywords-help"
-                required
-              />
-              <span className="field-help" id="keywords-help">Una keyword por línea. También podés separarlas con coma.</span>
-            </label>
+      <section className="landing-intro" id="como-funciona">
+        <div className="landing-section-heading">
+          <p>Simple desde el primer paso</p>
+          <h2>De una búsqueda a una lista lista para trabajar.</h2>
+        </div>
+        <div className="landing-steps">
+          {steps.map(({ title, text, icon: Icon }, index) => <article className="landing-step" key={title}>
+            <div className="landing-step-top"><span>{String(index + 1).padStart(2, "0")}</span><Icon size={19} strokeWidth={1.8} aria-hidden="true" /></div>
+            <h3>{title}</h3><p>{text}</p>
+          </article>)}
+        </div>
+      </section>
 
-            <div className="field geography-field">
-              <span className="field-label">Zona de búsqueda <span className="required-mark">*</span></span>
-              <div className="location-grid">
-                <label>
-                  <span className="sr-only">País obligatorio</span>
-                  <input value={country} onChange={(event) => setCountry(event.target.value)} placeholder="País (obligatorio)" maxLength={100} required />
-                </label>
-                <label>
-                  <span className="sr-only">Provincia opcional</span>
-                  <input value={province} onChange={(event) => setProvince(event.target.value)} placeholder="Provincia (opcional)" maxLength={100} />
-                </label>
-                <label>
-                  <span className="sr-only">Distrito opcional</span>
-                  <input value={district} onChange={(event) => setDistrict(event.target.value)} placeholder="Distrito (opcional)" maxLength={100} />
-                </label>
-              </div>
-              <span className="field-help">El país define el área mínima. Provincia y distrito la acotan.</span>
-            </div>
-
-            <fieldset className="field batch-field">
-              <legend className="field-label">Cantidad por lote{isDevelopmentEnvironment && <span className="test-mode-label">Testing: 1–2</span>}</legend>
-              <div className="batch-options" role="radiogroup" aria-label="Cantidad de leads por lote">
-                {batchSizes.map((size) => (
-                  <label className={`batch-option${count === size ? " is-selected" : ""}`} key={size}>
-                    <input type="radio" name="batch-size" value={size} checked={count === size} onChange={() => setCount(size)} />
-                    <span>{size}</span>
-                  </label>
-                ))}
-              </div>
-            </fieldset>
-
-            <div className="search-action">
-              <button className="primary-button" type="submit" disabled={busy || !apifyConfigured || !pocketBaseConfigured || keywords.length === 0 || !country.trim()}>
-                {busy ? <><span className="button-spinner" aria-hidden="true" /> Buscando leads…</> : "Buscar leads"}
-              </button>
-              <span className="action-caption">{!apifyConfigured ? "Falta configurar APIFY_TOKEN en el servidor" : !pocketBaseConfigured ? "Falta conectar PocketBase" : `${keywords.length} ${keywords.length === 1 ? "keyword" : "keywords"} · máximo ${count}`}</span>
-            </div>
+      <section className="landing-workspace" id="que-incluye">
+        <div className="landing-workspace-art" aria-hidden="true">
+          <div className="landing-mini-sheet">
+            <div className="landing-mini-head"><Table2 size={16} /><span>HISTORIAL DE EJEMPLO</span><b>3 lotes</b></div>
+            <div className="landing-mini-row is-selected"><span>06 nov · Lote 3</span><strong>Veterinarias</strong><i>25 leads</i></div>
+            <div className="landing-mini-row"><span>04 nov · Lote 2</span><strong>Estudios contables</strong><i>50 leads</i></div>
+            <div className="landing-mini-row"><span>01 nov · Lote 1</span><strong>Inmobiliarias</strong><i>25 leads</i></div>
+            <div className="landing-mini-download"><Download size={14} /> Descargar lote <span>CSV · XLSX</span></div>
           </div>
-          <p className="cost-note">La extracción de emails se activa para los negocios con website. Apify puede cobrar este complemento aparte.</p>
-        </form>
+          <div className="landing-history-stamp"><History size={16} /><span>Guardado<br />en tu historial</span></div>
+        </div>
+        <div className="landing-workspace-copy">
+          <p>Una hoja que sigue tu ritmo</p>
+          <h2>Tus negocios, en orden. Tus próximos pasos, más claros.</h2>
+          <p className="landing-workspace-description">Cada búsqueda queda guardada como un lote. Volvé a la tabla unificada o abrí una búsqueda puntual y descargá sus datos cuando los necesites.</p>
+          <ul>{benefits.map((benefit) => <li key={benefit}><Check size={15} aria-hidden="true" /> <span>{benefit}</span></li>)}</ul>
+          <Link className="landing-inline-link" href="/buscar?signup=1">Explorar Leadta <ArrowUpRight size={15} aria-hidden="true" /></Link>
+        </div>
+      </section>
 
-        {(problem || notice) && (
-          <div className={`status-message${problem ? " is-error" : " is-success"}`} role={problem ? "alert" : "status"}>
-            <span className="status-indicator" aria-hidden="true" />
-            <span>{problem || notice}</span>
-            {problem && <button type="button" className="dismiss-button" onClick={() => setProblem("")}>Cerrar</button>}
-          </div>
-        )}
+      <PricingHero variant="landing" id="planes" />
 
-        <section className="results-section" aria-labelledby="results-title">
-          <div className="results-heading">
-            <div>
-              <div className="results-title-row">
-                <h2 id="results-title">Leads encontrados</h2>
-                <span className="result-count">{leads.length}</span>
-              </div>
-              {activeBatch && <p className="active-location">{placeLabel(activeBatch)} <span>·</span> {activeBatch.keywords.join(", ")}</p>}
-            </div>
-            <button className="export-button" type="button" onClick={() => downloadCsv(leads, activeBatch)} disabled={leads.length === 0}>
-              Descargar CSV
-            </button>
-          </div>
+      <section className="landing-final-cta">
+        <div className="landing-final-copy"><Sparkles size={18} aria-hidden="true" /><p>Tu próxima lista empieza con una búsqueda.</p></div>
+        <Link className="landing-button-primary" href="/buscar?signup=1">Empezar ahora <ArrowRight size={17} aria-hidden="true" /></Link>
+      </section>
 
-          {batches.length > 0 && (
-            <div className="batch-history" aria-label="Historial de lotes">
-              <span className="history-label">LOTE</span>
-              <div className="history-list">
-                {batches.slice(0, 6).map((batch) => (
-                  <button
-                    key={batch.id}
-                    className={`history-chip${activeBatch?.id === batch.id ? " is-active" : ""}`}
-                    type="button"
-                    onClick={() => void selectBatch(batch)}
-                    title={`${batch.keywords.join(", ")} · ${placeLabel(batch)}`}
-                  >
-                    <span>{batch.result_count}/{batch.requested_count}</span>
-                    <span>{batch.keywords[0] || "Búsqueda"}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          <p className="table-scroll-hint">Deslizá la tabla para ver todas las columnas.</p>
-          <div className="table-frame" tabIndex={0} aria-label="Resultados de leads, desplazables horizontalmente">
-            <table>
-              <thead>
-                <tr>{LEAD_COLUMNS.map((column) => <th key={column.key} scope="col">{column.label}</th>)}</tr>
-              </thead>
-              <tbody>
-                {leads.map((lead) => (
-                  <tr key={lead.id}>
-                    {LEAD_COLUMNS.map((column) => {
-                      const value = lead[column.key];
-                      const isLink = (column.key === "maps_url" || column.key === "website") && Boolean(value);
-                      return (
-                        <td key={column.key}>
-                          {isLink ? <a className="table-link" href={String(value)} target="_blank" rel="noreferrer" title={String(value)}>{column.key === "maps_url" ? "Google Maps" : String(value)}</a> : value == null ? "" : String(value)}
-                        </td>
-                      );
-                    })}
-                  </tr>
-                ))}
-                {leads.length === 0 && !busy && (
-                  <tr><td className="empty-cell" colSpan={LEAD_COLUMNS.length}>
-                    <strong>{historyLoading ? "Conectando con tu historial…" : "Todavía no hay leads"}</strong>
-                    <span>{historyLoading ? "" : "Completá una keyword y la zona para generar el primer lote."}</span>
-                  </td></tr>
-                )}
-                {busy && Array.from({ length: Math.min(count, 5) }, (_, index) => (
-                  <tr className="skeleton-row" key={`skeleton-${index}`} aria-hidden="true">
-                    {LEAD_COLUMNS.map((column) => <td key={column.key}><span /></td>)}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <div className="table-footer"><span>Los datos faltantes quedan en blanco.</span><span>{leads.length} {leads.length === 1 ? "registro" : "registros"}</span></div>
-        </section>
-      </div>
+      <footer className="landing-footer">
+        <BrandLogo />
+        <span>Encontrá. Organizá. Avanzá.</span>
+        <Link href="/pricing">Créditos y planes <ArrowUpRight size={13} aria-hidden="true" /></Link>
+      </footer>
     </main>
   );
 }

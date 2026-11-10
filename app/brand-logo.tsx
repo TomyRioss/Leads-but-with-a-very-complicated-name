@@ -7,7 +7,7 @@ type BrandMarkProps = { className?: string };
 export function BrandMark({ className = "" }: BrandMarkProps) {
   return (
     <span className={`brand-mark ${className}`.trim()} aria-hidden="true">
-      Lt<span className="brand-period" />
+      Lt<span className="brand-mark-dot" />
     </span>
   );
 }
@@ -16,7 +16,7 @@ export function BrandLogo() {
   return (
     <Link className="brand" href="/" aria-label="Leadta, inicio">
       <span aria-hidden="true">
-        leadta<span className="brand-period" />
+        Leadta<span className="brand-period">.</span>
       </span>
     </Link>
   );

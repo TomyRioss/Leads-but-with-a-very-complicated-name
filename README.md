@@ -13,7 +13,7 @@ Cada operador crea una cuenta con email y contraseña. Sus lotes y leads quedan 
 
 Para Vercel, configurá `POCKETBASE_URL` como `https://hermes-web.duckdns.org/leadta-pocketbase` y cargá `POCKETBASE_BRIDGE_SECRET` como variable sensible. El VPS valida esa clave en Nginx antes de reenviar tráfico al PocketBase privado. No publiques el puerto `18098`.
 
-El token de Apify y las credenciales de PocketBase solo se leen desde el servidor. La búsqueda de emails habilita el complemento de contactos del Actor, que puede tener un costo adicional en Apify.
+El token de Apify y las credenciales de PocketBase solo se leen desde el servidor. Leadta usa `k-data-lab/google-maps-scraper`; el `monitorName` separa el historial por cuenta y zona para que las búsquedas repetidas devuelvan locales nuevos. El actor incluye emails y redes sociales en el precio por local. Las redes encontradas se guardan, se muestran en la tabla y se incluyen en el CSV.
 
 ## PocketBase en VPS
 

@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
-import { setSessionCookie } from "@/lib/server/auth";
+import { setSessionCookie, toUserRole } from "@/lib/server/auth";
 import { PocketBaseRequestError, pocketBasePublicFetch } from "@/lib/server/pocketbase";
 
-type AuthResponse = { token: string; record: { id: string; email: string; name?: string } };
+type AuthResponse = { token: string; record: { id: string; email: string; name?: string; credits?: number; role?: unknown } };
 
 export async function POST(request: Request) {
   let body: { email?: unknown; password?: unknown };
@@ -23,7 +23,7 @@ export async function POST(request: Request) {
       method: "POST",
       body: JSON.stringify({ identity: email, password }),
     });
-    const response = NextResponse.json({ user: { id: auth.record.id, email: auth.record.email, name: auth.record.name || "" } });
+    const response = NextResponse.json({ user: { id: auth.record.id, email: auth.record.email, name: auth.record.name || "", credits: auth.record.credits ?? 0, role: toUserRole(auth.record.role) } });
     setSessionCookie(response, auth.token);
     return response;
   } catch (error) {

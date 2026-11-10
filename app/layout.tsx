@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { Geist } from "next/font/google";
+import "react-phone-number-input/style.css";
 import "./globals.css";
 
 const geistSans = Geist({

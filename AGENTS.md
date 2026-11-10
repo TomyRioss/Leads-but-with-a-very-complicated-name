@@ -33,6 +33,22 @@ Fuente de los valores: OSPECTO, app/globals.css.
 
 ## Reglas de implementación
 
+### Delegación de programación con subagentes
+
+- En tareas sustantivas de programación, separá el trabajo en frentes independientes y delegalos en subagentes en paralelo cuando eso reduzca el tiempo total. Usá hasta 10 subagentes si la plataforma lo permite.
+- Para una tarea pequeña o un único cambio indivisible, no fuerces paralelismo. Si las instrucciones de mayor prioridad limitan la delegación, respetalas.
+- Antes de delegar, asigná a cada subagente un objetivo concreto, archivos de su propiedad, límites de alcance y criterios de entrega. Evitá que dos agentes editen los mismos archivos a la vez.
+- Avisá que el workspace es compartido y que no deben revertir cambios de otros. Coordiná dependencias y conflictos antes de integrar.
+- El agente principal conserva responsabilidad por la arquitectura, la seguridad, la revisión de cada diff, la integración y la verificación final. No integres resultados sin revisarlos.
+
+### Eficiencia del código
+
+- Buscá la máxima eficiencia práctica y medible en CPU, memoria, red, disco, base de datos y latencia, manteniendo correctitud, seguridad, accesibilidad y legibilidad. No prometas ni persigas una eficiencia absoluta imposible de medir.
+- Antes de codificar, identifica trabajo repetido y su costo. Evitá consultas N+1, solicitudes de red duplicadas o seriales cuando sean independientes, cómputos repetidos, estado React derivable, renders evitables, concurrencia sin límite y dependencias innecesarias.
+- Elegí algoritmos y estructuras adecuados al volumen esperado, validá y acotá entradas, paginá listas grandes y aplicá límites de tiempo y concurrencia a operaciones externas.
+- Medí los cuellos de botella antes de agregar caché o complejidad de optimización. Cacheá solo cuando la vigencia y el aislamiento por usuario sean seguros. Nunca sacrifiques seguridad, privacidad, mantenibilidad o UX por una mejora teórica.
+- Reducí duplicación cuando varias rutas compartan una regla real y estable. Mantené explícitas las diferencias de permisos y errores; no extraigas abstracciones genéricas que oculten el flujo.
+
 ### Reutilización de soluciones
 
 1. Antes de implementar, buscá si la solución ya existe en el proyecto, en las dependencias, en la plataforma o en una librería compatible.
@@ -55,7 +71,8 @@ Fuente de los valores: OSPECTO, app/globals.css.
 
 - Para diseño y cambios visuales, aplicá las skills frontend-design e impeccable. Inspeccioná la interfaz existente y conservá su identidad cuando ya esté definida.
 - Priorizá jerarquía visual, legibilidad, accesibilidad, foco de teclado, estados vacíos y errores, y adaptación a móvil.
-- No crees SVG para diseños salvo pedido explícito. Preferí CSS, componentes e imágenes rasterizadas cuando corresponda.
+- No escribas SVG a mano ni dibujes iconos con texto, emojis o pseudo-elementos. Para iconografía, usá la librería de iconos React existente; si no hay una, agregá una alternativa mantenida como lucide-react o react-icons e importá solo los iconos necesarios.
+- No crees gráficos SVG para diseños salvo pedido explícito. Preferí CSS, componentes e imágenes rasterizadas cuando corresponda.
 - Para QA web solicitado o necesario en una entrega visual, usá dogfood: recorré flujos principales y casos límite, revisá estados vacíos y errores, inspeccioná la consola y registrá pasos reproducibles y evidencia.
 
 ### Next.js y arquitectura MVC

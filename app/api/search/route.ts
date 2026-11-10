@@ -1,14 +1,68 @@
 import { NextResponse } from "next/server";
+import { createHash } from "node:crypto";
 import { getCurrentUser, withRefreshedSession } from "@/lib/server/auth";
 import { createLeadRecords, isPocketBaseConfigured, pocketBaseFetch } from "@/lib/server/pocketbase";
+import { CREDITS_PER_LEAD, CreditOperationBusyError, InsufficientCreditsError, reserveLeadCredits } from "@/lib/server/credits";
 
 export const maxDuration = 300;
 
-const actorId = "nwua9Gu5YrADL7ZDj";
-const allowedCounts = new Set([5, 10, 15, 20, 25, 30]);
+const actorId = "tBH60CegtoC2QNtaR";
+const allowedCounts = new Set([25, 50, 75, 100, 125, 150]);
 const isDevelopmentEnvironment = process.env.ENVIROMENT?.trim().toLowerCase() === "dev";
 
 type ActorPlace = Record<string, unknown>;
+type SearchFilters = {
+  minReviews?: number;
+  maxReviews?: number;
+  minRating?: number;
+  website: "any" | "with" | "without";
+  phone: "any" | "with" | "without";
+  email: "any" | "with" | "without";
+  skipClosed: boolean;
+};
+
+type StoredReview = {
+  text: string;
+  rating: number | null;
+  published_at: string;
+  owner_response: string;
+};
+
+function mapReviews(value: unknown): StoredReview[] {
+  const collection = Array.isArray(value)
+    ? value
+    : value && typeof value === "object"
+      ? [
+          ...("items" in value && Array.isArray(value.items) ? value.items : []),
+          ...("reviews" in value && Array.isArray(value.reviews) ? value.reviews : []),
+          ...("data" in value && Array.isArray(value.data) ? value.data : []),
+        ]
+      : [];
+  return collection.flatMap((review) => {
+    if (!review || typeof review !== "object") return [];
+    const item = review as Record<string, unknown>;
+    const text = asText(item.text) || asText(item.textTranslated) || asText(item.originalText) || asText(item.reviewText);
+    if (!text) return [];
+    const rating = typeof item.rating === "number" ? item.rating : typeof item.stars === "number" ? item.stars : null;
+    if (rating === null || rating < 1 || rating > 5) return [];
+    return [{
+      text: text.slice(0, 3000),
+      rating,
+      published_at: asText(item.publishedAt) || asText(item.publishedAtDate) || asText(item.publishAt) || asText(item.relativeTime),
+      owner_response: (asText(item.ownerResponse) || asText(item.ownerResponseText) || asText(item.responseFromOwner)).slice(0, 1500),
+    }];
+  }).map((review, index) => ({ review, index, timestamp: Date.parse(review.published_at) }))
+    .sort((a, b) => {
+      if (a.review.rating !== b.review.rating) return (a.review.rating ?? 3) - (b.review.rating ?? 3);
+      const aHasTimestamp = Number.isFinite(a.timestamp);
+      const bHasTimestamp = Number.isFinite(b.timestamp);
+      if (aHasTimestamp && bHasTimestamp && a.timestamp !== b.timestamp) return b.timestamp - a.timestamp;
+      if (aHasTimestamp !== bHasTimestamp) return aHasTimestamp ? -1 : 1;
+      return a.index - b.index;
+    })
+    .slice(0, 5)
+    .map(({ review }) => review);
+}
 
 function asText(value: unknown): string {
   return typeof value === "string" ? value.trim() : "";
@@ -40,29 +94,51 @@ function firstEmail(place: ActorPlace): string {
   return "";
 }
 
+function socialProfilesText(value: unknown): string {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return "";
+  return Object.entries(value as Record<string, unknown>)
+    .flatMap(([network, profile]) => {
+      const profiles = Array.isArray(profile) ? profile : [profile];
+      return profiles
+        .filter((url): url is string => typeof url === "string" && /^https?:\/\//i.test(url.trim()))
+        .map((url) => `${network}: ${url.trim()}`);
+    })
+    .join("\n");
+}
+
 function mapPlace(place: ActorPlace) {
   const placeId = asText(place.placeId);
-  const mapsUrl = asText(place.url) || asText(place.mapsUrl) ||
+  const mapsUrl = asText(place.mapsUrl) || asText(place.url) ||
     (placeId ? `https://www.google.com/maps/search/?api=1&query_place_id=${encodeURIComponent(placeId)}` : "");
-  const score = typeof place.totalScore === "number" ? place.totalScore : null;
+  const score = typeof place.rating === "number" ? place.rating : typeof place.totalScore === "number" ? place.totalScore : null;
   const reviewCount = typeof place.reviewsCount === "number" ? place.reviewsCount : null;
   const categories = Array.isArray(place.categories)
     ? place.categories.filter((value): value is string => typeof value === "string" && Boolean(value.trim())).join(", ")
     : "";
 
   return {
-    name: asText(place.title),
+    name: asText(place.name) || asText(place.title),
     maps_url: mapsUrl,
     address: asText(place.address),
     review_count: reviewCount === null ? "" : String(reviewCount),
     average_rating: score === null ? "" : String(score),
-    phone: asText(place.phone),
+    phone: asText(place.phoneInternational) || asText(place.phone),
     email: firstEmail(place),
     website: asText(place.website),
-    category: asText(place.categoryName) || categories,
+    social_profiles: socialProfilesText(place.socialProfiles),
+    category: asText(place.category) || asText(place.categoryName) || categories,
+    source_reviews: mapReviews(place.reviews ?? place.reviewSamples ?? place.recentReviews),
+    source_context: {
+      review_topics: Array.isArray(place.reviewTopics) ? place.reviewTopics : [],
+      rating_breakdown: place.ratingBreakdown && typeof place.ratingBreakdown === "object" ? place.ratingBreakdown : {},
+      owner_description: asText(place.ownerDescription),
+      details_status: asText(place.detailsStatus),
+    },
     pain_points: "",
     enrichment: "",
-    source_key: placeId || mapsUrl || `${asText(place.title)}|${asText(place.address)}`.toLowerCase(),
+    pain_points_detail: "",
+    enrichment_detail: "",
+    source_key: placeId || mapsUrl || `${asText(place.name) || asText(place.title)}|${asText(place.address)}`.toLowerCase(),
   };
 }
 
@@ -71,6 +147,8 @@ async function actorSearch(
   keyword: string,
   location: string,
   limit: number,
+  monitorName: string,
+  filters: SearchFilters,
 ): Promise<ActorPlace[]> {
   const response = await fetch(
     `https://api.apify.com/v2/acts/${actorId}/run-sync-get-dataset-items?timeout=300&format=json&clean=true`,
@@ -78,11 +156,20 @@ async function actorSearch(
       method: "POST",
       headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
       body: JSON.stringify({
-        searchStringsArray: [keyword],
-        locationQuery: location,
-        maxCrawledPlacesPerSearch: limit,
+        searchTerms: [keyword],
+        locations: [location],
+        maxPlacesPerSearch: limit,
+        monitorName,
         language: "es",
-        scrapeContacts: true,
+        includeContacts: true,
+        ...(filters.minReviews !== undefined ? { minReviews: filters.minReviews } : {}),
+        ...(filters.maxReviews !== undefined ? { maxReviews: filters.maxReviews } : {}),
+        ...(filters.minRating !== undefined ? { minRating: filters.minRating } : {}),
+        ...(filters.website !== "any" ? { website: filters.website } : {}),
+        ...(filters.phone !== "any" ? { phone: filters.phone } : {}),
+        ...(filters.email === "with" ? { onlyWithEmail: true } : {}),
+        ...(filters.skipClosed ? { skipClosed: true } : {}),
+        includeDetails: true,
       }),
       signal: AbortSignal.timeout(300_000),
       cache: "no-store",
@@ -122,6 +209,7 @@ export async function POST(request: Request) {
     province?: unknown;
     district?: unknown;
     count?: unknown;
+    filters?: unknown;
   };
 
   try {
@@ -137,6 +225,30 @@ export async function POST(request: Request) {
   const province = typeof body.province === "string" ? body.province.trim() : "";
   const district = typeof body.district === "string" ? body.district.trim() : "";
   const count = typeof body.count === "number" ? body.count : Number(body.count);
+  const rawFilters = body.filters && typeof body.filters === "object" && !Array.isArray(body.filters)
+    ? body.filters as Record<string, unknown>
+    : {};
+  const optionalNumber = (value: unknown, max: number) => {
+    if (value === "" || value === undefined || value === null) return { valid: true as const, value: undefined };
+    const number = typeof value === "number" ? value : Number(value);
+    return Number.isFinite(number) && number >= 0 && number <= max
+      ? { valid: true as const, value: number }
+      : { valid: false as const, value: undefined };
+  };
+  const minReviews = optionalNumber(rawFilters.minReviews, 100_000_000);
+  const maxReviews = optionalNumber(rawFilters.maxReviews, 100_000_000);
+  const minRating = optionalNumber(rawFilters.minRating, 5);
+  const filterChoice = (value: unknown): value is "any" | "with" | "without" =>
+    value === undefined || value === "any" || value === "with" || value === "without";
+  const filters: SearchFilters = {
+    minReviews: minReviews.value,
+    maxReviews: maxReviews.value,
+    minRating: minRating.value,
+    website: filterChoice(rawFilters.website) ? rawFilters.website ?? "any" : "any",
+    phone: filterChoice(rawFilters.phone) ? rawFilters.phone ?? "any" : "any",
+    email: filterChoice(rawFilters.email) ? rawFilters.email ?? "any" : "any",
+    skipClosed: rawFilters.skipClosed === true,
+  };
 
   if (keywords.length === 0 || keywords.length > 10 || keywords.some((keyword) => keyword.length > 120)) {
     return NextResponse.json({ error: "Ingresá entre 1 y 10 keywords, con un máximo de 120 caracteres cada una." }, { status: 400 });
@@ -145,15 +257,27 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "El país es obligatorio. Cada zona admite hasta 100 caracteres." }, { status: 400 });
   }
   if (!allowedCounts.has(count) && !(isDevelopmentEnvironment && (count === 1 || count === 2))) {
-    const allowed = isDevelopmentEnvironment ? "1, 2, 5, 10, 15, 20, 25 o 30" : "5, 10, 15, 20, 25 o 30";
+    const allowed = isDevelopmentEnvironment ? "1, 2, 25, 50, 75, 100, 125 o 150" : "25, 50, 75, 100, 125 o 150";
     return NextResponse.json({ error: `El lote debe ser de ${allowed} leads.` }, { status: 400 });
+  }
+  if (!minReviews.valid || !maxReviews.valid || !minRating.valid ||
+      (minReviews.value !== undefined && !Number.isInteger(minReviews.value)) ||
+      (maxReviews.value !== undefined && !Number.isInteger(maxReviews.value)) ||
+      !filterChoice(rawFilters.website) || !filterChoice(rawFilters.phone) || !filterChoice(rawFilters.email) ||
+      (minReviews.value !== undefined && maxReviews.value !== undefined && minReviews.value > maxReviews.value)) {
+    return NextResponse.json({ error: "Revisá los filtros: las reseñas deben ser válidas y el mínimo no puede superar el máximo." }, { status: 400 });
   }
 
   const location = [district, province, country].filter(Boolean).join(", ");
+  const normalizedLocation = location.normalize("NFKD").replace(/\p{Diacritic}/gu, "").replace(/\s+/g, " ").trim().toLowerCase();
+  const monitorScope = [session.user.id, normalizedLocation, "es"].join("|");
+  const monitorName = `leadta-${createHash("sha256").update(monitorScope).digest("hex").slice(0, 24)}`;
   let currentBatchId: string | null = null;
   let persistedCount = 0;
+  let creditReservation: Awaited<ReturnType<typeof reserveLeadCredits>> | null = null;
 
   try {
+    creditReservation = await reserveLeadCredits(session.user.id, count);
     const batch = await pocketBaseFetch<{ id: string }>("/api/collections/lead_batches/records", {
       method: "POST",
       body: JSON.stringify({
@@ -178,10 +302,11 @@ export async function POST(request: Request) {
       if (remaining <= 0) break;
 
       try {
-        const places = await actorSearch(token, keyword, location, remaining);
+        const places = await actorSearch(token, keyword, location, remaining, monitorName, filters);
         for (const place of places) {
           const mapped = mapPlace(place);
           if (!mapped.name) continue;
+          if (filters.email === "without" && mapped.email) continue;
           leads.set(mapped.source_key, mapped);
           if (leads.size >= count) break;
         }
@@ -200,9 +325,14 @@ export async function POST(request: Request) {
       phone: lead.phone,
       email: lead.email,
       website: lead.website,
+      social_profiles: lead.social_profiles,
       category: lead.category,
+      source_reviews: lead.source_reviews,
+      source_context: lead.source_context,
       pain_points: lead.pain_points,
       enrichment: lead.enrichment,
+      pain_points_detail: lead.pain_points_detail,
+      enrichment_detail: lead.enrichment_detail,
       created_at: new Date().toISOString(),
     }));
     let persistenceError = "";
@@ -214,12 +344,14 @@ export async function POST(request: Request) {
       persistenceError = "No se pudieron guardar los leads en PocketBase.";
     }
 
-    const hasWarning = Boolean(actorError || persistenceError);
-    const status = hasWarning ? (persistedCount > 0 ? "partial" : "failed") : "completed";
+    const shortfall = leads.size < count;
+    const hasError = Boolean(actorError || persistenceError);
+    const status = hasError ? (persistedCount > 0 ? "partial" : "failed") : "completed";
     await pocketBaseFetch(`/api/collections/lead_batches/records/${batch.id}`, {
       method: "PATCH",
       body: JSON.stringify({ result_count: persistedCount, status }),
     });
+    const credits = await creditReservation.settle(persistedCount);
 
     const filter = encodeURIComponent(`batch = "${batch.id}"`);
     const saved = await pocketBaseFetch<{ items: Record<string, unknown>[] }>(
@@ -230,11 +362,22 @@ export async function POST(request: Request) {
         batchId: batch.id,
         leads: saved.items,
         status,
+        credits,
+        creditsUsed: persistedCount * CREDITS_PER_LEAD,
         warning: [actorError, persistenceError].filter(Boolean).join(" ") || undefined,
+        shortfall,
       }),
       session.token,
     );
   } catch (error) {
+    let credits: number | undefined;
+    if (creditReservation) {
+      try {
+        credits = await creditReservation.settle(persistedCount);
+      } catch {
+        credits = creditReservation.balance;
+      }
+    }
     if (currentBatchId) {
       try {
         await pocketBaseFetch(`/api/collections/lead_batches/records/${currentBatchId}`, {
@@ -245,7 +388,15 @@ export async function POST(request: Request) {
         // Preserve the original search error if PocketBase also fails to update the batch.
       }
     }
+    if (error instanceof InsufficientCreditsError) {
+      return NextResponse.json({ error: error.message, credits: error.available }, { status: 402 });
+    }
+    if (error instanceof CreditOperationBusyError) {
+      return NextResponse.json({ error: error.message }, { status: 409 });
+    }
     const message = error instanceof Error ? error.message : "No se pudo completar la búsqueda.";
-    return NextResponse.json({ error: message }, { status: 502 });
+    return NextResponse.json({ error: message, credits }, { status: 502 });
+  } finally {
+    if (creditReservation) await creditReservation.release().catch(() => undefined);
   }
 }

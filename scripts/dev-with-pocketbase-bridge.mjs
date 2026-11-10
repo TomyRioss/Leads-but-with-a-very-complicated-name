@@ -70,18 +70,19 @@ async function main() {
   try {
     await startBridge();
 
+    const devPort = Number(process.env.PORT || 3000);
     try {
-      const existingDev = await fetch("http://127.0.0.1:3000/api/status", {
+      const existingDev = await fetch(`http://127.0.0.1:${devPort}/api/status`, {
         signal: AbortSignal.timeout(1500),
       });
       if (existingDev.ok) {
         tunnel?.unref();
         tunnel = undefined;
-        console.log("Next.js ya está activo en el puerto 3000. El túnel SSH queda abierto.");
+        console.log(`Next.js ya está activo en el puerto ${devPort}. El túnel SSH queda abierto.`);
         return;
       }
     } catch {
-      // No existing dev server is listening on port 3000.
+      // No existing dev server is listening on the requested port.
     }
 
     next = spawn(process.execPath, [path.join(projectRoot, "node_modules", "next", "dist", "bin", "next"), "dev"], {
