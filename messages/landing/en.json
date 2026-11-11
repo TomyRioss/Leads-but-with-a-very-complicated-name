@@ -19,7 +19,7 @@
       "description": "Pick an industry and an area. Leadta builds a sheet with each business's phone, email, socials and what its reviews say, ready to export.",
       "primary": "Create a free account",
       "secondary": "Try a search",
-      "note": "25 welcome credits when you sign up."
+      "note": "240 welcome credits when you sign up."
     },
     "sheet": {
       "caption": "Sample batch of veterinary clinic leads",
@@ -110,7 +110,7 @@
       "download": "Download",
       "creditsTitle": "Pay for what you search.",
       "credits": [
-        { "value": "25", "label": "welcome credits when you create your account" },
+        { "value": "240", "label": "welcome credits when you create your account" },
         { "value": "2", "label": "credits for every lead in your search" },
         { "value": "0.5", "label": "extra credits per analyzed lead" }
       ]
@@ -128,7 +128,7 @@
     },
     "cta": {
       "title": "Your first list is one search away.",
-      "text": "Create your account and start with 25 welcome credits.",
+      "text": "Create your account and start with 240 welcome credits.",
       "primary": "Create a free account",
       "secondary": "I already have an account"
     },

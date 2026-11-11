@@ -19,7 +19,7 @@
       "description": "Elegí un rubro y una zona. Leadta arma una hoja con teléfono, mail, redes y lo que dicen las reseñas de cada negocio, y la dejás lista para exportar.",
       "primary": "Crear cuenta gratis",
       "secondary": "Probar una búsqueda",
-      "note": "25 créditos de bienvenida al registrarte."
+      "note": "240 créditos de bienvenida al registrarte."
     },
     "sheet": {
       "caption": "Lote de ejemplo con leads de veterinarias",
@@ -110,7 +110,7 @@
       "download": "Descargar",
       "creditsTitle": "Pagás por lo que buscás.",
       "credits": [
-        { "value": "25", "label": "créditos de bienvenida al crear tu cuenta" },
+        { "value": "240", "label": "créditos de bienvenida al crear tu cuenta" },
         { "value": "2", "label": "créditos por cada lead de tu búsqueda" },
         { "value": "0,5", "label": "créditos extra por lead analizado" }
       ]
@@ -128,7 +128,7 @@
     },
     "cta": {
       "title": "Tu primera lista está a una búsqueda de distancia.",
-      "text": "Creá tu cuenta y empezá con 25 créditos de bienvenida.",
+      "text": "Creá tu cuenta y empezá con 240 créditos de bienvenida.",
       "primary": "Crear cuenta gratis",
       "secondary": "Ya tengo cuenta"
     },

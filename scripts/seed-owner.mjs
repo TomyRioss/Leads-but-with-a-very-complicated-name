@@ -33,7 +33,7 @@ const ownerEmail = env.OWNER_EMAIL;
 const bridge = env.POCKETBASE_BRIDGE_SECRET ? { "X-Leadta-Bridge-Key": env.POCKETBASE_BRIDGE_SECRET } : {};
 const indexName = "idx_users_single_owner";
 const indexSql = `CREATE UNIQUE INDEX ${indexName} ON users (role) WHERE role = 'owner'`;
-const createRule = "@request.body.credits = 25 && @request.body.role:isset = false";
+const createRule = "@request.body.credits = 240 && @request.body.role:isset = false";
 
 let token = "";
 async function pb(path, { method = "GET", body } = {}) {

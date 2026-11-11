@@ -8,7 +8,7 @@ const stateCookie = "leadta_google_state";
 const verifierCookie = "leadta_google_verifier";
 const localeCookie = "leadta_google_locale";
 const sessionDurationSeconds = 60 * 60 * 24 * 30;
-const signupCredits = 25;
+const signupCredits = 240;
 
 type GoogleProfile = { sub?: unknown; email?: unknown; email_verified?: unknown; name?: unknown };
 type PocketBaseUser = { id: string; email: string; name?: string; credits?: number; role?: unknown; verified?: boolean; welcome_email_sent_at?: string };

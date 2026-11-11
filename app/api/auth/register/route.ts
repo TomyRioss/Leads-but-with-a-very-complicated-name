@@ -4,7 +4,7 @@ import { errorTranslator, localeFrom } from "@/lib/server/locale";
 import { sendVerificationEmail, updateEmailUser } from "@/lib/server/email";
 import { PocketBaseAuthError, PocketBaseRequestError, isPocketBaseConfigured, pocketBaseFetch } from "@/lib/server/pocketbase";
 
-const signupCredits = 25;
+const signupCredits = 240;
 
 type UserRecord = { id: string; email: string; name?: string; credits?: number; role?: unknown };
 
