@@ -17,7 +17,7 @@ try {
   }
 
   $requiredFields = @{
-    users = @('phone', 'credits', 'role')
+    users = @('phone', 'credits', 'role', 'verification_sent_at', 'welcome_email_sent_at')
     leads = @('social_profiles', 'source_reviews', 'source_context', 'pain_points_detail', 'enrichment_detail')
   }
   $missingFields = @()

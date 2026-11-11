@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useSyncExternalStore } from "react";
 import type { FormEvent } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import Link from "next/link";
@@ -12,6 +12,13 @@ import { BrandLogo, BrandMark } from "./brand-logo";
 import { LanguageSwitcher } from "./language-switcher";
 
 type AuthFormProps = { onAuthenticated: () => void; initialError?: string; initialMode?: "login" | "register" };
+
+const subscribeToUrl = (callback: () => void) => {
+  window.addEventListener("popstate", callback);
+  return () => window.removeEventListener("popstate", callback);
+};
+const getEmailVerificationResult = () => new URLSearchParams(window.location.search).get("emailVerification");
+const getServerEmailVerificationResult = () => null;
 
 export function AuthForm({ onAuthenticated, initialError = "", initialMode = "login" }: AuthFormProps) {
   const t = useTranslations("Auth");
@@ -26,6 +33,7 @@ export function AuthForm({ onAuthenticated, initialError = "", initialMode = "lo
       "Ingresá un email válido.": t("validEmail"),
       "Ingresá los datos requeridos para crear la cuenta.": t("validRequired"),
       "No se pudo crear la cuenta. Revisá si el email ya está registrado.": t("accountExists"),
+      "Confirmá tu email antes de iniciar sesión.": t("emailNotVerified"),
       "Ingresá un número de teléfono válido.": t("validPhone"),
       "La contraseña debe tener al menos 6 caracteres.": t("passwordLength"),
       "Las contraseñas no coinciden.": t("passwordMismatch"),
@@ -41,7 +49,18 @@ export function AuthForm({ onAuthenticated, initialError = "", initialMode = "lo
   const [showPassword, setShowPassword] = useState(false);
   const [showPasswordConfirm, setShowPasswordConfirm] = useState(false);
   const [error, setError] = useState(() => localizedError(initialError));
+  const [notice, setNotice] = useState("");
+  const [canResendVerification, setCanResendVerification] = useState(false);
   const [busy, setBusy] = useState(false);
+  const verificationResult = useSyncExternalStore(subscribeToUrl, getEmailVerificationResult, getServerEmailVerificationResult);
+  const verificationNotice = verificationResult === "verified"
+    ? t("emailVerified")
+    : verificationResult === "failed"
+      ? t("verificationFailed")
+      : verificationResult === "invalid"
+        ? t("verificationInvalid")
+        : "";
+  const showResendVerification = canResendVerification || verificationResult === "failed" || verificationResult === "invalid";
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -71,10 +90,25 @@ export function AuthForm({ onAuthenticated, initialError = "", initialMode = "lo
       const response = await fetch(`/api/auth/${mode === "register" ? "register" : "login"}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(mode === "register" ? { email, phone, password, passwordConfirm } : { email, password }),
+        body: JSON.stringify(mode === "register" ? { email, phone, password, passwordConfirm, locale } : { email, password }),
       });
       const payload = await response.json();
-      if (!response.ok) throw new Error(payload.error || t("loginFailed"));
+      if (payload.code === "EMAIL_NOT_VERIFIED") {
+        setNotice(t("emailNotVerified"));
+        setCanResendVerification(true);
+        return;
+      }
+      if (!response.ok) {
+        if (mode === "login" && response.status === 401) setCanResendVerification(true);
+        throw new Error(payload.error || t("loginFailed"));
+      }
+      if (payload.verificationRequired) {
+        setNotice(payload.verificationSent ? t("verificationSent") : t("verificationEmailNotSent"));
+        setCanResendVerification(true);
+        setPassword("");
+        setPasswordConfirm("");
+        return;
+      }
       if (payload.user?.role === "owner") {
         window.location.assign(window.location.pathname.startsWith("/en/") ? "/en/owner" : "/owner");
         return;
@@ -87,8 +121,29 @@ export function AuthForm({ onAuthenticated, initialError = "", initialMode = "lo
     }
   }
 
+  async function resendVerification() {
+    setBusy(true);
+    setError("");
+    try {
+      const response = await fetch("/api/auth/verification", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, locale }),
+      });
+      if (!response.ok) throw new Error(t("verificationRetryFailed"));
+      setNotice(t("verificationRetryNotice"));
+      setCanResendVerification(false);
+    } catch (resendError) {
+      setError(resendError instanceof Error ? resendError.message : t("verificationRetryFailed"));
+    } finally {
+      setBusy(false);
+    }
+  }
+
   function switchMode() {
     setError("");
+    setNotice("");
+    setCanResendVerification(false);
     setMode(mode === "register" ? "login" : "register");
   }
 
@@ -178,6 +233,8 @@ export function AuthForm({ onAuthenticated, initialError = "", initialMode = "lo
               </label>
             )}
             {error && <p className="auth-error" role="alert">{error}</p>}
+            {(notice || verificationNotice) && <p className="field-help" role="status">{notice || verificationNotice}</p>}
+            {showResendVerification && <button className="auth-switch-link" type="button" disabled={busy || !/^\S+@\S+\.\S+$/.test(email)} onClick={resendVerification}>{t("resendVerification")}</button>}
             <button className="primary-button auth-submit" type="submit" disabled={busy}>
               {busy ? t("connecting") : mode === "register" ? t("createAccount") : t("signIn")}
             </button>

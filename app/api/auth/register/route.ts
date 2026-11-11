@@ -1,14 +1,14 @@
 import { NextResponse } from "next/server";
 import { isValidPhoneNumber } from "libphonenumber-js/min";
-import { setSessionCookie, toUserRole } from "@/lib/server/auth";
-import { PocketBaseRequestError, pocketBasePublicFetch } from "@/lib/server/pocketbase";
+import { sendVerificationEmail, updateEmailUser } from "@/lib/server/email";
+import { PocketBaseRequestError, pocketBaseFetch } from "@/lib/server/pocketbase";
 
 const signupCredits = 25;
 
-type AuthResponse = { token: string; record: { id: string; email: string; name?: string; credits?: number; role?: unknown } };
+type UserRecord = { id: string; email: string; name?: string; credits?: number; role?: unknown };
 
 export async function POST(request: Request) {
-  let body: { email?: unknown; password?: unknown; passwordConfirm?: unknown; phone?: unknown; name?: unknown };
+  let body: { email?: unknown; password?: unknown; passwordConfirm?: unknown; phone?: unknown; name?: unknown; locale?: unknown };
   try {
     body = await request.json();
   } catch {
@@ -20,6 +20,7 @@ export async function POST(request: Request) {
   const passwordConfirm = typeof body.passwordConfirm === "string" ? body.passwordConfirm : "";
   const phone = typeof body.phone === "string" ? body.phone : "";
   const name = typeof body.name === "string" ? body.name.trim().slice(0, 120) : "";
+  const locale = body.locale === "en" ? "en" : "es";
 
   if (!/^\S+@\S+\.\S+$/.test(email)) {
     return NextResponse.json({ error: "Ingresá un email válido." }, { status: 400 });
@@ -35,17 +36,19 @@ export async function POST(request: Request) {
   }
 
   try {
-    await pocketBasePublicFetch("/api/collections/users/records", {
+    const user = await pocketBaseFetch<UserRecord>("/api/collections/users/records", {
       method: "POST",
-      body: JSON.stringify({ email, phone, password, passwordConfirm, name, credits: signupCredits, emailVisibility: false }),
+      body: JSON.stringify({ email, phone, password, passwordConfirm, name, credits: signupCredits, emailVisibility: false, verified: false }),
     });
-    const auth = await pocketBasePublicFetch<AuthResponse>("/api/collections/users/auth-with-password", {
-      method: "POST",
-      body: JSON.stringify({ identity: email, password }),
-    });
-    const response = NextResponse.json({ user: { id: auth.record.id, email: auth.record.email, name: auth.record.name || "", credits: auth.record.credits ?? signupCredits, role: toUserRole(auth.record.role) } }, { status: 201 });
-    setSessionCookie(response, auth.token);
-    return response;
+    let verificationSent = false;
+    try {
+      await sendVerificationEmail(user, locale);
+      await updateEmailUser(user.id, { verification_sent_at: new Date().toISOString() });
+      verificationSent = true;
+    } catch (emailError) {
+      console.error("Leadta verification email failed:", emailError instanceof Error ? emailError.message : "unknown error");
+    }
+    return NextResponse.json({ verificationRequired: true, verificationSent }, { status: 201 });
   } catch (error) {
     if (error instanceof PocketBaseRequestError && error.status === 400) {
       return NextResponse.json({ error: "No se pudo crear la cuenta. Revisá si el email ya está registrado." }, { status: 409 });

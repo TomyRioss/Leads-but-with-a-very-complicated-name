@@ -1,6 +1,7 @@
 import { randomBytes, timingSafeEqual } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { setSessionCookie, toUserRole } from "@/lib/server/auth";
+import { sendWelcomeEmail, updateEmailUser } from "@/lib/server/email";
 import { pocketBaseFetch } from "@/lib/server/pocketbase";
 
 const stateCookie = "leadta_google_state";
@@ -10,7 +11,7 @@ const sessionDurationSeconds = 60 * 60 * 24 * 30;
 const signupCredits = 25;
 
 type GoogleProfile = { sub?: unknown; email?: unknown; email_verified?: unknown; name?: unknown };
-type PocketBaseUser = { id: string; email: string; name?: string; credits?: number; role?: unknown };
+type PocketBaseUser = { id: string; email: string; name?: string; credits?: number; role?: unknown; verified?: boolean; welcome_email_sent_at?: string };
 type PocketBaseList = { items: PocketBaseUser[] };
 type PocketBaseAuth = { token: string; record: PocketBaseUser };
 
@@ -94,7 +95,7 @@ export async function GET(request: NextRequest) {
     }
 
     const filter = `email = ${JSON.stringify(email)}`;
-    const query = new URLSearchParams({ filter, perPage: "1", fields: "id,email,name,credits,role" });
+    const query = new URLSearchParams({ filter, perPage: "1", fields: "id,email,name,credits,role,verified,welcome_email_sent_at" });
     const result = await pocketBaseFetch<PocketBaseList>(`/api/collections/users/records?${query.toString()}`);
     let user = result.items[0];
     if (!user) {
@@ -111,6 +112,22 @@ export async function GET(request: NextRequest) {
           verified: true,
         }),
       });
+    }
+
+    if (!user.verified) {
+      user = await pocketBaseFetch<PocketBaseUser>(`/api/collections/users/records/${encodeURIComponent(user.id)}`, {
+        method: "PATCH",
+        body: JSON.stringify({ verified: true }),
+      });
+    }
+
+    if (user.verified && !user.welcome_email_sent_at) {
+      try {
+        await sendWelcomeEmail(user);
+        await updateEmailUser(user.id, { welcome_email_sent_at: new Date().toISOString() });
+      } catch (error) {
+        console.error("Leadta Google welcome email failed:", error instanceof Error ? error.message : "unknown error");
+      }
     }
 
     const auth = await pocketBaseFetch<PocketBaseAuth>(`/api/collections/users/impersonate/${encodeURIComponent(user.id)}`, {

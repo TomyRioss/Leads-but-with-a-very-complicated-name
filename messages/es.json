@@ -36,7 +36,23 @@
     "validEmailPassword": "Ingresá un email y una contraseña válidos.",
     "validEmail": "Ingresá un email válido.",
     "validRequired": "Ingresá los datos requeridos para crear la cuenta.",
-    "accountExists": "No se pudo crear la cuenta. Revisá si el email ya está registrado."
+    "accountExists": "No se pudo crear la cuenta. Revisá si el email ya está registrado.",
+    "emailNotVerified": "Confirmá tu email antes de iniciar sesión. Podés reenviar el enlace.",
+    "verificationSent": "Te enviamos un enlace para confirmar tu email. Revisá tu bandeja de entrada.",
+    "verificationEmailNotSent": "La cuenta se creó, pero no pudimos enviar el enlace. Podés intentarlo de nuevo.",
+    "verificationRetryNotice": "Si la cuenta necesita confirmación, te enviaremos un enlace. Revisá tu correo.",
+    "verificationRetryFailed": "No pudimos reenviar el enlace. Intentá de nuevo en un minuto.",
+    "resendVerification": "Reenviar enlace de confirmación",
+    "emailVerified": "Email confirmado. Ya podés iniciar sesión.",
+    "verificationFailed": "No pudimos confirmar tu email. Podés solicitar un enlace nuevo.",
+    "verificationInvalid": "El enlace venció o no es válido. Solicitá uno nuevo."
+  },
+  "Verification": {
+    "title": "Confirmá tu email",
+    "description": "Confirmá tu dirección de correo para activar tu cuenta y comenzar a usar Leadta.",
+    "button": "Confirmar email",
+    "invalid": "Este enlace no es válido o venció. Volvé a Leadta y solicitá uno nuevo.",
+    "privacy": "El enlace vence en 24 horas. Si no creaste una cuenta en Leadta, ignorá este mensaje."
   },
   "Pricing": {
     "session": "Iniciar sesión",

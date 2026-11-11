@@ -21,17 +21,17 @@ const navItems: { key: OwnerSectionKey; label: string; icon: ComponentType<{ siz
   { key: "auditoria", label: "navAudit", icon: ScrollText },
 ];
 
-const loading = () => {
+const Loading = () => {
   const t = useTranslations("UI");
   return <p className={stateBox} role="status"><LoaderCircle className="animate-spin" size={16} aria-hidden="true" /> {t("t_6b416d9c40")}</p>;
 };
 // Each section is only loaded (and only requests its data) while it is the active one.
-const Overview = dynamic(() => import("./sections/overview-section"), { loading });
-const UsersSection = dynamic(() => import("./sections/users-section"), { loading });
-const SubscriptionsSection = dynamic(() => import("./sections/subscriptions-section"), { loading });
-const PaymentsSection = dynamic(() => import("./sections/payments-section"), { loading });
-const SearchesSection = dynamic(() => import("./sections/searches-section"), { loading });
-const AuditSection = dynamic(() => import("./sections/audit-section"), { loading });
+const Overview = dynamic(() => import("./sections/overview-section"), { loading: Loading });
+const UsersSection = dynamic(() => import("./sections/users-section"), { loading: Loading });
+const SubscriptionsSection = dynamic(() => import("./sections/subscriptions-section"), { loading: Loading });
+const PaymentsSection = dynamic(() => import("./sections/payments-section"), { loading: Loading });
+const SearchesSection = dynamic(() => import("./sections/searches-section"), { loading: Loading });
+const AuditSection = dynamic(() => import("./sections/audit-section"), { loading: Loading });
 
 const sectionKeys = navItems.map((item) => item.key);
 
