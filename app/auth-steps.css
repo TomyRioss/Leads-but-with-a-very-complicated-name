@@ -24,3 +24,5 @@ a.primary-button.auth-submit { text-decoration: none; }
 .auth-spin { animation: auth-spin 900ms linear infinite; }
 @keyframes auth-spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .auth-spin { animation: none; } }
+.auth-panel .google-auth-button { gap: 10px; }
+.auth-panel .google-auth-button svg { flex: none; }

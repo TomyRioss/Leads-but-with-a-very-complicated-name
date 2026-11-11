@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { Check, CircleCheck, LoaderCircle, Mail, TriangleAlert } from "lucide-react";
+import { FcGoogle } from "react-icons/fc";
 import { isValidPhoneNumber } from "libphonenumber-js/min";
 import PhoneInput from "react-phone-number-input";
 import es from "react-phone-number-input/locale/es.json";
@@ -336,7 +337,7 @@ export function AuthForm({ onAuthenticated, initialError = "", initialMode = "lo
           {mode === "register" && <AuthSteps current={1} />}
           <h1 id="auth-title" tabIndex={-1}>{mode === "register" ? t("registerTitle") : t("loginTitle")}</h1>
           <p className="auth-intro">{mode === "register" && t("registerIntro")}{t("privateIntro")}</p>
-          <a className="google-auth-button" href={`/api/auth/google?locale=${locale}`}>{t("continueWithGoogle")}</a>
+          <a className="google-auth-button" href={`/api/auth/google?locale=${locale}`}><FcGoogle size={18} aria-hidden="true" /><span>{t("continueWithGoogle")}</span></a>
           <div className="auth-divider" aria-hidden="true"><span>{t("orContinueWithEmail")}</span></div>
           <form className="auth-fields" onSubmit={submit}>
             <label className="field">
