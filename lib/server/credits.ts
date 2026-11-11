@@ -9,14 +9,14 @@ type CreditLockRecord = { id: string; created?: string };
 
 export class InsufficientCreditsError extends Error {
   constructor(readonly available: number, readonly required: number) {
-    super(`Necesitás ${required} créditos para este lote. Tenés ${available}.`);
+    super(`Insufficient credits: ${required} required, ${available} available.`);
     this.name = "InsufficientCreditsError";
   }
 }
 
 export class CreditOperationBusyError extends Error {
   constructor() {
-    super("Ya hay una búsqueda en curso para esta cuenta. Esperá a que termine.");
+    super("A credit operation is already in progress for this account.");
     this.name = "CreditOperationBusyError";
   }
 }
@@ -39,7 +39,7 @@ async function acquireLock(userId: string) {
     return await create();
   } catch {
     const existing = await findUserLock(userId).catch(() => null);
-    if (!existing) throw new Error("No se pudo reservar la operación de créditos.");
+    if (!existing) throw new Error("Couldn't reserve the credit operation.");
     const createdAt = Date.parse(existing.created || "");
     if (!Number.isFinite(createdAt) || Date.now() - createdAt < staleLockMilliseconds) {
       throw new CreditOperationBusyError();
@@ -55,7 +55,7 @@ async function acquireLock(userId: string) {
 }
 
 export async function reserveCreditAmount(userId: string, requestedCredits: number) {
-  if (!Number.isFinite(requestedCredits) || requestedCredits < 0) throw new Error("El monto de créditos no es válido.");
+  if (!Number.isFinite(requestedCredits) || requestedCredits < 0) throw new Error("Invalid credit amount.");
   const lock = await acquireLock(userId);
   let credits = 0;
   let settled = false;

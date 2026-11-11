@@ -11,6 +11,7 @@ import {
   type SubscriptionRecord,
   type UserRecord,
 } from "../_shared";
+import { errorTranslator } from "@/lib/server/locale";
 
 function positiveInt(value: string | null, fallback: number, max: number) {
   const parsed = Number.parseInt(value ?? "", 10);
@@ -18,7 +19,8 @@ function positiveInt(value: string | null, fallback: number, max: number) {
 }
 
 export async function GET(request: Request) {
-  const denied = (await requireOwner(request)) ?? pocketBaseNotReady();
+  const t = errorTranslator(request);
+  const denied = (await requireOwner(request)) ?? pocketBaseNotReady(request);
   if (denied) return denied;
 
   const params = new URL(request.url).searchParams;
@@ -70,6 +72,6 @@ export async function GET(request: Request) {
     });
   } catch (error) {
     console.error("Owner users list failed:", error instanceof Error ? error.name : "unknown");
-    return NextResponse.json({ error: "No se pudieron cargar los usuarios." }, { status: 502 });
+    return NextResponse.json({ error: t("ownerUsersLoadFailed") }, { status: 502 });
   }
 }

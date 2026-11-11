@@ -3,23 +3,25 @@ import { getCurrentUser, withRefreshedSession } from "@/lib/server/auth";
 import { isPocketBaseConfigured, pocketBaseFetch } from "@/lib/server/pocketbase";
 import { uiError } from "@/lib/server/public-error";
 import type { Lead } from "@/lib/types";
+import { errorTranslator } from "@/lib/server/locale";
 
 export async function GET(request: Request) {
+  const t = errorTranslator(request);
   await connection();
   let session: Awaited<ReturnType<typeof getCurrentUser>>;
   try {
     session = await getCurrentUser(request);
   } catch {
-    return NextResponse.json({ error: "No se pudo conectar con el servicio de cuentas." }, { status: 503 });
+    return NextResponse.json({ error: t("accountService") }, { status: 503 });
   }
-  if (!session) return NextResponse.json({ error: "Iniciá sesión para ver estos leads." }, { status: 401 });
+  if (!session) return NextResponse.json({ error: t("signInToViewLeads") }, { status: 401 });
   if (!isPocketBaseConfigured()) {
-    return NextResponse.json({ error: uiError("PocketBase todavía no está configurado.") }, { status: 503 });
+    return NextResponse.json({ error: uiError(t("pocketbaseNotConfigured"), t("generic")) }, { status: 503 });
   }
 
   const batchId = new URL(request.url).searchParams.get("batchId");
   if (!batchId || !/^[a-zA-Z0-9]{15}$/.test(batchId)) {
-    return NextResponse.json({ error: "Seleccioná un lote válido." }, { status: 400 });
+    return NextResponse.json({ error: t("selectValidBatch") }, { status: 400 });
   }
 
   try {
@@ -27,7 +29,7 @@ export async function GET(request: Request) {
     const ownedBatch = await pocketBaseFetch<{ items: { id: string }[] }>(
       `/api/collections/lead_batches/records?perPage=1&filter=${batchFilter}`,
     );
-    if (!ownedBatch.items.length) return NextResponse.json({ error: "No se encontró ese lote en tu historial." }, { status: 404 });
+    if (!ownedBatch.items.length) return NextResponse.json({ error: t("batchNotFound") }, { status: 404 });
 
     const filter = encodeURIComponent(`batch = "${batchId}"`);
     const response = await pocketBaseFetch<{ items: Lead[] }>(
@@ -36,6 +38,6 @@ export async function GET(request: Request) {
     return withRefreshedSession(NextResponse.json({ leads: response.items }), session.token);
   } catch (error) {
     console.error("PocketBase lead list failed:", error);
-    return NextResponse.json({ error: "No se pudieron cargar los resultados." }, { status: 503 });
+    return NextResponse.json({ error: t("leadsLoadFailed") }, { status: 503 });
   }
 }

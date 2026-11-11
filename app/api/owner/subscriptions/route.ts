@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireOwner } from "@/lib/server/owner";
 import { errorResponse, filterString, listRecords, pocketBaseNotReady, type SubscriptionRecord } from "../_shared";
+import { errorTranslator } from "@/lib/server/locale";
 
 const statuses = ["authorized", "paused", "pending", "canceled", "cancelled", "rejected", "creating"];
 type Row = SubscriptionRecord & { expand?: { user?: { id: string; email: string } } };
@@ -11,12 +12,13 @@ function positiveInt(value: string | null, fallback: number, max: number) {
 }
 
 export async function GET(request: Request) {
-  const denied = (await requireOwner(request)) ?? pocketBaseNotReady();
+  const t = errorTranslator(request);
+  const denied = (await requireOwner(request)) ?? pocketBaseNotReady(request);
   if (denied) return denied;
 
   const params = new URL(request.url).searchParams;
   const status = params.get("status") ?? "";
-  if (status && !statuses.includes(status)) return errorResponse("El estado no es válido.", 400);
+  if (status && !statuses.includes(status)) return errorResponse(t("ownerStatusInvalid"), 400);
   const q = (params.get("q") ?? "").trim().slice(0, 100);
   const filters = [status && `status = ${filterString(status)}`, q && `user.email ~ ${filterString(q)}`].filter(Boolean);
 
@@ -47,6 +49,6 @@ export async function GET(request: Request) {
     });
   } catch (error) {
     console.error("Owner subscriptions list failed:", error instanceof Error ? error.name : "unknown");
-    return errorResponse("No se pudieron cargar las suscripciones.", 502);
+    return errorResponse(t("ownerSubscriptionsLoadFailed"), 502);
   }
 }

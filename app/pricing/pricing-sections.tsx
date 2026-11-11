@@ -1,9 +1,9 @@
 import { ArrowRight, Check, Download, History, MapPin, Plus, Sparkles, Table2 } from "lucide-react";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 
-async function CallButton({ tone = "light", locale }: { tone?: "light" | "dark"; locale: string }) {
+async function CallButton({ tone = "light" }: { tone?: "light" | "dark" }) {
   const t = await getTranslations("Pricing");
-  const callHref = `https://wa.me/5491134083140?text=${encodeURIComponent(locale === "en" ? "Hello, I'd like to schedule a call to learn about Leadta plans." : "Hola, quiero agendar una llamada para conocer los planes de Leadta.")}`;
+  const callHref = `https://wa.me/5491134083140?text=${encodeURIComponent(t("callMessage"))}`;
   return (
       <a className={`price-button price-button-${tone}`} href={callHref} target="_blank" rel="noreferrer">
       {t("call")}<ArrowRight size={16} aria-hidden="true" />
@@ -18,16 +18,16 @@ export async function PriceHero({ locale }: { locale: string }) {
     <section className="price-hero" aria-labelledby="price-title">
       <div className="price-inner">
         <p className="price-eyebrow">{t("from")}</p>
-        <h1 id="price-title" className="price-amount">$15 USD/mes</h1>
+        <h1 id="price-title" className="price-amount">{t("price")}</h1>
         <p className="price-lede">{t("monthly")}</p>
         <div className="price-hero-row">
-          <ul className="price-facts" aria-label="Condiciones">
+          <ul className="price-facts" aria-label={t("conditionsLabel")}>
             <li>{t("noSetup")}</li>
             <li>{t("noSeatPrice")}</li>
             <li>{t("monthlyPlan")}</li>
           </ul>
           <div className="price-hero-cta">
-            <CallButton locale={locale} />
+            <CallButton />
             <p>{t("supportNote")}</p>
           </div>
         </div>
@@ -140,7 +140,7 @@ export async function PriceSections({ locale }: { locale: string }) {
       <section className="price-final" aria-labelledby="price-final-title">
         <div className="price-inner price-final-row">
           <h2 id="price-final-title">{t("talkVolume")}</h2>
-          <CallButton tone="dark" locale={locale} />
+          <CallButton tone="dark" />
         </div>
       </section>
     </>

@@ -18,7 +18,7 @@ type PocketBaseAuth = { token: string; record: PocketBaseUser };
 function appOrigin() {
   const configured = process.env.APP_URL?.trim() || (process.env.VERCEL ? "https://leadta.app" : "http://localhost:3000");
   const url = new URL(configured);
-  if (url.protocol !== "https:" && url.hostname !== "localhost") throw new Error("APP_URL debe usar HTTPS.");
+  if (url.protocol !== "https:" && url.hostname !== "localhost") throw new Error("APP_URL must use HTTPS.");
   return url.origin;
 }
 
@@ -123,7 +123,7 @@ export async function GET(request: NextRequest) {
 
     if (user.verified && !user.welcome_email_sent_at) {
       try {
-        await sendWelcomeEmail(user);
+        await sendWelcomeEmail(user, locale);
         await updateEmailUser(user.id, { welcome_email_sent_at: new Date().toISOString() });
       } catch (error) {
         console.error("Leadta Google welcome email failed:", error instanceof Error ? error.message : "unknown error");

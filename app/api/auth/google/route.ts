@@ -9,7 +9,7 @@ const oauthCookieMaxAge = 600;
 function appOrigin() {
   const configured = process.env.APP_URL?.trim() || (process.env.VERCEL ? "https://leadta.app" : "http://localhost:3000");
   const url = new URL(configured);
-  if (url.protocol !== "https:" && url.hostname !== "localhost") throw new Error("APP_URL debe usar HTTPS.");
+  if (url.protocol !== "https:" && url.hostname !== "localhost") throw new Error("APP_URL must use HTTPS.");
   return url.origin;
 }
 

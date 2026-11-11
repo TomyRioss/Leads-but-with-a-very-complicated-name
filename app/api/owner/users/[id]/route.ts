@@ -21,16 +21,18 @@ import {
   type SubscriptionRecord,
   type UserRecord,
 } from "../../_shared";
+import { errorTranslator } from "@/lib/server/locale";
 
 const historyLimit = 50;
 
 type Context = { params: Promise<{ id: string }> };
 
 export async function GET(request: Request, context: Context) {
-  const denied = (await requireOwner(request)) ?? pocketBaseNotReady();
+  const t = errorTranslator(request);
+  const denied = (await requireOwner(request)) ?? pocketBaseNotReady(request);
   if (denied) return denied;
   const { id } = await context.params;
-  if (!isValidRecordId(id)) return errorResponse("No encontramos ese usuario.", 404);
+  if (!isValidRecordId(id)) return errorResponse(t("ownerUserNotFound"), 404);
 
   const owned = `user = ${filterString(id)}`;
   try {
@@ -40,7 +42,7 @@ export async function GET(request: Request, context: Context) {
       listRecords<PaymentRecord>("subscription_payments", { perPage: historyLimit + 1, sort: "-created", filter: owned, skipTotal: 1 }),
     ]);
     const record = user.items[0];
-    if (!record) return errorResponse("No encontramos ese usuario.", 404);
+    if (!record) return errorResponse(t("ownerUserNotFound"), 404);
 
     return NextResponse.json({
       user: { id: record.id, email: record.email, name: record.name || "", credits: normalizeCredits(record.credits), created: record.created, phone: record.phone || "", role: record.role === "owner" ? "owner" : "user" },
@@ -62,7 +64,7 @@ export async function GET(request: Request, context: Context) {
     });
   } catch (error) {
     console.error("Owner user detail failed:", error instanceof Error ? error.name : "unknown");
-    return errorResponse("No se pudo cargar el usuario.", 502);
+    return errorResponse(t("ownerUserLoadFailed"), 502);
   }
 }
 
@@ -71,56 +73,57 @@ function isHalfStep(value: unknown): value is number {
 }
 
 export async function PATCH(request: Request, context: Context) {
+  const t = errorTranslator(request);
   const session = await getOwnerSession(request);
   if ("response" in session) return session.response;
-  const denied = pocketBaseNotReady();
+  const denied = pocketBaseNotReady(request);
   if (denied) return denied;
   const { id } = await context.params;
-  if (!isValidRecordId(id)) return errorResponse("No encontramos ese usuario.", 404);
+  if (!isValidRecordId(id)) return errorResponse(t("ownerUserNotFound"), 404);
 
   const body = await readJsonObject(request);
-  if (!body) return errorResponse("Los créditos no son válidos.", 400);
+  if (!body) return errorResponse(t("ownerCreditsInvalid"), 400);
   const hasAbsolute = body.credits !== undefined;
   const hasDelta = body.addCredits !== undefined;
   const hasProfile = body.name !== undefined || body.email !== undefined || body.phone !== undefined;
-  if (hasAbsolute && hasDelta) return errorResponse("Enviá credits o addCredits, solo uno de los dos.", 400);
-  if (hasProfile && (hasAbsolute || hasDelta)) return errorResponse("No se pueden cambiar créditos y datos del perfil en el mismo pedido.", 400);
-  if (!hasProfile && !hasAbsolute && !hasDelta) return errorResponse("Enviá credits, addCredits o datos del perfil (name, email, phone).", 400);
+  if (hasAbsolute && hasDelta) return errorResponse(t("ownerCreditsOnlyOne"), 400);
+  if (hasProfile && (hasAbsolute || hasDelta)) return errorResponse(t("ownerCreditsAndProfile"), 400);
+  if (!hasProfile && !hasAbsolute && !hasDelta) return errorResponse(t("ownerSendCreditsOrProfile"), 400);
 
   if (hasProfile) {
     const changes: { name?: string; email?: string; phone?: string } = {};
     if (body.name !== undefined) {
-      if (typeof body.name !== "string" || body.name.trim().length > 100) return errorResponse("El nombre debe tener hasta 100 caracteres.", 400);
+      if (typeof body.name !== "string" || body.name.trim().length > 100) return errorResponse(t("ownerNameTooLong"), 400);
       changes.name = body.name.trim();
     }
     if (body.email !== undefined) {
       const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
-      if (!/^\S+@\S+\.\S+$/.test(email) || email.length > 200) return errorResponse("Ingresá un email válido.", 400);
+      if (!/^\S+@\S+\.\S+$/.test(email) || email.length > 200) return errorResponse(t("invalidEmail"), 400);
       changes.email = email;
     }
     if (body.phone !== undefined) {
       // Same free-text storage as registration; the column holds at most 30 characters.
       const phone = typeof body.phone === "string" ? body.phone.trim() : "";
       if (typeof body.phone !== "string" || phone.length > 30 || !/^[0-9+().\- ]*$/.test(phone)) {
-        return errorResponse("El teléfono solo puede tener números, espacios y + ( ) - . (hasta 30 caracteres).", 400);
+        return errorResponse(t("ownerPhoneFormat"), 400);
       }
       changes.phone = phone;
     }
 
     try {
       const user = await findUserSummary(id);
-      if (!user) return errorResponse("No encontramos ese usuario.", 404);
+      if (!user) return errorResponse(t("ownerUserNotFound"), 404);
       const current: Record<string, string> = { name: user.name || "", email: user.email, phone: user.phone || "" };
       const changed = Object.entries(changes).filter(([field, value]) => value !== current[field]);
       if (changed.some(([field]) => field === "email") && (user.role === "owner" || user.id === session.owner.id)) {
-        return errorResponse("No se puede cambiar el email del owner.", 403);
+        return errorResponse(t("ownerEmailLocked"), 403);
       }
       if (changed.length > 0) {
         const patch = Object.fromEntries(changed);
         try {
           await pocketBaseFetch(`/api/collections/users/records/${id}`, { method: "PATCH", body: JSON.stringify(patch) });
         } catch (error) {
-          if (error instanceof Error && error.message.includes("validation_not_unique")) return errorResponse("Ese email ya está en uso.", 409);
+          if (error instanceof Error && error.message.includes("validation_not_unique")) return errorResponse(t("ownerEmailInUse"), 409);
           throw error;
         }
         await recordOwnerAction(request, session.owner, {
@@ -134,25 +137,25 @@ export async function PATCH(request: Request, context: Context) {
       return NextResponse.json(changes);
     } catch (error) {
       console.error("Owner user update failed:", error instanceof Error ? error.name : "unknown");
-      return errorResponse("No se pudo actualizar el usuario.", 502);
+      return errorResponse(t("ownerUserUpdateFailed"), 502);
     }
   }
 
   const amount = hasAbsolute ? body.credits : body.addCredits;
   if (!isHalfStep(amount) || Math.abs(amount) > maxCredits || (hasAbsolute && amount < 0)) {
-    return errorResponse("Los créditos deben ser múltiplos de 0,5, entre 0 y 1.000.000.", 400);
+    return errorResponse(t("ownerCreditsMultiple"), 400);
   }
 
   try {
     const user = await findUserSummary(id);
-    if (!user) return errorResponse("No encontramos ese usuario.", 404);
+    if (!user) return errorResponse(t("ownerUserNotFound"), 404);
     let before = 0;
     const credits = await updateUserCredits(id, (current) => {
       before = current;
       const next = hasAbsolute ? amount : current + amount;
       return next >= 0 && next <= maxCredits ? next : null;
     });
-    if (credits === null) return errorResponse("El resultado debe quedar entre 0 y 1.000.000 créditos.", 400);
+    if (credits === null) return errorResponse(t("ownerCreditsRange"), 400);
     await recordOwnerAction(request, session.owner, {
       action: hasAbsolute ? "user.credits_set" : "user.credits_add",
       targetType: "user",
@@ -162,34 +165,35 @@ export async function PATCH(request: Request, context: Context) {
     });
     return NextResponse.json({ credits });
   } catch (error) {
-    if (error instanceof OwnerCreditsBusyError) return errorResponse(error.message, 409);
-    if (isNotFound(error)) return errorResponse("No encontramos ese usuario.", 404);
+    if (error instanceof OwnerCreditsBusyError) return errorResponse(t("ownerCreditsBusy"), 409);
+    if (isNotFound(error)) return errorResponse(t("ownerUserNotFound"), 404);
     console.error("Owner credits update failed:", error instanceof Error ? error.name : "unknown");
-    return errorResponse("No se pudieron actualizar los créditos.", 502);
+    return errorResponse(t("ownerCreditsUpdateFailed"), 502);
   }
 }
 
 export async function DELETE(request: Request, context: Context) {
+  const t = errorTranslator(request);
   const session = await getOwnerSession(request);
   if ("response" in session) return session.response;
-  const denied = pocketBaseNotReady();
+  const denied = pocketBaseNotReady(request);
   if (denied) return denied;
   const { id } = await context.params;
-  if (!isValidRecordId(id)) return errorResponse("No encontramos ese usuario.", 404);
+  if (!isValidRecordId(id)) return errorResponse(t("ownerUserNotFound"), 404);
 
   const body = await readJsonObject(request);
-  if (!body || typeof body.confirmEmail !== "string") return errorResponse("Confirmá el email del usuario para eliminarlo.", 400);
+  if (!body || typeof body.confirmEmail !== "string") return errorResponse(t("ownerConfirmEmailRequired"), 400);
 
   let user;
   try {
     user = await findUserSummary(id);
   } catch (error) {
     console.error("Owner user delete lookup failed:", error instanceof Error ? error.name : "unknown");
-    return errorResponse("No se pudo eliminar el usuario.", 502);
+    return errorResponse(t("ownerUserDeleteFailed"), 502);
   }
-  if (!user) return errorResponse("No encontramos ese usuario.", 404);
-  if (user.role === "owner" || user.id === session.owner.id) return errorResponse("No se puede eliminar al owner ni a tu propia cuenta.", 403);
-  if (body.confirmEmail.trim().toLowerCase() !== user.email.toLowerCase()) return errorResponse("El email de confirmación no coincide.", 400);
+  if (!user) return errorResponse(t("ownerUserNotFound"), 404);
+  if (user.role === "owner" || user.id === session.owner.id) return errorResponse(t("ownerDeleteForbidden"), 403);
+  if (body.confirmEmail.trim().toLowerCase() !== user.email.toLowerCase()) return errorResponse(t("ownerConfirmEmailMismatch"), 400);
 
   const auditFailure = (reason: string) => recordOwnerAction(request, session.owner, {
     action: "user.delete",
@@ -220,6 +224,6 @@ export async function DELETE(request: Request, context: Context) {
   } catch (error) {
     console.error("Owner user delete failed:", error instanceof Error ? error.name : "unknown");
     await auditFailure("delete_failed");
-    return errorResponse("No se pudo eliminar el usuario.", 502);
+    return errorResponse(t("ownerUserDeleteFailed"), 502);
   }
 }

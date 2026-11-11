@@ -1,8 +1,9 @@
-import Link from "next/link";
 import { Suspense } from "react";
 import { getTranslations, setRequestLocale } from "next-intl/server";
+import { VerifyEmailPanel } from "@/app/auth-form";
 import { BrandLogo, BrandMark } from "@/app/brand-logo";
 import { LanguageSwitcher } from "@/app/language-switcher";
+import "@/app/auth-steps.css";
 
 export const metadata = {
   robots: { index: false, follow: false },
@@ -13,7 +14,7 @@ export default async function VerifyEmailPage({
   searchParams,
 }: {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<{ token?: string | string[] }>;
+  searchParams: Promise<{ token?: string | string[]; emailVerification?: string | string[] }>;
 }) {
   const { locale } = await params;
   setRequestLocale(locale);
@@ -28,39 +29,23 @@ export default async function VerifyEmailPage({
       <div className="auth-workspace">
         <section className="search-panel auth-panel" aria-labelledby="verify-email-title">
           <BrandMark className="auth-brand-mark" />
-          <h1 id="verify-email-title">{t("title")}</h1>
-          <Suspense fallback={<p className="auth-intro" aria-live="polite">{t("description")}</p>}>
-            <VerificationForm locale={locale} searchParams={searchParams} />
+          <Suspense fallback={<div role="status" aria-live="polite"><h1 id="verify-email-title">{t("loading")}</h1></div>}>
+            <VerificationPanel locale={locale} searchParams={searchParams} />
           </Suspense>
-          <p className="field-help verification-footnote">{t("privacy")}</p>
         </section>
       </div>
     </main>
   );
 }
 
-async function VerificationForm({
+async function VerificationPanel({
   locale,
   searchParams,
 }: {
   locale: string;
-  searchParams: Promise<{ token?: string | string[] }>;
+  searchParams: Promise<{ token?: string | string[]; emailVerification?: string | string[] }>;
 }) {
-  const [{ token }, t] = await Promise.all([searchParams, getTranslations("Verification")]);
-  const verificationToken = typeof token === "string" ? token : "";
-
-  return (
-    <>
-      <p className="auth-intro">{verificationToken ? t("description") : t("invalid")}</p>
-      {verificationToken ? (
-        <form className="auth-fields" action="/api/auth/verify-email" method="post">
-          <input type="hidden" name="token" value={verificationToken} />
-          <input type="hidden" name="locale" value={locale} />
-          <button className="primary-button auth-submit" type="submit">{t("button")}</button>
-        </form>
-      ) : (
-        <p className="auth-switch"><Link href="/buscar?signup=1">{t("title")}</Link></p>
-      )}
-    </>
-  );
+  const { token, emailVerification } = await searchParams;
+  const initialResult = emailVerification === "verified" || emailVerification === "invalid" || emailVerification === "failed" ? emailVerification : undefined;
+  return <VerifyEmailPanel token={typeof token === "string" ? token : ""} locale={locale} initialResult={initialResult} />;
 }

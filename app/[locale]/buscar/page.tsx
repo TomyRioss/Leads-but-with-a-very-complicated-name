@@ -1,32 +1,21 @@
 "use client";
 
-import { memo, useEffect, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { FormEvent, KeyboardEvent as ReactKeyboardEvent, MouseEvent } from "react";
 import { useLocale, useTranslations } from "next-intl";
-import Link from "next/link";
 import { Bug, ChevronDown, CircleAlert, CircleCheck, ExternalLink, History, LoaderCircle, LogOut, Stars, X } from "lucide-react";
-import type { AnalysisDetail, Lead, LeadBatch, LeadColumnKey } from "@/lib/types";
+import type { AnalysisDetail, Lead, LeadBatch, LeadColumnKey, LeadColumnLabeler } from "@/lib/types";
 import { getLeadColumnValue, getLeadColumns } from "@/lib/types";
 import { AuthForm } from "@/app/auth-form";
 import { BrandLogo } from "@/app/brand-logo";
 import { LanguageSwitcher } from "@/app/language-switcher";
 import CellDetailsPopover from "@/app/cell-details-popover";
 import WhatsAppContact from "@/app/whatsapp-contact";
+import { Onboarding } from "@/app/onboarding/onboarding";
+import { Link } from "@/i18n/navigation";
 
 const productionBatchSizes = [5, 10, 25, 50, 75, 100, 125, 150];
-const tableActions = {
-  pain_points: {
-    title: "Buscar dolores",
-    description: "Prioriza reseñas negativas y resume hasta 3 dolores concretos.",
-    cta: "Analizar dolores del lote",
-  },
-  enrichment: {
-    title: "Enriquecer Lead",
-    description: "Busca perfiles y publicaciones públicas en las redes seleccionadas y verifica que correspondan al lead.",
-    cta: "Enriquecer lote",
-  },
-} as const;
-type TableAction = keyof typeof tableActions;
+type TableAction = "pain_points" | "enrichment";
 type AnalysisScope = "row" | "batch";
 type SocialNetwork = "facebook" | "instagram" | "youtube" | "linkedin";
 type AnalysisDiagnostic = {
@@ -64,10 +53,10 @@ function csvCell(value: unknown) {
   return `"${text.replaceAll('"', '""')}"`;
 }
 
-function downloadCsv(leads: Lead[], batch: LeadBatch | null, includeEnrichment: boolean) {
-  const columns = getLeadColumns(leads, [], includeEnrichment);
+function downloadCsv(leads: Lead[], batch: LeadBatch | null, includeEnrichment: boolean, label: LeadColumnLabeler, ownerResponseLabel: string) {
+  const columns = getLeadColumns(leads, [], includeEnrichment, label);
   const header = columns.map((column) => csvCell(column.label)).join(",");
-  const rows = leads.map((lead) => columns.map((column) => csvCell(getLeadColumnValue(lead, column.key))).join(","));
+  const rows = leads.map((lead) => columns.map((column) => csvCell(getLeadColumnValue(lead, column.key, ownerResponseLabel))).join(","));
   const csv = `\uFEFF${[header, ...rows].join("\r\n")}`;
   const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8;" }));
   const anchor = document.createElement("a");
@@ -105,24 +94,25 @@ function parseKeywords(value: string) {
 
 const KeywordsField = memo(function KeywordsField() {
   const t = useTranslations("UI");
+  const s = useTranslations("Search");
   const [value, setValue] = useState("");
   const keywordCount = parseKeywords(value).length;
 
   return (
-    <label className="field field-keywords">
+    <label className="field field-keywords" data-onboarding="keywords">
       <span className="field-label">{t("t_f530db58b3")} <span className="required-mark">*</span></span>
       <textarea
         name="keywords"
         value={value}
         onChange={(event) => setValue(event.target.value)}
-        placeholder={'Ej.: estudios contables\ninmobiliarias'}
+        placeholder={s("keywordsPlaceholder")}
         rows={3}
         maxLength={1200}
         aria-describedby="keywords-help"
         required
       />
       <span className="field-help" id="keywords-help">
-        {t("t_ed5451877b")}{keywordCount > 0 && <> <strong>{keywordCount} {keywordCount === 1 ? "keyword" : "keywords"}</strong></>}
+        {t("t_ed5451877b")}{keywordCount > 0 && <> <strong>{s("keywordCount", { count: keywordCount })}</strong></>}
       </span>
     </label>
   );
@@ -130,7 +120,13 @@ const KeywordsField = memo(function KeywordsField() {
 
 export default function Home() {
   const t = useTranslations("UI");
+  const s = useTranslations("Search");
   const locale = useLocale();
+  const columnLabel: LeadColumnLabeler = useCallback((key, fallback) => {
+    const numbered = /^(review|rating)_([1-5])$/.exec(key);
+    if (numbered) return s(`columns.${numbered[1]}`, { number: Number(numbered[2]) });
+    return s.has(`columns.${key}`) ? s(`columns.${key}`) : fallback;
+  }, [s]);
   const [country, setCountry] = useState("");
   const [province, setProvince] = useState("");
   const [district, setDistrict] = useState("");
@@ -141,7 +137,9 @@ export default function Home() {
   const [districts, setDistricts] = useState<GeographyOption[]>([]);
   const [geographyLoading, setGeographyLoading] = useState({ countries: true, provinces: false, districts: false });
   const [geographyError, setGeographyError] = useState("");
-  const [count, setCount] = useState(25);
+  const [guidedCount, setGuidedCount] = useState<number | null>(null);
+  const [selectedCount, setCount] = useState(25);
+  const count = guidedCount ?? selectedCount;
   const [filters, setFilters] = useState<SearchFilters>({
     minReviews: "", minRating: "", website: "any", phone: "any", email: "any", skipClosed: false,
   });
@@ -174,79 +172,82 @@ export default function Home() {
   const lastAnalysisTapRef = useRef<{ key: string; at: number } | null>(null);
   const analysisPopoverRef = useRef<HTMLElement>(null);
   const tableActionCardRef = useRef<HTMLDivElement>(null);
-  const batchSizes = isDevelopmentEnvironment ? [1, 2, ...productionBatchSizes] : productionBatchSizes;
+  const batchSizes = guidedCount ? [guidedCount] : isDevelopmentEnvironment ? [1, 2, ...productionBatchSizes] : productionBatchSizes;
   const selectedPainLead = leads.find((lead) => lead.id === analysisLeadId) ?? leads[0];
   const painLeadCount = analysisScope === "row"
     ? Number(Boolean(selectedPainLead?.maps_url && /^https?:\/\//i.test(selectedPainLead.maps_url)))
     : leads.filter((lead) => Boolean(lead.maps_url && /^https?:\/\//i.test(lead.maps_url))).length;
   const numberLocale = locale === "es" ? "es-AR" : "en-US";
   const googleAuthError = typeof window !== "undefined" && new URLSearchParams(window.location.search).get("authError") === "google"
-    ? "No se pudo completar el acceso con Google. Intenta nuevamente."
+    ? s("googleAuthFailed")
     : "";
-  const painCreditCost = (painLeadCount * 0.5).toLocaleString(numberLocale, { maximumFractionDigits: 1 });
+  const painCreditCost = painLeadCount * 0.5;
 
   useEffect(() => {
     const controller = new AbortController();
     fetch("/api/geography?level=countries", { signal: controller.signal })
       .then(async (response) => {
-        if (!response.ok) throw new Error("No se pudo cargar la lista de países.");
+        if (!response.ok) throw new Error("countries");
         const options = await response.json() as GeographyOption[];
         setCountries(options);
       })
       .catch((error: unknown) => {
         if (error instanceof Error && error.name === "AbortError") return;
-        setGeographyError("No se pudo cargar la lista de países. Recargá la página para intentar de nuevo.");
+        setGeographyError(s("geoCountriesError"));
       })
       .finally(() => {
         if (!controller.signal.aborted) setGeographyLoading((current) => ({ ...current, countries: false }));
       });
     return () => controller.abort();
-  }, []);
+  }, [s]);
 
   useEffect(() => {
     if (!countryCode) return;
     const controller = new AbortController();
     fetch(`/api/geography?level=provinces&country=${encodeURIComponent(countryCode)}`, { signal: controller.signal })
       .then(async (response) => {
-        if (!response.ok) throw new Error("No se pudieron cargar las provincias.");
+        if (!response.ok) throw new Error("provinces");
         setProvinces(await response.json() as GeographyOption[]);
       })
       .catch((error: unknown) => {
         if (error instanceof Error && error.name === "AbortError") return;
-        setGeographyError("No se pudo cargar la lista de provincias.");
+        setGeographyError(s("geoProvincesError"));
       })
       .finally(() => {
         if (!controller.signal.aborted) setGeographyLoading((current) => ({ ...current, provinces: false }));
       });
     return () => controller.abort();
-  }, [countryCode]);
+  }, [countryCode, s]);
 
   useEffect(() => {
     if (!countryCode || !provinceCode) return;
     const controller = new AbortController();
     fetch(`/api/geography?level=districts&country=${encodeURIComponent(countryCode)}&province=${encodeURIComponent(provinceCode)}`, { signal: controller.signal })
       .then(async (response) => {
-        if (!response.ok) throw new Error("No se pudieron cargar las localidades.");
+        if (!response.ok) throw new Error("districts");
         setDistricts(await response.json() as GeographyOption[]);
       })
       .catch((error: unknown) => {
         if (error instanceof Error && error.name === "AbortError") return;
-        setGeographyError("No se pudo cargar la lista de localidades.");
+        setGeographyError(s("geoDistrictsError"));
       })
       .finally(() => {
         if (!controller.signal.aborted) setGeographyLoading((current) => ({ ...current, districts: false }));
       });
     return () => controller.abort();
-  }, [countryCode, provinceCode]);
+  }, [countryCode, provinceCode, s]);
   const tableColumns: TableColumn[] = useMemo(() => getLeadColumns(
     leads,
     analysisBusy === "enrichment" ? selectedSocialNetworks : [],
     isDevelopmentEnvironment,
-  ).flatMap((column) => column.key === "phone" ? [column, { key: "whatsapp", label: "WhatsApp" }] : [column]), [
+    columnLabel,
+  ).flatMap((column) => column.key === "phone" ? [column, { key: "whatsapp", label: s("columns.whatsapp") }] : [column]), [
     leads,
     analysisBusy,
     selectedSocialNetworks,
     isDevelopmentEnvironment,
+    columnLabel,
+    s,
   ]);
 
   function openCellDetail(
@@ -259,20 +260,20 @@ export default function Home() {
     if ("key" in event && event.key !== "Enter" && event.key !== " ") return;
     if ("key" in event) event.preventDefault();
     cellDetailAnchorRef.current = event.currentTarget;
-    setCellDetail({ leadId: lead.id, title: column.label, value: value || "Sin dato" });
+    setCellDetail({ leadId: lead.id, title: column.label, value: value || s("noData") });
   }
 
   function openLinkedCellDetail(event: MouseEvent<HTMLAnchorElement>, lead: Lead, column: TableColumn, value: string) {
     event.preventDefault();
     cellDetailAnchorRef.current = event.currentTarget.closest("td");
-    setCellDetail({ leadId: lead.id, title: column.label, value: value || "Sin dato" });
+    setCellDetail({ leadId: lead.id, title: column.label, value: value || s("noData") });
   }
 
   function cellDetailProps(lead: Lead, column: TableColumn, value: string) {
     return {
       tabIndex: 0,
       "aria-haspopup": "dialog" as const,
-      "aria-label": `Ver detalle de ${column.label} para ${lead.name}`,
+      "aria-label": s("cellDetailAria", { column: column.label, lead: lead.name }),
       onClick: (event: MouseEvent<HTMLTableCellElement>) => openCellDetail(event, lead, column, value),
       onKeyDown: (event: ReactKeyboardEvent<HTMLTableCellElement>) => openCellDetail(event, lead, column, value),
     };
@@ -284,7 +285,7 @@ export default function Home() {
       try {
         const authResponse = await fetch("/api/auth/me", { cache: "no-store" });
         const authPayload = await authResponse.json();
-        if (!authResponse.ok) throw new Error(authPayload.error || "No se pudo conectar con tu cuenta.");
+        if (!authResponse.ok) throw new Error(authPayload.error || s("accountConnectionFailed"));
         if (!current) return;
         if (!authPayload.user) {
           setHistoryLoading(false);
@@ -313,7 +314,7 @@ export default function Home() {
 
         const response = await fetch("/api/batches", { cache: "no-store" });
         const payload = await response.json();
-        if (!response.ok) throw new Error(payload.error || "No se pudo cargar el historial.");
+        if (!response.ok) throw new Error(payload.error || s("historyLoadFailed"));
         if (!current) return;
 
         const loadedBatches = payload.batches as LeadBatch[];
@@ -328,15 +329,15 @@ export default function Home() {
         if (current && leadsResponse.ok) setLeads(leadsPayload.leads);
       } catch (error) {
         if (!current) return;
-        setAuthProblem(error instanceof Error ? error.message : "No se pudo conectar con tu cuenta.");
+        setAuthProblem(error instanceof Error ? error.message : s("accountConnectionFailed"));
         setAuthLoading(false);
         setHistoryLoading(false);
-        setProblem(error instanceof Error ? error.message : "No se pudo conectar con el historial.");
+        setProblem(error instanceof Error ? error.message : s("historyConnectionFailed"));
       }
     }
     void loadInitialData();
     return () => { current = false; };
-  }, []);
+  }, [s]);
 
   useEffect(() => {
     if (!profileMenuOpen) return;
@@ -404,18 +405,18 @@ export default function Home() {
     setProblem("");
     setNotice("");
     if (!keywords.length) {
-      setProblem("Ingresá al menos una keyword.");
+      setProblem(s("keywordRequired"));
       return;
     }
     if (!country.trim()) {
-      setProblem("El país es obligatorio para iniciar la búsqueda.");
+      setProblem(s("countryRequired"));
       return;
     }
 
     setBusy(true);
     setLeads([]);
     setActiveBatch(null);
-    setNotice("Buscando negocios y guardando el lote");
+    setNotice(s("searching"));
 
     try {
       const response = await fetch("/api/search", {
@@ -434,7 +435,7 @@ export default function Home() {
       if (typeof payload.credits === "number") {
         setCurrentUser((user) => user ? { ...user, credits: payload.credits } : user);
       }
-      if (!response.ok) throw new Error(payload.error || "No se pudo completar la búsqueda.");
+      if (!response.ok) throw new Error(payload.error || s("searchFailed"));
 
       const newBatch = ((await fetch("/api/batches", { cache: "no-store" }).then((result) => result.json())).batches as LeadBatch[])
         .find((batch) => batch.id === payload.batchId);
@@ -442,15 +443,15 @@ export default function Home() {
       if (newBatch) {
         setActiveBatch(newBatch);
       }
-      setNotice(`${payload.leads.length} leads guardados en el lote.`);
+      setNotice(s("searchSaved", { count: payload.leads.length }));
       if (payload.shortfall) {
-        setProblem(`No se encontraron suficientes Leads. Cambia ubicacíon o Keywords!${payload.warning ? ` ${payload.warning}` : ""}`);
+        setProblem(`${s("searchShortfall")}${payload.warning ? ` ${payload.warning}` : ""}`);
       } else if (payload.warning) {
-        setProblem(`El lote quedó parcial. ${payload.warning}`);
+        setProblem(`${s("searchPartial")} ${payload.warning}`);
       }
     } catch (error) {
       setNotice("");
-      setProblem(error instanceof Error ? error.message : "No se pudo completar la búsqueda.");
+      setProblem(error instanceof Error ? error.message : s("searchFailed"));
     } finally {
       setBusy(false);
     }
@@ -468,7 +469,7 @@ export default function Home() {
     setProblem("");
     setAnalysisDiagnostics([]);
     setAnalysisDiagnosticsOpen(false);
-    setNotice(action === "pain_points" ? "Buscando reseñas negativas y analizando dolores…" : "OpenRouter revisando las redes seleccionadas…");
+    setNotice(action === "pain_points" ? s("analyzingPains") : s("analyzingNetworks"));
     try {
       const response = await fetch("/api/analysis", {
         method: "POST",
@@ -485,34 +486,34 @@ export default function Home() {
       if (typeof payload.credits === "number") {
         setCurrentUser((user) => user ? { ...user, credits: payload.credits } : user);
       }
-      if (!response.ok) throw new Error(payload.error || "No se pudo completar el análisis.");
+      if (!response.ok) throw new Error(payload.error || s("analysisFailed"));
       setLeads(payload.leads as Lead[]);
       const diagnostics = Array.isArray(payload.diagnostics) ? payload.diagnostics as AnalysisDiagnostic[] : [];
       setAnalysisDiagnostics(diagnostics);
       if (diagnostics.length > 0) setAnalysisDiagnosticsOpen(true);
       if (action === "pain_points") {
-        setNotice(`${payload.analyzedCount} ${payload.analyzedCount === 1 ? "lead analizado" : "leads analizados"}; ${payload.findingCount || 0} con dolores detectados.`);
+        setNotice(s("painsDone", { analyzed: payload.analyzedCount, findings: payload.findingCount || 0 }));
       } else {
-        setNotice(`${payload.analyzedCount} leads enriquecidos.`);
+        setNotice(s("enrichDone", { count: payload.analyzedCount }));
       }
       if (payload.noEvidenceCount > 0 || payload.failedCount > 0) {
         const issues: string[] = [];
         if (payload.noEvidenceCount > 0) {
           issues.push(action === "pain_points"
-            ? `${payload.noEvidenceCount} sin ficha de Maps ni reseñas guardadas`
-            : `${payload.noEvidenceCount} sin datos guardados para enriquecer`);
+            ? s("issueNoEvidencePains", { count: payload.noEvidenceCount })
+            : s("issueNoEvidenceEnrich", { count: payload.noEvidenceCount }));
         }
         const failureMessages = Array.isArray(payload.failures)
           ? [...new Set(payload.failures.map((failure: { message?: unknown }) => typeof failure?.message === "string" ? failure.message : "" ).filter(Boolean))]
           : [];
         if (payload.failedCount > 0) {
-          issues.push(`${payload.failedCount} con error${failureMessages.length ? `: ${failureMessages.join("; ")}` : ""}`);
+          issues.push(failureMessages.length ? s("issueFailedDetail", { count: payload.failedCount, details: failureMessages.join("; ") }) : s("issueFailed", { count: payload.failedCount }));
         }
         setProblem(`${issues.join(". ")}.`);
       }
     } catch (error) {
       setNotice("");
-      setProblem(error instanceof Error ? error.message : "No se pudo completar el análisis.");
+      setProblem(error instanceof Error ? error.message : s("analysisFailed"));
     } finally {
       setAnalysisBusy(null);
       setAnalysisRowBusyId("");
@@ -536,10 +537,10 @@ export default function Home() {
 
   return (
     <main className="app-shell">
-      <nav className="topbar" aria-label="Navegación principal">
+      <nav className="topbar" aria-label={s("mainNav")}>
         <BrandLogo /><LanguageSwitcher />
         <div className="topbar-account">
-          <Link className="credits-pill" href="/pricing" aria-label={`${currentUser.credits} créditos disponibles. Ver planes`} title="Ver planes y sumar créditos">
+          <Link className="credits-pill" href="/pricing" aria-label={s("creditsAria", { credits: currentUser.credits })} title={s("creditsTitle")}>
             <Stars className="credits-icon" size={17} strokeWidth={1.9} aria-hidden="true" />
             <span className="credits-value"><strong>{currentUser.credits.toLocaleString(numberLocale)}</strong><small>{t("t_bcc0da40b3")}</small></span>
             <span className="credits-add-sign" aria-hidden="true">+</span>
@@ -558,7 +559,7 @@ export default function Home() {
               <ChevronDown className={`profile-chevron${profileMenuOpen ? " is-open" : ""}`} size={15} strokeWidth={1.8} aria-hidden="true" />
             </button>
             {profileMenuOpen && (
-              <div className="profile-menu" id="profile-menu" role="menu" aria-label="Menú de cuenta">
+              <div className="profile-menu" id="profile-menu" role="menu" aria-label={s("accountMenu")}>
                 <Link href="/historial" role="menuitem" onClick={() => setProfileMenuOpen(false)}>
                   <History className="menu-icon" size={18} strokeWidth={1.8} aria-hidden="true" />
                   <span>{t("t_302027905c")}</span>
@@ -576,18 +577,29 @@ export default function Home() {
 
       <div className="workspace">
         <form className="search-panel" onSubmit={submitSearch}>
-          <div className="panel-heading">
+          <div className="panel-heading" data-onboarding="intro">
             <div>
               <h2>{t("t_23be92b60b")}</h2>
               <p>{t("t_2882d7230e")}</p>
             </div>
-            <span className="required-note"><span aria-hidden="true">*</span> {t("t_f128ad0f39")}</span>
+            <div className="onboarding-aside">
+              <Onboarding
+                userId={currentUser.id}
+                ready={!historyLoading}
+                hasHistory={Boolean(activeBatch)}
+                hasCountry={Boolean(country.trim())}
+                busy={busy}
+                resultCount={leads.length}
+                onGuidedCountChange={setGuidedCount}
+              />
+              <span className="required-note"><span aria-hidden="true">*</span> {t("t_f128ad0f39")}</span>
+            </div>
           </div>
 
           <div className="form-grid">
             <KeywordsField />
 
-            <div className="field geography-field">
+            <div className="field geography-field" data-onboarding="location">
               <span className="field-label">{t("t_ae0ddfcae9")} <span className="required-mark">*</span></span>
               <div className="location-grid">
                 <label>
@@ -607,10 +619,10 @@ export default function Home() {
                       setGeographyError("");
                     }}
                     required
-                    aria-label="País obligatorio"
+                    aria-label={s("countryAria")}
                     disabled={geographyLoading.countries || countries.length === 0}
                   >
-                    <option value="">{geographyLoading.countries ? "Cargando países" : "País (obligatorio)"}</option>
+                    <option value="">{geographyLoading.countries ? s("countryLoading") : s("countryPlaceholder")}</option>
                     {countries.map((option) => <option value={option.code} key={option.code}>{option.name}</option>)}
                   </select><span className="select-chevron" aria-hidden="true" /></span>
                 </label>
@@ -627,10 +639,10 @@ export default function Home() {
                       setGeographyLoading((current) => ({ ...current, districts: Boolean(nextProvinceCode) }));
                       setGeographyError("");
                     }}
-                    aria-label="Provincia o estado opcional"
+                    aria-label={s("provinceAria")}
                     disabled={!countryCode || geographyLoading.provinces || provinces.length === 0}
                   >
-                    <option value="">{geographyLoading.provinces ? "Cargando provincias" : "Provincia / estado (opcional)"}</option>
+                    <option value="">{geographyLoading.provinces ? s("provinceLoading") : s("provincePlaceholder")}</option>
                     {provinces.map((option) => <option value={option.code} key={option.code}>{option.name}</option>)}
                   </select><span className="select-chevron" aria-hidden="true" /></span>
                 </label>
@@ -639,10 +651,10 @@ export default function Home() {
                   <span className="select-control"><select
                     value={district}
                     onChange={(event) => setDistrict(event.target.value)}
-                    aria-label="Ciudad o localidad opcional"
+                    aria-label={s("districtAria")}
                     disabled={!provinceCode || geographyLoading.districts || districts.length === 0}
                   >
-                    <option value="">{geographyLoading.districts ? "Cargando localidades" : "Ciudad / localidad (opcional)"}</option>
+                    <option value="">{geographyLoading.districts ? s("districtLoading") : s("districtPlaceholder")}</option>
                     {districts.map((option) => <option value={option.name} key={option.code}>{option.name}</option>)}
                   </select><span className="select-chevron" aria-hidden="true" /></span>
                 </label>
@@ -651,9 +663,9 @@ export default function Home() {
               {geographyError && <span className="field-error" role="alert">{geographyError}</span>}
             </div>
 
-            <fieldset className="field batch-field">
+            <fieldset className="field batch-field" data-onboarding="count">
               <legend className="field-label">{t("t_cad2c8e692")}{isDevelopmentEnvironment && <span className="test-mode-label">{t("t_be14c472da")}</span>}</legend>
-              <div className="batch-options" role="radiogroup" aria-label="Cantidad de leads por lote">
+              <div className="batch-options" role="radiogroup" aria-label={s("batchGroupAria")}>
                 {batchSizes.map((size) => (
                   <label className={`batch-option${count === size ? " is-selected" : ""}`} key={size}>
                     <input type="radio" name="batch-size" value={size} checked={count === size} onChange={() => setCount(size)} />
@@ -709,10 +721,10 @@ export default function Home() {
             </details>
 
             <div className="search-action">
-              <button className="primary-button" type="submit" disabled={busy || !apifyConfigured || !pocketBaseConfigured || !country.trim()}>
-                {busy ? <><span className="button-spinner" aria-hidden="true" /> {t("t_b6d453ae3d")}</> : "Buscar leads"}
+              <button className="primary-button" type="submit" data-onboarding="submit" disabled={busy || !apifyConfigured || !pocketBaseConfigured || !country.trim()}>
+                {busy ? <><span className="button-spinner" aria-hidden="true" /> {t("t_b6d453ae3d")}</> : s("searchButton")}
               </button>
-              <span className="action-caption">{!apifyConfigured ? "Falta configurar APIFY_TOKEN en el servidor" : !pocketBaseConfigured ? "Falta conectar PocketBase" : `Máximo ${count} leads por lote`}</span>
+              <span className="action-caption">{!apifyConfigured ? s("missingApify") : !pocketBaseConfigured ? s("missingPocketBase") : s("maxPerBatch", { count })}</span>
             </div>
           </div>
           <p className="cost-note">{t("t_617db756b7")}</p>
@@ -741,7 +753,7 @@ export default function Home() {
               </div>
               {activeBatch && <p className="active-location">{placeLabel(activeBatch)} <span>·</span> {activeBatch.keywords.join(", ")}</p>}
             </div>
-            <button className="export-button" type="button" onClick={() => downloadCsv(leads, activeBatch, isDevelopmentEnvironment)} disabled={leads.length === 0}>
+            <button className="export-button" type="button" onClick={() => downloadCsv(leads, activeBatch, isDevelopmentEnvironment, columnLabel, s("ownerResponse"))} disabled={leads.length === 0}>
               {t("t_8b9c2038c4")} </button>
           </div>
 
@@ -750,8 +762,8 @@ export default function Home() {
               <div className="table-action-card-main">
                 <span className="ai-sparkle table-action-card-sparkle" aria-hidden="true" />
                 <div>
-                  <h3 id="table-action-title">{tableActions[activeTableAction].title}</h3>
-                  <p>{tableActions[activeTableAction].description}</p>
+                  <h3 id="table-action-title">{s(`actions.${activeTableAction}.title`)}</h3>
+                  <p>{s(`actions.${activeTableAction}.description`)}</p>
                   {activeTableAction === "pain_points" && <small>{t("t_6e30ea45d9")}</small>}
                 </div>
               </div>
@@ -763,7 +775,7 @@ export default function Home() {
                       type="text"
                       value={painFocus}
                       maxLength={300}
-                      placeholder="Ej.: dolores que podría resolver un software"
+                      placeholder={s("painFocusPlaceholder")}
                       onChange={(event) => setPainFocus(event.target.value)}
                       disabled={Boolean(analysisBusy)}
                     />
@@ -808,14 +820,14 @@ export default function Home() {
                 )}
               </div>
               <button className="primary-button table-action-start" type="button" disabled={!activeBatch || leads.length === 0 || Boolean(analysisBusy) || (analysisScope === "row" && !leads.length)} onClick={() => void startAnalysis(activeTableAction)}>
-                {analysisBusy === activeTableAction ? <><LoaderCircle className="button-spinner-icon" aria-hidden="true" /> {t("t_740ecf6aec")}</> : activeTableAction === "pain_points" ? `Analizar dolores \u00b7 ${painCreditCost} cr\u00e9ditos` : tableActions[activeTableAction].cta}
+                {analysisBusy === activeTableAction ? <><LoaderCircle className="button-spinner-icon" aria-hidden="true" /> {t("t_740ecf6aec")}</> : activeTableAction === "pain_points" ? s("analyzePains", { cost: painCreditCost }) : s(`actions.${activeTableAction}.cta`)}
               </button>
-              <button className="table-action-close" type="button" aria-label="Cerrar tarjeta" onClick={() => setActiveTableAction(null)}><X size={18} aria-hidden="true" /></button>
+              <button className="table-action-close" type="button" aria-label={s("closeCard")} onClick={() => setActiveTableAction(null)}><X size={18} aria-hidden="true" /></button>
             </div>
           )}
 
           <p className="table-scroll-hint">{t("t_00c94041d2")}</p>
-          <div className="table-frame" tabIndex={0} aria-label="Resultados de leads, desplazables horizontal y verticalmente; muestra hasta 25 filas a la vez">
+          <div className="table-frame" data-onboarding="results" tabIndex={0} aria-label={s("resultsTableAria")}>
             <table>
               <thead>
                 <tr>{tableColumns.map((column) => {
@@ -826,8 +838,8 @@ export default function Home() {
                         <button
                           className="table-action-header"
                           type="button"
-                          title={tableActions[action].title}
-                          aria-label={tableActions[action].title}
+                          title={s(`actions.${action}.title`)}
+                          aria-label={s(`actions.${action}.title`)}
                           aria-expanded={activeTableAction === action}
                           aria-controls="table-action-card"
                           onClick={() => setActiveTableAction((current) => {
@@ -850,19 +862,19 @@ export default function Home() {
                   <tr key={lead.id}>
                     {tableColumns.map((column) => {
                       if (column.key === "whatsapp") {
-                        return <td key={column.key} {...cellDetailProps(lead, column, lead.phone || "Sin dato")}><WhatsAppContact phone={lead.phone} /></td>;
+                        return <td key={column.key} {...cellDetailProps(lead, column, lead.phone || s("noData"))}><WhatsAppContact phone={lead.phone} /></td>;
                       }
                       const reviewMatch = /^review_([1-5])$/.exec(column.key);
                       if (reviewMatch) {
                         const review = lead.source_reviews?.[Number(reviewMatch[1]) - 1];
                         const reviewDetail = review
                           ? [
-                              review.rating === null ? "" : `Calificación: ${review.rating}/5`,
-                              review.published_at ? `${locale === "es" ? "Fecha" : "Date"}: ${reviewDate(review.published_at, locale)}` : "",
+                              review.rating === null ? "" : s("reviewRating", { rating: review.rating }),
+                              review.published_at ? s("reviewDate", { date: reviewDate(review.published_at, locale) }) : "",
                               review.text,
-                              review.owner_response ? `Respuesta del negocio: ${review.owner_response}` : "",
+                              review.owner_response ? `${s("ownerResponse")}: ${review.owner_response}` : "",
                             ].filter(Boolean).join("\n\n")
-                          : "Sin reseña";
+                          : s("noReview");
                         return <td className="lead-review-cell" key={column.key} title={review?.text || ""} {...cellDetailProps(lead, column, reviewDetail)}>
                           {review && <>
                             <span className="lead-review-meta">{[review.rating === null ? "" : `${review.rating}/5`, review.published_at ? reviewDate(review.published_at, locale) : ""].filter(Boolean).join(" · ")}</span>
@@ -871,12 +883,12 @@ export default function Home() {
                           </>}
                         </td>;
                       }
-                      const value = getLeadColumnValue(lead, column.key);
+                      const value = getLeadColumnValue(lead, column.key, s("ownerResponse"));
                       const socialNetworkMatch = /^social_(facebook|instagram|youtube|linkedin)$/.exec(column.key);
                       if (socialNetworkMatch) {
                         const network = socialNetworkMatch[1] as SocialNetwork;
                         const networkWasSelected = lead.enrichment_detail?.social_networks?.includes(network);
-                        return <td key={column.key} title={String(value || "")} {...cellDetailProps(lead, column, String(value || (networkWasSelected ? "Sin dato" : "Sin perfil disponible")))}>{value
+                        return <td key={column.key} title={String(value || "")} {...cellDetailProps(lead, column, String(value || (networkWasSelected ? s("noData") : s("noProfile"))))}>{value
                           ? <a className="table-link" href={String(value)} target="_blank" rel="noreferrer" onClick={(event) => openLinkedCellDetail(event, lead, column, String(value))}>{t("t_3afc60274c")}</a>
                           : networkWasSelected ? <span className="analysis-cell-empty is-no-data">{t("t_29b2157143")}</span> : ""}</td>;
                       }
@@ -891,7 +903,7 @@ export default function Home() {
                           : [detail?.summary, content].filter((part, index, parts) => Boolean(part) && parts.indexOf(part) === index).join("\n\n");
                         const noData = !content && Boolean(detail?.status);
                         const needsAnalysis = !content && !noData;
-                        const cellText = content || (action === "pain_points" && detail?.status === "completed" ? "Sin dolores" : noData ? "Sin dato" : "Sin analizar");
+                        const cellText = content || (action === "pain_points" && detail?.status === "completed" ? s("noPains") : noData ? s("noData") : s("notAnalyzed"));
                         return (
                           <td key={column.key} className="analysis-cell" {...cellDetailProps(lead, column, fullAnalysis || cellText)}>
                             <button
@@ -905,9 +917,9 @@ export default function Home() {
                               onPointerUp={needsAnalysis ? undefined : (event) => handleAnalysisCellPointer(lead, action, event.pointerType, event.timeStamp)}
                               onDoubleClick={needsAnalysis ? undefined : () => setAnalysisDialog({ leadId: lead.id, action })}
                               onKeyDown={needsAnalysis ? undefined : (event) => { if (event.key === "Enter" || event.key === " ") setAnalysisDialog({ leadId: lead.id, action }); }}
-                              title={needsAnalysis ? "Analizar este lead" : "Doble clic o doble toque para abrir el análisis"}
+                              title={needsAnalysis ? s("analyzeLead") : s("openAnalysisHint")}
                             >
-                              {analysisBusy === action && needsAnalysis && (!analysisRowBusyId || analysisRowBusyId === lead.id) ? "Analizando" : cellText}
+                              {analysisBusy === action && needsAnalysis && (!analysisRowBusyId || analysisRowBusyId === lead.id) ? s("analyzing") : cellText}
                             </button>
                             {detail && <span className="analysis-source-count">{detail.findings.length} {t("t_a1c92c8aa4")}</span>}
                           </td>
@@ -915,14 +927,14 @@ export default function Home() {
                       }
                       if (column.key === "email" && !value) {
                         const enrichmentAttempted = Boolean(lead.enrichment_detail?.status || lead.enrichment?.trim());
-                        return <td key={column.key} {...cellDetailProps(lead, column, enrichmentAttempted ? "Sin dato" : "Todavía no se enriqueció el mail.")}>{enrichmentAttempted
+                        return <td key={column.key} {...cellDetailProps(lead, column, enrichmentAttempted ? s("noData") : s("mailNotEnriched"))}>{enrichmentAttempted
                           ? <span className="analysis-cell-empty is-no-data">{t("t_29b2157143")}</span>
-                          : <button className="analysis-cell-trigger is-enrich" type="button" disabled={Boolean(analysisBusy)} onClick={() => void startAnalysis("enrichment", lead.id)} aria-label={`Enriquecer mail de ${lead.name}`}>{analysisBusy === "enrichment" && (!analysisRowBusyId || analysisRowBusyId === lead.id) ? "Enriqueciendo" : "Enriquecer"}</button>}</td>;
+                          : <button className="analysis-cell-trigger is-enrich" type="button" disabled={Boolean(analysisBusy)} onClick={() => void startAnalysis("enrichment", lead.id)} aria-label={s("enrichMailAria", { name: lead.name })}>{analysisBusy === "enrichment" && (!analysisRowBusyId || analysisRowBusyId === lead.id) ? s("enriching") : s("enrich")}</button>}</td>;
                       }
                       const isLink = (column.key === "maps_url" || column.key === "website") && Boolean(value);
                       const ratingColumn = /^rating_[1-5]$/.test(column.key);
                       return (
-                        <td key={column.key} className={ratingColumn ? "rating-breakdown-cell" : undefined} {...cellDetailProps(lead, column, value == null || value === "" ? "Sin dato" : String(value))}>
+                        <td key={column.key} className={ratingColumn ? "rating-breakdown-cell" : undefined} {...cellDetailProps(lead, column, value == null || value === "" ? s("noData") : String(value))}>
                           {isLink ? <a className="table-link" href={String(value)} target="_blank" rel="noreferrer" title={String(value)} onClick={(event) => openLinkedCellDetail(event, lead, column, String(value))}>{column.key === "maps_url" ? "Google Maps" : String(value)}</a> : value == null ? "" : String(value)}
                         </td>
                       );
@@ -931,8 +943,8 @@ export default function Home() {
                 ))}
                 {leads.length === 0 && !busy && (
                   <tr><td className="empty-cell" colSpan={tableColumns.length}>
-                    <strong>{historyLoading ? "Conectando con tu historial" : "Todavía no hay leads"}</strong>
-                    <span>{historyLoading ? "" : "Completá una keyword y la zona para generar el primer lote."}</span>
+                    <strong>{historyLoading ? s("connectingHistory") : s("noLeadsYet")}</strong>
+                    <span>{historyLoading ? "" : s("noLeadsHint")}</span>
                   </td></tr>
                 )}
                 {busy && Array.from({ length: Math.min(count, 5) }, (_, index) => (
@@ -943,13 +955,13 @@ export default function Home() {
               </tbody>
             </table>
           </div>
-          <div className="table-footer"><span>{t("t_9abf183dfd")}</span><span>{leads.length} {leads.length === 1 ? "registro" : "registros"}</span></div>
+          <div className="table-footer"><span>{t("t_9abf183dfd")}</span><span>{s("recordCount", { count: leads.length })}</span></div>
         </section>
 
         <CellDetailsPopover
           open={Boolean(cellDetail && leads.some((lead) => lead.id === cellDetail.leadId))}
           anchorRef={cellDetailAnchorRef}
-          title={cellDetail?.title || "Detalle del lead"}
+          title={cellDetail?.title || s("leadDetail")}
           leadName={leads.find((lead) => lead.id === cellDetail?.leadId)?.name || ""}
           value={cellDetail?.value || ""}
           onClose={() => setCellDetail(null)}
@@ -964,9 +976,9 @@ export default function Home() {
           return (
             <div className="analysis-popover-backdrop" onClick={() => setAnalysisDialog(null)}>
               <section ref={analysisPopoverRef} className="analysis-popover" role="dialog" aria-modal="true" aria-labelledby="analysis-popover-title" onClick={(event) => event.stopPropagation()}>
-                <button className="analysis-popover-close" type="button" aria-label="Cerrar análisis" onClick={() => setAnalysisDialog(null)}><X size={18} aria-hidden="true" /></button>
+                <button className="analysis-popover-close" type="button" aria-label={s("closeAnalysis")} onClick={() => setAnalysisDialog(null)}><X size={18} aria-hidden="true" /></button>
                 <p className="analysis-popover-lead">{lead.name}</p>
-                <h2 id="analysis-popover-title">{tableActions[action].title}</h2>
+                <h2 id="analysis-popover-title">{s(`actions.${action}.title`)}</h2>
                 {detail ? (
                   <>
                     {action === "enrichment" && detail.summary && <p className="analysis-popover-summary">{detail.summary}</p>}
@@ -1003,13 +1015,13 @@ export default function Home() {
         })()}
 
         {isDevelopmentEnvironment && analysisDiagnosticsOpen && (
-          <aside className="analysis-debug-panel" aria-label="Depuración del análisis">
+          <aside className="analysis-debug-panel" aria-label={s("debugPanel")}>
             <div className="analysis-debug-heading">
               <div>
                 <p>{t("t_09b2e55d91")}</p>
                 <h2>{t("t_5c39e5458c")}</h2>
               </div>
-              <button type="button" aria-label="Cerrar depuración" onClick={() => setAnalysisDiagnosticsOpen(false)}><X size={18} aria-hidden="true" /></button>
+              <button type="button" aria-label={s("closeDebug")} onClick={() => setAnalysisDiagnosticsOpen(false)}><X size={18} aria-hidden="true" /></button>
             </div>
             <div className="analysis-debug-list">
               {analysisDiagnostics.map((item) => (

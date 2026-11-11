@@ -4,6 +4,7 @@ import {
   getCountries,
   getStatesOfCountry,
 } from "@countrystatecity/countries";
+import { errorTranslator } from "@/lib/server/locale";
 
 type GeographyOption = { code: string; name: string };
 
@@ -18,6 +19,7 @@ function localizedName(name: string, native: string | null, translations: Record
 }
 
 export async function GET(request: Request) {
+  const t = errorTranslator(request);
   const { searchParams } = new URL(request.url);
   const level = searchParams.get("level");
 
@@ -33,7 +35,7 @@ export async function GET(request: Request) {
 
     const countryCode = searchParams.get("country")?.toUpperCase() ?? "";
     if (!/^[A-Z]{2}$/.test(countryCode)) {
-      return NextResponse.json({ error: "País inválido." }, { status: 400 });
+      return NextResponse.json({ error: t("geoInvalidCountry") }, { status: 400 });
     }
 
     if (level === "provinces") {
@@ -51,11 +53,11 @@ export async function GET(request: Request) {
     if (level === "districts") {
       const provinceCode = searchParams.get("province")?.toUpperCase() ?? "";
       if (!/^[A-Z0-9-]{1,10}$/.test(provinceCode)) {
-        return NextResponse.json({ error: "Provincia inválida." }, { status: 400 });
+        return NextResponse.json({ error: t("geoInvalidState") }, { status: 400 });
       }
       const states = await getStatesOfCountry(countryCode);
       const stateExists = states.some((state) => state.iso2 === provinceCode);
-      if (!stateExists) return NextResponse.json({ error: "La provincia no pertenece al país." }, { status: 400 });
+      if (!stateExists) return NextResponse.json({ error: t("geoStateNotInCountry") }, { status: 400 });
 
       const cities = await getCitiesOfState(countryCode, provinceCode);
       const byName = new Map<string, GeographyOption>();
@@ -68,9 +70,9 @@ export async function GET(request: Request) {
       return jsonOptions(options);
     }
 
-    return NextResponse.json({ error: "Nivel geográfico inválido." }, { status: 400 });
+    return NextResponse.json({ error: t("geoInvalidLevel") }, { status: 400 });
   } catch (error) {
     console.error("Geography lookup failed:", error);
-    return NextResponse.json({ error: "No se pudieron cargar los datos geográficos." }, { status: 503 });
+    return NextResponse.json({ error: t("geoLoadFailed") }, { status: 503 });
   }
 }

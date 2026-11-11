@@ -4,9 +4,9 @@ import { useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { subscriptionPlans } from "@/lib/plans";
 import {
-  confirmBox, controlClass, dangerButton, errorBox, formatArs, formatDate, formatNumber, ghostButton, isUnauthorized, mutedText, type OnAction,
-  okBox, ownerFetch, planName, primaryButton, rightCell, smallButton, stateBox, statusLabel, statusPill, tableClass, tableWrap, tdClass,
-  theadClass, thClass, trClass, useFocusTrap, useOwnerList,
+  confirmBox, controlClass, dangerButton, errorBox, ghostButton, isUnauthorized, mutedText, type OnAction,
+  okBox, ownerFetch, primaryButton, rightCell, smallButton, stateBox, statusPill, tableClass, tableWrap, tdClass,
+  theadClass, thClass, trClass, useFocusTrap, useOwnerFormat, useOwnerList,
 } from "../ui";
 import { ListToolbar, Pager } from "./list-controls";
 
@@ -27,11 +27,14 @@ type Pending =
 
 const manualPlans = subscriptionPlans.filter((plan) => ["initial", "pro", "agency"].includes(plan.id));
 const live = ["authorized", "paused", "pending"];
-const statusOptions = ["authorized", "paused", "pending", "canceled", "rejected", "creating"].map((value) => ({ value, label: statusLabel(value) }));
+const statusValues = ["authorized", "paused", "pending", "canceled", "rejected", "creating"];
 
 export default function SubscriptionsSection({ onUnauthorized, onAction }: { onUnauthorized: () => void; onAction?: OnAction }) {
-  const t = useTranslations("UI");
-  const list = useOwnerList<Subscription>("/api/owner/subscriptions", "No se pudieron cargar las suscripciones.", onUnauthorized);
+  const t = useTranslations("Owner.subscriptions");
+  const common = useTranslations("Owner.common");
+  const { formatArs, formatDate, formatNumber, planName, statusLabel, errorText } = useOwnerFormat();
+  const statusOptions = statusValues.map((value) => ({ value, label: statusLabel(value) }));
+  const list = useOwnerList<Subscription>("/api/owner/subscriptions", t("loadError"), onUnauthorized);
   const { data, loading, error, reload } = list;
   const [pending, setPending] = useState<Pending | null>(null);
   const [newPlan, setNewPlan] = useState<string>(manualPlans[0]?.id ?? "initial");
@@ -46,10 +49,16 @@ export default function SubscriptionsSection({ onUnauthorized, onAction }: { onU
   };
   useFocusTrap(dialogRef, pending !== null, closePending);
 
-  const askStatus = (opener: HTMLElement, row: Subscription, status: "authorized" | "paused" | "cancelled", verb: string, success: string) => {
+  const askStatus = (opener: HTMLElement, row: Subscription, status: "authorized" | "paused" | "cancelled") => {
     openerRef.current = opener;
     setNotice(null);
-    setPending({ kind: "status", row, status, success, message: `${verb} la suscripción ${planName(row.planId)} de ${row.userEmail || "este usuario"}?${status === "cancelled" ? " Esta acción no se puede deshacer." : ""}` });
+    const kind = status === "paused" ? "Pause" : status === "authorized" ? "Resume" : "Cancel";
+    const values = { plan: planName(row.planId), email: row.userEmail || t("thisUser") };
+    setPending({
+      kind: "status", row, status,
+      success: t(status === "paused" ? "paused" : status === "authorized" ? "resumed" : "cancelled"),
+      message: t(`confirm${kind}`, values),
+    });
   };
 
   async function confirm() {
@@ -57,7 +66,7 @@ export default function SubscriptionsSection({ onUnauthorized, onAction }: { onU
     setBusy(true);
     const { row } = pending;
     const body = pending.kind === "status" ? { status: pending.status } : { planId: newPlan };
-    const success = pending.kind === "status" ? pending.success : `Plan cambiado a ${planName(newPlan)}.`;
+    const success = pending.kind === "status" ? pending.success : t("planChanged", { plan: planName(newPlan) });
     const result = await ownerFetch(`/api/owner/subscriptions/${encodeURIComponent(row.id)}`, { method: "PATCH", body });
     setBusy(false);
     closePending();
@@ -67,32 +76,32 @@ export default function SubscriptionsSection({ onUnauthorized, onAction }: { onU
       onAction?.(success);
       void reload();
     } else {
-      setNotice({ kind: "error", text: result.data.error || "No se pudo completar la acción." });
+      setNotice({ kind: "error", text: errorText(result.data.error, common("actionError")) });
     }
   }
 
   return (
-    <section aria-label="Suscripciones">
-      <ListToolbar title="Suscripciones" total={data?.totalItems} query={list.query} onQuery={list.setQuery} status={list.status} onStatus={list.setStatus} statusOptions={statusOptions} onRefresh={() => void reload()} />
+    <section aria-label={t("title")}>
+      <ListToolbar title={t("title")} total={data?.totalItems} query={list.query} onQuery={list.setQuery} status={list.status} onStatus={list.setStatus} statusOptions={statusOptions} onRefresh={() => void reload()} />
       {error && <p className={errorBox} role="alert">{error}</p>}
       {notice && <p className={notice.kind === "ok" ? okBox : errorBox} role={notice.kind === "ok" ? "status" : "alert"}>{notice.text}</p>}
       {pending && (
-        <div ref={dialogRef} className={`${confirmBox} mb-3.5`} role="alertdialog" aria-label="Confirmar acción">
+        <div ref={dialogRef} className={`${confirmBox} mb-3.5`} role="alertdialog" aria-label={common("confirmAction")}>
           {pending.kind === "status" ? (
             <p className="m-0 text-[13px] font-semibold">{pending.message}</p>
           ) : (
             <>
-              <p className="m-0 text-[13px] font-semibold">{t("t_8cb14146b1")} {pending.row.userEmail || "este usuario"} {t("t_01cbd11760")} {planName(pending.row.planId)}).</p>
+              <p className="m-0 text-[13px] font-semibold">{t("changePlanPrompt", { email: pending.row.userEmail || t("thisUser"), plan: planName(pending.row.planId) })}</p>
               <label className="grid gap-1.5 text-xs">
-                {t("t_782a46bcd4")} <select className={controlClass} value={newPlan} onChange={(event) => setNewPlan(event.target.value)}>
-                  {manualPlans.map((plan) => <option key={plan.id} value={plan.id}>{plan.name} · {formatArs(plan.priceArs)} · {formatNumber(plan.credits)} {t("t_bcc0da40b3")}</option>)}
+                {t("newPlan")} <select className={controlClass} value={newPlan} onChange={(event) => setNewPlan(event.target.value)}>
+                  {manualPlans.map((plan) => <option key={plan.id} value={plan.id}>{common("planOption", { plan: planName(plan.id), price: formatArs(plan.priceArs), credits: common("creditsCount", { count: plan.credits }) })}</option>)}
                 </select>
               </label>
             </>
           )}
           <div className="flex flex-wrap gap-2">
-            <button className={primaryButton} type="button" disabled={busy} onClick={() => void confirm()}>{busy ? "Guardando…" : "Confirmar"}</button>
-            <button className={ghostButton} type="button" disabled={busy} onClick={closePending} autoFocus>{t("t_84a715a785")}</button>
+            <button className={primaryButton} type="button" disabled={busy} onClick={() => void confirm()}>{busy ? common("saving") : common("confirm")}</button>
+            <button className={ghostButton} type="button" disabled={busy} onClick={closePending} autoFocus>{common("back")}</button>
           </div>
         </div>
       )}
@@ -100,39 +109,39 @@ export default function SubscriptionsSection({ onUnauthorized, onAction }: { onU
         <table className={tableClass}>
           <thead className={theadClass}>
             <tr>
-              <th className={thClass} scope="col">{t("t_ef9168c3d7")}</th>
-              <th className={thClass} scope="col">{t("t_3f2ecdef3c")}</th>
-              <th className={thClass} scope="col">{t("t_ae2f98a099")}</th>
-              <th className={thClass} scope="col">{t("t_87cf2a843e")}</th>
-              <th className={`${thClass} ${rightCell}`} scope="col">{t("t_18e0707ea7")}</th>
-              <th className={`${thClass} ${rightCell}`} scope="col">{t("t_cb722e8b79")}</th>
-              <th className={thClass} scope="col">{t("t_79bd0ed912")}</th>
+              <th className={thClass} scope="col">{common("created")}</th>
+              <th className={thClass} scope="col">{common("user")}</th>
+              <th className={thClass} scope="col">{common("plan")}</th>
+              <th className={thClass} scope="col">{common("status")}</th>
+              <th className={`${thClass} ${rightCell}`} scope="col">{t("price")}</th>
+              <th className={`${thClass} ${rightCell}`} scope="col">{t("monthlyCredits")}</th>
+              <th className={thClass} scope="col">{common("actions")}</th>
             </tr>
           </thead>
           <tbody>
             {data?.items.map((row) => (
               <tr className={trClass} key={row.id}>
-                <td className={tdClass} data-label="Alta">{formatDate(row.created)}</td>
-                <td className={`${tdClass} break-all`} data-label="Usuario">{row.userEmail || "—"}</td>
-                <td className={tdClass} data-label="Plan">{planName(row.planId)}</td>
-                <td className={tdClass} data-label="Estado"><span className={statusPill(row.status)}>{statusLabel(row.status)}</span></td>
-                <td className={`${tdClass} ${rightCell}`} data-label="Precio">{formatArs(row.priceArs)}</td>
-                <td className={`${tdClass} ${rightCell}`} data-label="Créditos/mes">{formatNumber(row.monthlyCredits)}</td>
-                <td className={tdClass} data-label="Acciones">
+                <td className={tdClass} data-label={common("created")}>{formatDate(row.created)}</td>
+                <td className={`${tdClass} break-all`} data-label={common("user")}>{row.userEmail || "—"}</td>
+                <td className={tdClass} data-label={common("plan")}>{planName(row.planId)}</td>
+                <td className={tdClass} data-label={common("status")}><span className={statusPill(row.status)}>{statusLabel(row.status)}</span></td>
+                <td className={`${tdClass} ${rightCell}`} data-label={t("price")}>{formatArs(row.priceArs)}</td>
+                <td className={`${tdClass} ${rightCell}`} data-label={t("monthlyCredits")}>{formatNumber(row.monthlyCredits)}</td>
+                <td className={tdClass} data-label={common("actions")}>
                   <div className="flex flex-wrap gap-1.5 max-md:justify-end">
-                    {row.status === "authorized" && <button className={`${ghostButton} ${smallButton}`} type="button" disabled={busy} onClick={(event) => askStatus(event.currentTarget, row, "paused", "Pausar", "Suscripción pausada.")}>{t("t_8e0f5ed990")}</button>}
-                    {row.status === "paused" && <button className={`${ghostButton} ${smallButton}`} type="button" disabled={busy} onClick={(event) => askStatus(event.currentTarget, row, "authorized", "Reactivar", "Suscripción reactivada.")}>{t("t_cb081a42fc")}</button>}
-                    {live.includes(row.status) && <button className={`${dangerButton} ${smallButton}`} type="button" disabled={busy} onClick={(event) => askStatus(event.currentTarget, row, "cancelled", "Cancelar", "Suscripción cancelada.")}>{t("t_c111e0ab9d")}</button>}
-                    {live.includes(row.status) && <button className={`${ghostButton} ${smallButton}`} type="button" disabled={busy} onClick={(event) => { openerRef.current = event.currentTarget; setNotice(null); setNewPlan(manualPlans.some((plan) => plan.id === row.planId) ? row.planId : (manualPlans[0]?.id ?? "initial")); setPending({ kind: "plan", row }); }}>{t("t_200a52e551")}</button>}
-                    {!live.includes(row.status) && <span className={mutedText}>{t("t_62606d0cd1")}</span>}
+                    {row.status === "authorized" && <button className={`${ghostButton} ${smallButton}`} type="button" disabled={busy} onClick={(event) => askStatus(event.currentTarget, row, "paused")}>{t("pause")}</button>}
+                    {row.status === "paused" && <button className={`${ghostButton} ${smallButton}`} type="button" disabled={busy} onClick={(event) => askStatus(event.currentTarget, row, "authorized")}>{t("resume")}</button>}
+                    {live.includes(row.status) && <button className={`${dangerButton} ${smallButton}`} type="button" disabled={busy} onClick={(event) => askStatus(event.currentTarget, row, "cancelled")}>{t("cancel")}</button>}
+                    {live.includes(row.status) && <button className={`${ghostButton} ${smallButton}`} type="button" disabled={busy} onClick={(event) => { openerRef.current = event.currentTarget; setNotice(null); setNewPlan(manualPlans.some((plan) => plan.id === row.planId) ? row.planId : (manualPlans[0]?.id ?? "initial")); setPending({ kind: "plan", row }); }}>{t("changePlan")}</button>}
+                    {!live.includes(row.status) && <span className={mutedText}>{common("noActions")}</span>}
                   </div>
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
-        {!data && loading && <p className={stateBox} role="status">{t("t_006e001be4")}</p>}
-        {data && data.items.length === 0 && !loading && <p className={stateBox}>{list.query || list.status ? "Sin resultados para ese filtro." : "Todavía no hay suscripciones."}</p>}
+        {!data && loading && <p className={stateBox} role="status">{t("loading")}</p>}
+        {data && data.items.length === 0 && !loading && <p className={stateBox}>{list.query || list.status ? common("noResultsFilter") : t("empty")}</p>}
       </div>
       <Pager page={list.page} totalPages={data?.totalPages ?? 1} loading={loading} onPage={list.setPage} />
     </section>

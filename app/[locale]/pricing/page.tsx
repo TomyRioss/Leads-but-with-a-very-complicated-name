@@ -8,12 +8,12 @@ export async function generateMetadata({ params }: { params: Promise<{ locale: s
   setRequestLocale(locale);
   const t = await getTranslations({ locale, namespace: "Pricing" });
   return {
-    title: locale === "en" ? "Plans and pricing | Leadta" : "Planes y precios | Leadta",
-    description: `${t("from")} $15 USD/month, ${t("monthly")}`,
+    title: t("pageTitle"),
+    description: t("metaDescription"),
   };
 }
 
 export default async function Page({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
-  return <PricingPage locale={locale} hero={<PriceHero locale={locale} />}><PriceSections locale={locale} /></PricingPage>;
+  return <PricingPage hero={<PriceHero locale={locale} />}><PriceSections locale={locale} /></PricingPage>;
 }

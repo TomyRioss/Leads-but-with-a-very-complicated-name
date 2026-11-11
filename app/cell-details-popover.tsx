@@ -3,6 +3,7 @@
 import { ExternalLink, X } from "lucide-react";
 import { useEffect, useId, useRef, useState, useSyncExternalStore, type RefObject } from "react";
 import { createPortal } from "react-dom";
+import { useTranslations } from "next-intl";
 
 const subscribeToHydration = () => () => {};
 
@@ -23,6 +24,7 @@ export default function CellDetailsPopover({
   value,
   onClose,
 }: CellDetailsPopoverProps) {
+  const t = useTranslations("CellDetails");
   const portalReady = useSyncExternalStore(subscribeToHydration, () => true, () => false);
   const [position, setPosition] = useState({ left: 12, top: 12 });
   const popoverRef = useRef<HTMLDivElement>(null);
@@ -94,12 +96,12 @@ export default function CellDetailsPopover({
           <h2 id={`${popoverId}-title`}>{title}</h2>
           <p>{leadName}</p>
         </div>
-        <button className="cell-details-popover-close" type="button" onClick={onClose} aria-label="Cerrar detalle">
+        <button className="cell-details-popover-close" type="button" onClick={onClose} aria-label={t("close")}>
           <X size={17} aria-hidden="true" />
         </button>
       </div>
-      <div className="cell-details-popover-value">{value || "Sin información disponible."}</div>
-      {detailUrl && <a className="cell-details-popover-link" href={detailUrl} target="_blank" rel="noreferrer">Abrir enlace <ExternalLink size={14} aria-hidden="true" /></a>}
+      <div className="cell-details-popover-value">{value || t("empty")}</div>
+      {detailUrl && <a className="cell-details-popover-link" href={detailUrl} target="_blank" rel="noreferrer">{t("openLink")} <ExternalLink size={14} aria-hidden="true" /></a>}
     </div>,
     document.body,
   );

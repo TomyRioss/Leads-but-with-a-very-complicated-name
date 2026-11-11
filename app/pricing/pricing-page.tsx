@@ -2,10 +2,12 @@
 
 import { useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { BrandLogo } from "@/app/brand-logo";
 import { LanguageSwitcher } from "@/app/language-switcher";
 
-export default function PricingPage({ hero, children, locale }: { hero: ReactNode; children: ReactNode; locale: string }) {
+export default function PricingPage({ hero, children }: { hero: ReactNode; children: ReactNode }) {
+  const t = useTranslations("Pricing");
   const [member, setMember] = useState(false);
 
   useEffect(() => {
@@ -19,9 +21,9 @@ export default function PricingPage({ hero, children, locale }: { hero: ReactNod
 
   return (
     <main className="app-shell pricing-shell">
-      <nav className="topbar" aria-label="Navegación principal">
+      <nav className="topbar" aria-label={t("navLabel")}>
         <BrandLogo />
-        <div className="topbar-actions"><LanguageSwitcher /><Link className="pricing-nav-link" href="/buscar">{member ? (locale === "en" ? "Go to Leadta" : "Ir a Leadta") : (locale === "en" ? "Sign in" : "Iniciar sesión")}</Link></div>
+        <div className="topbar-actions"><LanguageSwitcher /><Link className="pricing-nav-link" href="/buscar">{member ? t("goToLeadta") : t("session")}</Link></div>
       </nav>
 
       {hero}

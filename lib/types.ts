@@ -104,8 +104,14 @@ export function getSocialProfileUrl(value: string, network: SocialNetwork): stri
   })[0] || "";
 }
 
-/** `includeEnrichment` (DEV only) controls the enrichment column and the social network columns it produces. */
-export function getLeadColumns(leads: Lead[], activeNetworks: SocialNetwork[] = [], includeEnrichment = false): { key: LeadColumnKey; label: string }[] {
+/** Devuelve la etiqueta traducida de una columna; `fallback` es la etiqueta en español por defecto. */
+export type LeadColumnLabeler = (key: LeadColumnKey, fallback: string) => string;
+
+/**
+ * `includeEnrichment` (DEV only) controls the enrichment column and the social network columns it produces.
+ * `label` (opcional) traduce las etiquetas; sin él se usan las etiquetas en español.
+ */
+export function getLeadColumns(leads: Lead[], activeNetworks: SocialNetwork[] = [], includeEnrichment = false, label?: LeadColumnLabeler): { key: LeadColumnKey; label: string }[] {
   const networks = new Set<SocialNetwork>(activeNetworks);
   leads.forEach((lead) => lead.enrichment_detail?.social_networks?.forEach((network) => networks.add(network)));
   const networkColumns = (Object.entries({
@@ -118,10 +124,11 @@ export function getLeadColumns(leads: Lead[], activeNetworks: SocialNetwork[] = 
     .map(([network, label]) => ({ key: `social_${network}` as const, label }));
   return LEAD_COLUMNS
     .filter((column) => includeEnrichment || column.key !== "enrichment")
-    .flatMap((column) => column.key === "website" && includeEnrichment ? [column, ...networkColumns] : [column]);
+    .flatMap((column) => column.key === "website" && includeEnrichment ? [column, ...networkColumns] : [column])
+    .map((column) => label ? { key: column.key, label: label(column.key, column.label) } : column);
 }
 
-export function getLeadColumnValue(lead: Lead, key: LeadColumnKey): string {
+export function getLeadColumnValue(lead: Lead, key: LeadColumnKey, ownerResponseLabel = "Respuesta del negocio"): string {
   const socialMatch = /^social_(facebook|instagram|youtube|linkedin)$/.exec(key);
   if (socialMatch) return getSocialProfileUrl(lead.social_profiles || "", socialMatch[1] as SocialNetwork);
 
@@ -133,7 +140,7 @@ export function getLeadColumnValue(lead: Lead, key: LeadColumnKey): string {
       review.rating === null ? "" : `${review.rating}/5`,
       review.published_at,
       review.text,
-      review.owner_response ? `Respuesta del negocio: ${review.owner_response}` : "",
+      review.owner_response ? `${ownerResponseLabel}: ${review.owner_response}` : "",
     ].filter(Boolean).join("\n");
   }
 

@@ -1,11 +1,12 @@
 import { createHash, createHmac, timingSafeEqual } from "node:crypto";
+import { renderVerificationEmail, renderWelcomeEmail } from "@/lib/server/email-templates";
+import type { Locale } from "@/lib/server/locale";
 import { pocketBaseFetch } from "@/lib/server/pocketbase";
 
 const sender = "Tomas Rios <tomas@leadta.app>";
 const verificationLifetimeSeconds = 60 * 60 * 24;
 const resendUrl = "https://api.resend.com/emails";
 
-type Locale = "es" | "en";
 type UserEmailRecord = {
   id: string;
   email: string;
@@ -18,13 +19,13 @@ type UserEmailRecord = {
 function appOrigin() {
   const configured = process.env.APP_URL?.trim() || (process.env.VERCEL ? "https://leadta.app" : "http://localhost:3000");
   const url = new URL(configured);
-  if (url.protocol !== "https:" && url.hostname !== "localhost") throw new Error("APP_URL debe usar HTTPS.");
+  if (url.protocol !== "https:" && url.hostname !== "localhost") throw new Error("APP_URL must use HTTPS.");
   return url.origin;
 }
 
 function signatureFor(payload: string) {
   const secret = process.env.EMAIL_VERIFICATION_SECRET || process.env.RESEND_API_KEY;
-  if (!secret) throw new Error("Falta configurar RESEND_API_KEY.");
+  if (!secret) throw new Error("RESEND_API_KEY is not configured.");
   return createHmac("sha256", secret).update(`leadta-email-verification-v1.${payload}`).digest("base64url");
 }
 
@@ -67,7 +68,7 @@ export function readEmailVerificationToken(token: string): { id: string; email: 
 
 async function sendEmail(input: { to: string; subject: string; text: string; html: string; idempotencyKey: string }) {
   const apiKey = process.env.RESEND_API_KEY;
-  if (!apiKey) throw new Error("Falta configurar RESEND_API_KEY.");
+  if (!apiKey) throw new Error("RESEND_API_KEY is not configured.");
 
   const response = await fetch(resendUrl, {
     method: "POST",
@@ -86,66 +87,23 @@ async function sendEmail(input: { to: string; subject: string; text: string; htm
     cache: "no-store",
     signal: AbortSignal.timeout(10000),
   });
-  if (!response.ok) throw new Error(`Resend rechazó el email (${response.status}).`);
-}
-
-function escapeHtml(value: string) {
-  return value.replace(/[&<>"']/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[character] || character);
+  if (!response.ok) throw new Error(`Resend rejected the email (${response.status}).`);
 }
 
 export async function sendVerificationEmail(user: Pick<UserEmailRecord, "id" | "email" | "name">, locale: Locale) {
   const token = createEmailVerificationToken(user, locale);
-  const verifyUrl = new URL(locale === "en" ? "/en/verificar" : "/verificar", appOrigin());
-  verifyUrl.searchParams.set("token", token);
-  const greeting = locale === "en" ? "Verify your email" : "Confirmá tu correo";
-  const intro = locale === "en"
-    ? "Confirm your email address to activate your Leadta account and its trial credits."
-    : "Confirmá tu dirección de correo para activar tu cuenta de Leadta y tus créditos de prueba.";
-  const button = locale === "en" ? "Verify email" : "Confirmar correo";
-  const expiration = locale === "en" ? "This link expires in 24 hours." : "Este enlace vence en 24 horas.";
-  const safeName = user.name ? ` ${escapeHtml(user.name)}` : "";
-
+  const { subject, text, html } = renderVerificationEmail({ name: user.name, locale, origin: appOrigin(), token });
   await sendEmail({
     to: user.email,
-    subject: locale === "en" ? "Verify your email for Leadta" : "Confirmá tu correo para Leadta",
-    text: `${greeting}${user.name ? `, ${user.name}` : ""}.\n\n${intro}\n\n${verifyUrl}\n\n${expiration}`,
-    html: `<div style="font-family:Arial,sans-serif;max-width:560px;margin:32px auto;color:#202320;line-height:1.6"><p>${greeting}${safeName}.</p><p>${intro}</p><p><a href="${escapeHtml(verifyUrl.toString())}" style="display:inline-block;background:#c9e94f;color:#202320;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:700">${button}</a></p><p style="color:#676e67;font-size:14px">${expiration}</p></div>`,
+    subject,
+    text,
+    html,
     idempotencyKey: `leadta-verification-${user.id}-${createHash("sha256").update(token).digest("hex")}`,
   });
 }
 
-export async function sendWelcomeEmail(user: Pick<UserEmailRecord, "id" | "email">) {
-  const demoUrl = "https://wa.me/5491134083140?text=Hola%2C%20quiero%20agendar%20una%20llamada%20o%20demo%20de%20Leadta.";
-  const text = [
-    "Hola, cómo estás?",
-    "",
-    "Gracias por unirte a nuestra plataforma, soy Tomas Rios, uno de los Founders de Leadta!",
-    "",
-    "Ya podes comenzar a usar Leadta con créditos de prueba, igualmente te ánimo a hablarme por este correo o a mi telefono (accesible mediante el botón de agendar llamada/demo).",
-    "",
-    "Estoy dando Asesoría en Ventas Gratuita para los Early Adopters cómo vos y también comentarte cómo son nuestros planes pagos, dependen de tus necesidades pero el más chico que tenemos está en $15 USD/mes!",
-    "",
-    "¡Espero la herramienta te sirva, estoy a tú dispoción!",
-    "Tomas Rios.",
-    "",
-    `Agendar llamada/demo: ${demoUrl}`,
-  ].join("\n");
-  const html = [
-    "<p>Hola, cómo estás?</p>",
-    "<p>Gracias por unirte a nuestra plataforma, soy Tomas Rios, uno de los Founders de Leadta!</p>",
-    "<p>Ya podes comenzar a usar Leadta con créditos de prueba, igualmente te ánimo a hablarme por este correo o a mi telefono (accesible mediante el botón de agendar llamada/demo).</p>",
-    "<p>Estoy dando Asesoría en Ventas Gratuita para los Early Adopters cómo vos y también comentarte cómo son nuestros planes pagos, dependen de tus necesidades pero el más chico que tenemos está en $15 USD/mes!</p>",
-    "<p>¡Espero la herramienta te sirva, estoy a tú dispoción!<br>Tomas Rios.</p>",
-    `<p><a href="${demoUrl}" style="display:inline-block;background:#c9e94f;color:#202320;padding:12px 20px;border-radius:6px;text-decoration:none;font-weight:700">Agendar llamada/demo</a></p>`,
-  ].join("");
-
-  await sendEmail({
-    to: user.email,
-    subject: "¡Gracias por unirte a Leadta!",
-    text,
-    html,
-    idempotencyKey: `leadta-welcome-${user.id}`,
-  });
+export async function sendWelcomeEmail(user: Pick<UserEmailRecord, "id" | "email">, locale: Locale) {
+  await sendEmail({ to: user.email, ...renderWelcomeEmail(locale), idempotencyKey: `leadta-welcome-${user.id}` });
 }
 
 export async function getEmailUser(id: string) {

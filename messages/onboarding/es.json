@@ -1,0 +1,45 @@
+{
+  "Onboarding": {
+    "launch": "Ver tutorial",
+    "launchLabel": "Ver el tutorial de la primera búsqueda",
+    "skip": "Omitir tutorial",
+    "back": "Atrás",
+    "next": "Siguiente",
+    "finish": "Finalizar",
+    "stepCounter": "Paso {current} de {total}",
+    "steps": {
+      "lead": {
+        "title": "Qué es un lead",
+        "body": "Un lead es un negocio local de Google Maps con sus datos de contacto: teléfono, web, mail y reseñas. En 5 pasos hacés tu primera búsqueda de 1 lead.",
+        "bodyRepeat": "Repasá cómo hacer una búsqueda en 5 pasos. Como ya hiciste búsquedas, este recorrido usa el lote mínimo normal: 5 leads."
+      },
+      "keywords": {
+        "title": "Elegí qué buscar",
+        "body": "Escribí el rubro o negocio que querés encontrar, por ejemplo «estudios contables». Podés cargar varias keywords separadas por coma o salto de línea.",
+        "hint": "Escribí al menos una keyword para continuar."
+      },
+      "location": {
+        "title": "Elegí dónde buscar",
+        "body": "Seleccioná el país. La provincia y la ciudad son opcionales y acotan la búsqueda.",
+        "hint": "Elegí un país para continuar."
+      },
+      "count": {
+        "title": "Cantidad fijada en 1",
+        "body": "Para tu primera búsqueda el lote es de 1 lead, así probás el flujo completo con un costo mínimo: 2 créditos.",
+        "titleRepeat": "Cantidad mínima: 5",
+        "bodyRepeat": "El lote de 1 lead es solo para la primera búsqueda. En este recorrido el lote es de 5 leads, el mínimo normal, y cuesta {credits} créditos."
+      },
+      "launch": {
+        "title": "Lanzá la búsqueda",
+        "body": "Tocá «Buscar leads». Tarda unos segundos en traer y guardar el resultado.",
+        "searching": "Buscando y guardando tu lead…",
+        "failed": "No se obtuvo ningún lead. Revisá el mensaje, cambiá la keyword o la zona y volvé a buscar."
+      },
+      "results": {
+        "title": "Acá está tu resultado",
+        "body": "Tu lead aparece en esta tabla. Después podés exportarlo con «Descargar CSV», o usar las columnas de dolores y enriquecimiento para analizarlo.",
+        "bodyRepeat": "Tus leads aparecen en esta tabla. Después podés exportarlos con «Descargar CSV», o usar las columnas de dolores y enriquecimiento para analizarlos."
+      }
+    }
+  }
+}

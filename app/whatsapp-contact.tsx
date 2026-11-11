@@ -3,8 +3,7 @@
 import { ExternalLink, MessageCircle, X } from "lucide-react";
 import { useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-
-const DEFAULT_MESSAGE = "Hola, vi tu negocio y quería hacerte una consulta.";
+import { useTranslations } from "next-intl";
 
 function getWhatsAppNumber(phone: string) {
   const normalized = phone.trim();
@@ -20,8 +19,9 @@ function getWhatsAppNumber(phone: string) {
 type WhatsAppContactProps = { phone: string };
 
 export default function WhatsAppContact({ phone }: WhatsAppContactProps) {
+  const t = useTranslations("WhatsApp");
   const [open, setOpen] = useState(false);
-  const [message, setMessage] = useState(DEFAULT_MESSAGE);
+  const [message, setMessage] = useState(() => t("defaultMessage"));
   const [position, setPosition] = useState<{ left: number; top: number } | null>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
@@ -81,7 +81,7 @@ export default function WhatsAppContact({ phone }: WhatsAppContactProps) {
     ? `${directUrl}?text=${encodeURIComponent(encodedMessage)}`
     : undefined;
 
-  if (!phone.trim()) return <span aria-label="Sin teléfono">—</span>;
+  if (!phone.trim()) return <span aria-label={t("noPhone")}>—</span>;
 
   return (
     <>
@@ -110,16 +110,16 @@ export default function WhatsAppContact({ phone }: WhatsAppContactProps) {
         >
           <div className="whatsapp-contact-heading">
             <div>
-              <h2 id={`${popoverId}-title`}>Contactar por WhatsApp</h2>
+              <h2 id={`${popoverId}-title`}>{t("title")}</h2>
               <p>{phone}</p>
             </div>
-            <button className="whatsapp-contact-close" type="button" onClick={close} aria-label="Cerrar">
+            <button className="whatsapp-contact-close" type="button" onClick={close} aria-label={t("close")}>
               <X size={17} aria-hidden="true" />
             </button>
           </div>
 
           <label className="whatsapp-contact-label" htmlFor={`${popoverId}-message`}>
-            Mensaje
+            {t("message")}
           </label>
           <textarea
             ref={textareaRef}
@@ -134,27 +134,27 @@ export default function WhatsAppContact({ phone }: WhatsAppContactProps) {
             {messageUrl ? (
               <a className="whatsapp-contact-action whatsapp-contact-action-primary" href={messageUrl} target="_blank" rel="noreferrer" onClick={close}>
                 <MessageCircle size={16} aria-hidden="true" />
-                Abrir con mensaje
+                {t("openWithMessage")}
               </a>
             ) : (
               <button className="whatsapp-contact-action whatsapp-contact-action-primary" type="button" disabled>
                 <MessageCircle size={16} aria-hidden="true" />
-                Abrir con mensaje
+                {t("openWithMessage")}
               </button>
             )}
             {directUrl ? (
               <a className="whatsapp-contact-action whatsapp-contact-action-secondary" href={directUrl} target="_blank" rel="noreferrer" onClick={close}>
                 <ExternalLink size={15} aria-hidden="true" />
-                WhatsApp directo
+                {t("direct")}
               </a>
             ) : (
               <button className="whatsapp-contact-action whatsapp-contact-action-secondary" type="button" disabled>
                 <ExternalLink size={15} aria-hidden="true" />
-                WhatsApp directo
+                {t("direct")}
               </button>
             )}
           </div>
-          {!number && <p className="whatsapp-contact-hint" role="status">El número no tiene un formato internacional válido.</p>}
+          {!number && <p className="whatsapp-contact-hint" role="status">{t("invalidNumber")}</p>}
         </div>,
         document.body,
       )}

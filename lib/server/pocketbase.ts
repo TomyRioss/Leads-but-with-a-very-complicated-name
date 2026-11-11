@@ -9,7 +9,7 @@ function bridgeHeaders(): Record<string, string> {
 }
 
 export class PocketBaseRequestError extends Error {
-  constructor(message: string, readonly status: number) {
+  constructor(message: string, readonly status: number, readonly detail = "") {
     super(message);
     this.name = "PocketBaseRequestError";
   }
@@ -20,7 +20,7 @@ export function isPocketBaseConfigured() {
 }
 
 export async function pocketBasePublicFetch<T>(path: string, init: RequestInit = {}) {
-  if (!pocketBaseUrl) throw new Error("Falta configurar POCKETBASE_URL.");
+  if (!pocketBaseUrl) throw new Error("POCKETBASE_URL is not configured.");
 
   const response = await fetch(`${pocketBaseUrl}${path}`, {
     ...init,
@@ -28,27 +28,53 @@ export async function pocketBasePublicFetch<T>(path: string, init: RequestInit =
     cache: "no-store",
   });
   if (!response.ok) {
-    throw new PocketBaseRequestError("PocketBase rechazó la solicitud.", response.status);
+    throw new PocketBaseRequestError("PocketBase rejected the request.", response.status);
   }
   return (await response.json()) as T;
 }
 
+export type PocketBaseAuthFailure = "missing_env" | "login_failed" | "unreachable";
+
+/** Fallo al obtener el token de superuser; `reason` distingue falta de env, login rechazado y PocketBase caído. */
+export class PocketBaseAuthError extends Error {
+  constructor(message: string, readonly reason: PocketBaseAuthFailure) {
+    super(message);
+    this.name = "PocketBaseAuthError";
+  }
+}
+
 async function authenticate() {
-  if (!pocketBaseUrl || !superuserEmail || !superuserPassword) {
-    throw new Error("Falta configurar la conexión con PocketBase.");
+  const missing = [
+    !pocketBaseUrl && "POCKETBASE_URL",
+    !superuserEmail && "POCKETBASE_SUPERUSER_EMAIL",
+    !superuserPassword && "POCKETBASE_SUPERUSER_PASSWORD",
+    bridgeRequired && !bridgeSecret && "POCKETBASE_BRIDGE_SECRET",
+  ].filter(Boolean);
+  if (missing.length > 0) {
+    throw new PocketBaseAuthError(`Missing PocketBase environment variables: ${missing.join(", ")}.`, "missing_env");
   }
 
-  const response = await fetch(
-    `${pocketBaseUrl}/api/collections/_superusers/auth-with-password`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json", ...bridgeHeaders() },
-      body: JSON.stringify({ identity: superuserEmail, password: superuserPassword }),
-      cache: "no-store",
-    },
-  );
+  let response: Response;
+  try {
+    response = await fetch(
+      `${pocketBaseUrl}/api/collections/_superusers/auth-with-password`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...bridgeHeaders() },
+        body: JSON.stringify({ identity: superuserEmail, password: superuserPassword }),
+        cache: "no-store",
+      },
+    );
+  } catch (error) {
+    throw new PocketBaseAuthError(`Couldn't reach PocketBase: ${error instanceof Error ? error.message : "unknown error"}.`, "unreachable");
+  }
 
-  if (!response.ok) throw new Error("No se pudo autenticar con PocketBase.");
+  if (!response.ok) {
+    throw new PocketBaseAuthError(
+      `The PocketBase superuser login was rejected (${response.status}).`,
+      response.status >= 500 ? "unreachable" : "login_failed",
+    );
+  }
   const payload = (await response.json()) as { token: string };
   return payload.token;
 }
@@ -68,7 +94,7 @@ export async function pocketBaseFetch<T>(path: string, init: RequestInit = {}) {
 
   if (!response.ok) {
     const detail = await response.text();
-    throw new Error(`PocketBase respondió ${response.status}: ${detail.slice(0, 240)}`);
+    throw new PocketBaseRequestError(`PocketBase responded ${response.status}: ${detail.slice(0, 240)}`, response.status, detail);
   }
 
   if (response.status === 204) return null as T;

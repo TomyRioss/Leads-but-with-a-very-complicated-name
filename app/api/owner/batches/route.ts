@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireOwner } from "@/lib/server/owner";
 import { errorResponse, filterString, listRecords, pocketBaseNotReady } from "../_shared";
+import { errorTranslator } from "@/lib/server/locale";
 
 // Values of the lead_batches.status select (pb_migrations/1762471200_create_lead_collections.js).
 const statuses = ["running", "completed", "partial", "failed"];
@@ -29,12 +30,13 @@ function keywordsText(value: unknown) {
 }
 
 export async function GET(request: Request) {
-  const denied = (await requireOwner(request)) ?? pocketBaseNotReady();
+  const t = errorTranslator(request);
+  const denied = (await requireOwner(request)) ?? pocketBaseNotReady(request);
   if (denied) return denied;
 
   const params = new URL(request.url).searchParams;
   const status = params.get("status") ?? "";
-  if (status && !statuses.includes(status)) return errorResponse("El estado no es válido.", 400);
+  if (status && !statuses.includes(status)) return errorResponse(t("ownerStatusInvalid"), 400);
   const q = (params.get("q") ?? "").trim().slice(0, 100);
   const filters = [status && `status = ${filterString(status)}`, q && `user.email ~ ${filterString(q)}`].filter(Boolean);
 
@@ -68,6 +70,6 @@ export async function GET(request: Request) {
     });
   } catch (error) {
     console.error("Owner batches list failed:", error instanceof Error ? error.name : "unknown");
-    return errorResponse("No se pudieron cargar las búsquedas.", 502);
+    return errorResponse(t("ownerBatchesLoadFailed"), 502);
   }
 }

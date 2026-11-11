@@ -1,9 +1,10 @@
 "use client";
 
-import { useLocale } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 
 export function LanguageSwitcher() {
   const locale = useLocale();
+  const t = useTranslations("LanguageSwitcher");
   const nextLocale = locale === "es" ? "en" : "es";
 
   return (
@@ -18,8 +19,8 @@ export function LanguageSwitcher() {
         url.pathname = nextLocale === "en" ? `/en/${parts.join("/")}`.replace(/\/$/, "") : `/${parts.join("/")}`;
         window.location.assign(url);
       }}
-      aria-label={locale === "es" ? "Switch language to English" : "Switch language to Spanish"}
-      title={locale === "es" ? "English" : "Español"}
+      aria-label={t("label")}
+      title={t("title")}
     >
       <span aria-hidden="true">{locale === "es" ? "🇪🇸" : "🇺🇸"}</span>
       <span>{locale.toUpperCase()}</span>

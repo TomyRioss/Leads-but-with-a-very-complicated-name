@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { requireOwner } from "@/lib/server/owner";
 import { ownerAuditActions } from "@/lib/server/owner-audit";
 import { errorResponse, filterString, isNotFound, listRecords, pocketBaseNotReady } from "../_shared";
+import { errorTranslator } from "@/lib/server/locale";
 
 type AuditRecord = {
   id: string;
@@ -21,12 +22,13 @@ function positiveInt(value: string | null, fallback: number, max: number) {
 }
 
 export async function GET(request: Request) {
-  const denied = (await requireOwner(request)) ?? pocketBaseNotReady();
+  const t = errorTranslator(request);
+  const denied = (await requireOwner(request)) ?? pocketBaseNotReady(request);
   if (denied) return denied;
 
   const params = new URL(request.url).searchParams;
   const action = params.get("action")?.trim() ?? "";
-  if (action && !(ownerAuditActions as readonly string[]).includes(action)) return errorResponse("La acción no es válida.", 400);
+  if (action && !(ownerAuditActions as readonly string[]).includes(action)) return errorResponse(t("ownerAuditAction"), 400);
   const q = (params.get("q") ?? "").trim().slice(0, 100);
 
   const filters: string[] = [];
@@ -57,8 +59,8 @@ export async function GET(request: Request) {
       totalItems: result.totalItems,
     });
   } catch (error) {
-    if (isNotFound(error)) return errorResponse("La auditoría no está inicializada.", 503);
+    if (isNotFound(error)) return errorResponse(t("ownerAuditNotReady"), 503);
     console.error("Owner audit list failed:", error instanceof Error ? error.name : "unknown");
-    return errorResponse("No se pudo cargar la auditoría.", 502);
+    return errorResponse(t("ownerAuditLoadFailed"), 502);
   }
 }

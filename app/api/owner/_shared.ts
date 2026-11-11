@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { errorTranslator } from "@/lib/server/locale";
 import { isPocketBaseConfigured, pocketBaseFetch } from "@/lib/server/pocketbase";
 
 export const activeSubscriptionStatuses = ["authorized", "paused", "pending"] as const;
@@ -42,8 +43,8 @@ export async function readJsonObject(request: Request) {
   }
 }
 
-export function pocketBaseNotReady() {
-  return isPocketBaseConfigured() ? null : errorResponse("La conexión con PocketBase no está lista.", 503);
+export function pocketBaseNotReady(request: Request) {
+  return isPocketBaseConfigured() ? null : errorResponse(errorTranslator(request)("ownerPocketbaseNotReady"), 503);
 }
 
 export function isValidRecordId(id: string) {
@@ -60,7 +61,7 @@ export function pocketBaseDate(date: Date) {
 }
 
 export function isNotFound(error: unknown) {
-  return error instanceof Error && error.message.includes("PocketBase respondió 404");
+  return error instanceof Error && error.message.includes("PocketBase responded 404");
 }
 
 export async function listRecords<T>(collection: string, params: Record<string, string | number>) {
@@ -98,7 +99,7 @@ const staleLockMilliseconds = 15 * 60 * 1000;
 
 export class OwnerCreditsBusyError extends Error {
   constructor() {
-    super("Hay una operación de créditos en curso para este usuario. Reintentá en unos segundos.");
+    super("A credit operation is already in progress for this user.");
     this.name = "OwnerCreditsBusyError";
   }
 }
@@ -115,7 +116,7 @@ async function acquireCreditLock(userId: string) {
       perPage: 1,
       filter: `user = ${filterString(userId)}`,
     }).catch(() => null))?.items[0];
-    if (!existing) throw new Error("No se pudo reservar la operación de créditos.");
+    if (!existing) throw new Error("Couldn't reserve the credit operation.");
     const createdAt = Date.parse(existing.created || "");
     if (!Number.isFinite(createdAt) || Date.now() - createdAt < staleLockMilliseconds) throw new OwnerCreditsBusyError();
     await pocketBaseFetch(`/api/collections/credit_locks/records/${existing.id}`, { method: "DELETE" });

@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useRef, useState, type RefObject } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from "react";
+import { useLocale, useTranslations } from "next-intl";
 import { subscriptionPlans } from "@/lib/plans";
 
 // Tailwind class constants and helpers shared by the owner sections (copied from owner-panel.tsx).
@@ -28,26 +29,6 @@ export const blockClass = "grid gap-2.5 rounded-[10px] border border-(color:--li
 export const iconButton = "inline-grid size-10 cursor-pointer place-items-center rounded-lg border border-(color:--ash-300) bg-(--paper) text-(color:--ink) focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(color:--ash-950)";
 export const confirmBox = "grid gap-2.5 rounded-[10px] border border-(color:--ash-950) bg-(--paper) px-4 py-3.5";
 
-export const statusLabels: Record<string, string> = {
-  authorized: "Activa",
-  paused: "Pausada",
-  pending: "Pendiente",
-  creating: "Creando",
-  cancelled: "Cancelada",
-  canceled: "Cancelada",
-  approved: "Aprobado",
-  processing: "Procesando",
-  processed: "Acreditado",
-  rejected: "Rechazado",
-  failed: "Fallido",
-  refunded: "Reembolsado",
-  running: "En curso",
-  completed: "Completada",
-  partial: "Parcial",
-};
-
-export const statusLabel = (status: string) => statusLabels[status] ?? status;
-
 export const statusPill = (status: string) =>
   `inline-block rounded-full px-[7px] py-0.5 text-[10px] font-bold ${
     ["authorized", "processed", "completed"].includes(status) ? "bg-(--lime) text-(color:--ink)"
@@ -58,79 +39,62 @@ export const statusPill = (status: string) =>
 /** Optional callback sections call after a successful action so the shell can show a visible notice. */
 export type OnAction = (message: string) => void;
 
-export const planName = (id: string) => subscriptionPlans.find((plan) => plan.id === id)?.name ?? id;
+/** Audit action ids, in the order shown by the audit filter. Message keys replace "." with "_". */
+export const auditActions = ["user.credits_set", "user.credits_add", "user.update", "user.delete", "subscription.assign", "subscription.status", "subscription.plan", "batch.delete"];
 
-export const actionLabels: Record<string, string> = {
-  "user.credits_set": "Créditos fijados",
-  "user.credits_add": "Créditos sumados/restados",
-  "user.update": "Usuario editado",
-  "user.delete": "Usuario eliminado",
-  "subscription.assign": "Plan asignado",
-  "subscription.status": "Estado de suscripción",
-  "subscription.plan": "Plan cambiado",
-  "batch.delete": "Búsqueda eliminada",
-};
-export const actionLabel = (action: string) => actionLabels[action] ?? action;
+/** Sentinel returned by ownerFetch when the request never reached the server; callers show a localized message. */
+const NETWORK_ERROR = "__network__";
 
-const detailLabels: Record<string, string> = {
-  name: "Nombre",
-  email: "Email",
-  creditsBefore: "Créditos antes",
-  creditsAfter: "Créditos después",
-  delta: "Variación",
-  status: "Estado",
-  planId: "Plan",
-  priceArs: "Precio",
-  monthlyCredits: "Créditos mensuales",
-  mercadoPago: "En Mercado Pago",
-  mercadoPagoCancelled: "Canceladas en Mercado Pago",
-  grantCredits: "Créditos del plan acreditados",
-  userId: "ID de usuario",
-  ownerEmail: "Usuario",
-  ownerId: "ID de usuario",
-  keywords: "Rubro",
-  zone: "Zona",
-  deletedLeads: "Leads eliminados",
-  batches: "Búsquedas eliminadas",
-  leads: "Leads eliminados",
-  subscriptions: "Suscripciones eliminadas",
-};
+/** Locale-aware formatters and labels shared by the owner sections. */
+export function useOwnerFormat() {
+  const t = useTranslations("Owner");
+  const locale = useLocale();
+  return useMemo(() => {
+    const tag = locale === "en" ? "en-US" : "es-AR";
+    const numberFormat = new Intl.NumberFormat(tag, { maximumFractionDigits: 1 });
+    const arsFormat = new Intl.NumberFormat(tag, { style: "currency", currency: "ARS", maximumFractionDigits: 0 });
+    const dateFormat = new Intl.DateTimeFormat(tag, { day: "2-digit", month: "short", year: "numeric" });
+    const dateTimeFormat = new Intl.DateTimeFormat(tag, { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
+    const parse = (value: string) => {
+      if (!value) return null;
+      const parsed = new Date(value.replace(" ", "T"));
+      return Number.isNaN(parsed.getTime()) ? null : parsed;
+    };
 
-function detailValue(key: string, value: unknown): string {
-  if (value === null || value === undefined || value === "") return "—";
-  if (typeof value === "boolean") return value ? "Sí" : "No";
-  if (typeof value === "number") return key === "priceArs" ? formatArs(value) : formatNumber(value);
-  if (Array.isArray(value)) return value.map((item) => String(item)).join(", ") || "—";
-  if (typeof value === "string") return key === "planId" ? planName(value) : key === "status" ? statusLabel(value) : value;
-  return JSON.stringify(value);
+    const formatNumber = (value: number) => numberFormat.format(value || 0);
+    const formatArs = (value: number) => arsFormat.format(Math.round(value || 0));
+    const formatDate = (value: string) => { const parsed = parse(value); return parsed ? dateFormat.format(parsed) : "—"; };
+    const formatDateTime = (value: string) => { const parsed = parse(value); return parsed ? dateTimeFormat.format(parsed) : "—"; };
+    const statusLabel = (status: string) => (t.has(`status.${status}`) ? t(`status.${status}`) : status);
+    const planName = (id: string) => (t.has(`plans.${id}`) ? t(`plans.${id}`) : (subscriptionPlans.find((plan) => plan.id === id)?.name ?? id));
+    const actionLabel = (action: string) => { const key = `actions.${action.replace(".", "_")}`; return t.has(key) ? t(key) : action; };
+    const errorText = (error: string | undefined, fallback: string) => (error === NETWORK_ERROR ? t("common.networkError") : error || fallback);
+
+    const detailValue = (key: string, value: unknown): string => {
+      if (value === null || value === undefined || value === "") return "—";
+      if (typeof value === "boolean") return value ? t("common.yes") : t("common.no");
+      if (typeof value === "number") return key === "priceArs" ? formatArs(value) : formatNumber(value);
+      if (Array.isArray(value)) return value.map((item) => String(item)).join(", ") || "—";
+      if (typeof value === "string") return key === "planId" ? planName(value) : key === "status" ? statusLabel(value) : value;
+      return JSON.stringify(value);
+    };
+
+    /** Turns an audit `details` object into readable [label, text] rows (before → after when both exist). */
+    const describeDetails = (details: unknown): [string, string][] => {
+      if (!details || typeof details !== "object" || Array.isArray(details)) return [];
+      return Object.entries(details as Record<string, unknown>).map(([key, value]) => {
+        const label = t.has(`detail.${key}`) ? t(`detail.${key}`) : key;
+        if (value && typeof value === "object" && !Array.isArray(value) && "before" in value && "after" in value) {
+          const change = value as { before: unknown; after: unknown };
+          return [label, `${detailValue(key, change.before)} → ${detailValue(key, change.after)}`];
+        }
+        return [label, detailValue(key, value)];
+      });
+    };
+
+    return { formatNumber, formatArs, formatDate, formatDateTime, statusLabel, planName, actionLabel, errorText, describeDetails };
+  }, [t, locale]);
 }
-
-/** Turns an audit `details` object into readable [label, text] rows (before → after when both exist). */
-export function describeDetails(details: unknown): [string, string][] {
-  if (!details || typeof details !== "object" || Array.isArray(details)) return [];
-  return Object.entries(details as Record<string, unknown>).map(([key, value]) => {
-    const label = detailLabels[key] ?? key;
-    if (value && typeof value === "object" && !Array.isArray(value) && "before" in value && "after" in value) {
-      const change = value as { before: unknown; after: unknown };
-      return [label, `${detailValue(key, change.before)} → ${detailValue(key, change.after)}`];
-    }
-    return [label, detailValue(key, value)];
-  });
-}
-
-export const formatDateTime = (value: string) => {
-  if (!value) return "—";
-  const parsed = new Date(value.replace(" ", "T"));
-  return Number.isNaN(parsed.getTime()) ? "—" : parsed.toLocaleString("es-AR", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
-};
-
-export const formatArs = (value: number) => `$${Math.round(value || 0).toLocaleString("es-AR")}`;
-export const formatNumber = (value: number) => (value || 0).toLocaleString("es-AR", { maximumFractionDigits: 1 });
-export const formatDate = (value: string) => {
-  if (!value) return "—";
-  const parsed = new Date(value.replace(" ", "T"));
-  return Number.isNaN(parsed.getTime()) ? "—" : parsed.toLocaleDateString("es-AR", { day: "2-digit", month: "short", year: "numeric" });
-};
 
 export type OwnerResult<T> = { ok: boolean; status: number; data: T & { error?: string } };
 
@@ -147,7 +111,7 @@ export async function ownerFetch<T>(path: string, init?: { method?: string; body
     const data = await response.json().catch(() => ({}));
     return { ok: response.ok, status: response.status, data };
   } catch {
-    return { ok: false, status: 0, data: { error: "No se pudo conectar. Revisá tu conexión." } as OwnerResult<T>["data"] };
+    return { ok: false, status: 0, data: { error: NETWORK_ERROR } as OwnerResult<T>["data"] };
   }
 }
 
@@ -155,6 +119,7 @@ export type ListPage<T> = { items: T[]; page: number; totalPages: number; totalI
 
 /** Paginated list with debounced search, status filter and protection against stale responses. */
 export function useOwnerList<T>(endpoint: string, errorMessage: string, onUnauthorized: () => void, filterKey = "status") {
+  const { errorText } = useOwnerFormat();
   const [query, setQueryState] = useState("");
   const [search, setSearch] = useState("");
   const [status, setStatusState] = useState("");
@@ -176,8 +141,8 @@ export function useOwnerList<T>(endpoint: string, errorMessage: string, onUnauth
     setLoading(false);
     if (isUnauthorized(result.status)) return unauthorizedRef.current();
     if (result.ok) { setData(result.data); setError(""); }
-    else setError(result.data.error || errorMessage);
-  }, [endpoint, errorMessage, filterKey, page, search, status]);
+    else setError(errorText(result.data.error, errorMessage));
+  }, [endpoint, errorMessage, errorText, filterKey, page, search, status]);
 
   // eslint-disable-next-line react-hooks/set-state-in-effect -- refetch on page/search/status change
   useEffect(() => { void load(); }, [load]);

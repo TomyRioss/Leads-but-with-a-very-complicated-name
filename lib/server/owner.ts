@@ -1,18 +1,20 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/server/auth";
+import { errorTranslator } from "@/lib/server/locale";
 
 export type OwnerIdentity = { id: string; email: string };
 
 /** Resolves the owner behind the request, or the 401/403/503 response to return. */
 export async function getOwnerSession(request: Request): Promise<{ owner: OwnerIdentity } | { response: NextResponse }> {
+  const t = errorTranslator(request);
   let session;
   try {
     session = await getCurrentUser(request);
   } catch {
-    return { response: NextResponse.json({ error: "No se pudo conectar con el servicio de cuentas." }, { status: 503 }) };
+    return { response: NextResponse.json({ error: t("accountService") }, { status: 503 }) };
   }
-  if (!session) return { response: NextResponse.json({ error: "Iniciá sesión para continuar." }, { status: 401 }) };
-  if (session.user.role !== "owner") return { response: NextResponse.json({ error: "Acceso restringido al owner." }, { status: 403 }) };
+  if (!session) return { response: NextResponse.json({ error: t("signInToContinue") }, { status: 401 }) };
+  if (session.user.role !== "owner") return { response: NextResponse.json({ error: t("ownerOnly") }, { status: 403 }) };
   return { owner: { id: session.user.id, email: session.user.email } };
 }
 

@@ -1,11 +1,13 @@
 import { NextResponse } from "next/server";
 import { requireOwner } from "@/lib/server/owner";
 import { listAllRecords, listRecords, normalizeCredits, pocketBaseDate, pocketBaseNotReady } from "../_shared";
+import { errorTranslator } from "@/lib/server/locale";
 
 const day = 24 * 60 * 60 * 1000;
 
 export async function GET(request: Request) {
-  const denied = (await requireOwner(request)) ?? pocketBaseNotReady();
+  const t = errorTranslator(request);
+  const denied = (await requireOwner(request)) ?? pocketBaseNotReady(request);
   if (denied) return denied;
 
   const since = `"${pocketBaseDate(new Date(Date.now() - 30 * day))}"`;
@@ -55,6 +57,6 @@ export async function GET(request: Request) {
     });
   } catch (error) {
     console.error("Owner overview failed:", error instanceof Error ? error.name : "unknown");
-    return NextResponse.json({ error: "No se pudieron calcular las métricas." }, { status: 502 });
+    return NextResponse.json({ error: t("ownerMetricsFailed") }, { status: 502 });
   }
 }

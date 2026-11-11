@@ -19,23 +19,25 @@ import {
   updateUserCredits,
   type SubscriptionRecord,
 } from "../../../_shared";
+import { errorTranslator } from "@/lib/server/locale";
 
 const manualPlanIds = ["initial", "pro", "agency"];
 
 export async function POST(request: Request, context: { params: Promise<{ id: string }> }) {
+  const t = errorTranslator(request);
   const session = await getOwnerSession(request);
   if ("response" in session) return session.response;
-  const denied = pocketBaseNotReady();
+  const denied = pocketBaseNotReady(request);
   if (denied) return denied;
   const { id } = await context.params;
-  if (!isValidRecordId(id)) return errorResponse("No encontramos ese usuario.", 404);
+  if (!isValidRecordId(id)) return errorResponse(t("ownerUserNotFound"), 404);
 
   const body = await readJsonObject(request);
-  if (!body) return errorResponse("El plan no es válido.", 400);
+  if (!body) return errorResponse(t("ownerPlanNotValid"), 400);
   const plan = typeof body.planId === "string" && manualPlanIds.includes(body.planId) ? getSubscriptionPlan(body.planId) : undefined;
-  if (!plan) return errorResponse("El plan debe ser initial, pro o agency.", 400);
+  if (!plan) return errorResponse(t("ownerPlanInvalid"), 400);
   if (body.grantCredits !== undefined && typeof body.grantCredits !== "boolean") {
-    return errorResponse("grantCredits debe ser verdadero o falso.", 400);
+    return errorResponse(t("ownerGrantCreditsBoolean"), 400);
   }
 
   const statuses = activeSubscriptionStatuses.map((status) => `status = "${status}"`).join(" || ");
@@ -47,10 +49,10 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
 
   try {
     const user = await findUserSummary(id);
-    if (!user) return errorResponse("No encontramos ese usuario.", 404);
+    if (!user) return errorResponse(t("ownerUserNotFound"), 404);
 
     const existing = await listRecords("subscriptions", { perPage: 1, filter: openSubscriptions, fields: "id" });
-    if (existing.items.length > 0) return errorResponse("El usuario ya tiene una suscripción activa, pausada o pendiente.", 409);
+    if (existing.items.length > 0) return errorResponse(t("ownerSubscriptionExists"), 409);
 
     const subscription = await pocketBaseFetch<SubscriptionRecord>("/api/collections/subscriptions/records", {
       method: "POST",
@@ -68,7 +70,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     const winner = await listRecords<{ id: string }>("subscriptions", { perPage: 1, sort: "created,id", filter: openSubscriptions, fields: "id" });
     if (winner.items[0] && winner.items[0].id !== subscription.id) {
       await deleteSubscription(subscription.id);
-      return errorResponse("El usuario ya tiene una suscripción activa, pausada o pendiente.", 409);
+      return errorResponse(t("ownerSubscriptionExists"), 409);
     }
 
     let credits: number | undefined;
@@ -83,7 +85,7 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
         await deleteSubscription(subscription.id);
         const busy = error instanceof OwnerCreditsBusyError;
         return errorResponse(
-          busy ? error.message : "No se pudieron sumar los créditos; la suscripción no se creó.",
+          busy ? t("ownerCreditsBusy") : t("ownerCreditsAddFailed"),
           busy ? 409 : 502,
         );
       }
@@ -108,8 +110,8 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
       { status: 201 },
     );
   } catch (error) {
-    if (isNotFound(error)) return errorResponse("No encontramos ese usuario.", 404);
+    if (isNotFound(error)) return errorResponse(t("ownerUserNotFound"), 404);
     console.error("Owner manual subscription failed:", error instanceof Error ? error.name : "unknown");
-    return errorResponse("No se pudo crear la suscripción.", 502);
+    return errorResponse(t("ownerSubscriptionCreateFailed"), 502);
   }
 }

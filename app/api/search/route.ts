@@ -4,6 +4,7 @@ import { getCurrentUser, withRefreshedSession } from "@/lib/server/auth";
 import { createLeadRecords, isPocketBaseConfigured, pocketBaseFetch } from "@/lib/server/pocketbase";
 import { CREDITS_PER_LEAD, CreditOperationBusyError, InsufficientCreditsError, reserveLeadCredits } from "@/lib/server/credits";
 import { uiError } from "@/lib/server/public-error";
+import { errorTranslator, resolveLocale } from "@/lib/server/locale";
 
 export const maxDuration = 300;
 
@@ -179,29 +180,30 @@ async function actorSearch(
 
   if (!response.ok) {
     const detail = await response.text();
-    throw new Error(`Apify respondió ${response.status}: ${detail.slice(0, 260)}`);
+    throw new Error(`Apify responded ${response.status}: ${detail.slice(0, 260)}`);
   }
 
   const results: unknown = await response.json();
-  if (!Array.isArray(results)) throw new Error("Apify devolvió un formato de resultados inesperado.");
+  if (!Array.isArray(results)) throw new Error("Apify returned an unexpected results format.");
   return results as ActorPlace[];
 }
 
 export async function POST(request: Request) {
+  const t = errorTranslator(request);
   let session: Awaited<ReturnType<typeof getCurrentUser>>;
   try {
     session = await getCurrentUser(request);
   } catch {
-    return NextResponse.json({ error: "No se pudo conectar con el servicio de cuentas." }, { status: 503 });
+    return NextResponse.json({ error: t("accountService") }, { status: 503 });
   }
-  if (!session) return NextResponse.json({ error: "Iniciá sesión antes de buscar leads." }, { status: 401 });
+  if (!session) return NextResponse.json({ error: t("signInToSearch") }, { status: 401 });
 
   const token = process.env.APIFY_TOKEN;
   if (!token) {
-    return NextResponse.json({ error: uiError("Falta APIFY_TOKEN en la configuración del servidor.") }, { status: 503 });
+    return NextResponse.json({ error: uiError(t("apifyTokenMissing"), t("generic")) }, { status: 503 });
   }
   if (!isPocketBaseConfigured()) {
-    return NextResponse.json({ error: uiError("Falta configurar PocketBase en el servidor.") }, { status: 503 });
+    return NextResponse.json({ error: uiError(t("pocketbaseNotConfiguredServer"), t("generic")) }, { status: 503 });
   }
 
   let body: {
@@ -216,7 +218,7 @@ export async function POST(request: Request) {
   try {
     body = await request.json();
   } catch {
-    return NextResponse.json({ error: "La solicitud no contiene datos válidos." }, { status: 400 });
+    return NextResponse.json({ error: t("invalidRequestBody") }, { status: 400 });
   }
 
   const keywords = Array.isArray(body.keywords)
@@ -252,21 +254,22 @@ export async function POST(request: Request) {
   };
 
   if (keywords.length === 0 || keywords.length > 10 || keywords.some((keyword) => keyword.length > 120)) {
-    return NextResponse.json({ error: "Ingresá entre 1 y 10 keywords, con un máximo de 120 caracteres cada una." }, { status: 400 });
+    return NextResponse.json({ error: t("searchKeywords") }, { status: 400 });
   }
   if (!country || country.length > 100 || province.length > 100 || district.length > 100) {
-    return NextResponse.json({ error: "El país es obligatorio. Cada zona admite hasta 100 caracteres." }, { status: 400 });
+    return NextResponse.json({ error: t("searchCountryRequired") }, { status: 400 });
   }
-  if (!allowedCounts.has(count) && !(isDevelopmentEnvironment && (count === 1 || count === 2))) {
-    const allowed = isDevelopmentEnvironment ? "1, 2, 5, 10, 25, 50, 75, 100, 125 o 150" : "5, 10, 25, 50, 75, 100, 125 o 150";
-    return NextResponse.json({ error: `El lote debe ser de ${allowed} leads.` }, { status: 400 });
+  if (!allowedCounts.has(count) && !(count === 1 || (isDevelopmentEnvironment && count === 2))) {
+    const sizes = [...(isDevelopmentEnvironment ? [1, 2] : []), ...allowedCounts].map(String);
+    const allowed = new Intl.ListFormat(resolveLocale(request), { type: "disjunction" }).format(sizes);
+    return NextResponse.json({ error: t("searchBatchSize", { allowed }) }, { status: 400 });
   }
   if (!minReviews.valid || !maxReviews.valid || !minRating.valid ||
       (minReviews.value !== undefined && !Number.isInteger(minReviews.value)) ||
       (maxReviews.value !== undefined && !Number.isInteger(maxReviews.value)) ||
       !filterChoice(rawFilters.website) || !filterChoice(rawFilters.phone) || !filterChoice(rawFilters.email) ||
       (minReviews.value !== undefined && maxReviews.value !== undefined && minReviews.value > maxReviews.value)) {
-    return NextResponse.json({ error: "Revisá los filtros: las reseñas deben ser válidas y el mínimo no puede superar el máximo." }, { status: 400 });
+    return NextResponse.json({ error: t("searchFilters") }, { status: 400 });
   }
 
   const location = [district, province, country].filter(Boolean).join(", ");
@@ -278,6 +281,14 @@ export async function POST(request: Request) {
   let creditReservation: Awaited<ReturnType<typeof reserveLeadCredits>> | null = null;
 
   try {
+    // El lote de 1 lead es solo para la primera búsqueda guiada: cada corrida tiene costo fijo de Apify.
+    if (count === 1 && !isDevelopmentEnvironment) {
+      const own = encodeURIComponent(`user = "${session.user.id}"`);
+      const previous = await pocketBaseFetch<{ items: unknown[] }>(`/api/collections/lead_batches/records?page=1&perPage=1&skipTotal=1&filter=${own}`);
+      if (previous.items.length > 0) {
+        return NextResponse.json({ error: t("searchFirstOnly") }, { status: 400 });
+      }
+    }
     creditReservation = await reserveLeadCredits(session.user.id, count);
     const batch = await pocketBaseFetch<{ id: string }>("/api/collections/lead_batches/records", {
       method: "POST",
@@ -312,7 +323,7 @@ export async function POST(request: Request) {
           if (leads.size >= count) break;
         }
       } catch (error) {
-        actorError = uiError(error instanceof Error ? error.message : "Falló una búsqueda de Apify.");
+        actorError = uiError(error instanceof Error ? error.message : t("searchApifyFailed"), t("generic"));
         break;
       }
     }
@@ -340,9 +351,9 @@ export async function POST(request: Request) {
     try {
       const persistence = await createLeadRecords(batch.id, records);
       persistedCount = persistence.created;
-      if (persistence.failed > 0) persistenceError = uiError("No se pudieron guardar todos los leads en PocketBase.", "No se pudieron guardar todos los leads.");
+      if (persistence.failed > 0) persistenceError = uiError(t("searchSaveSomeFailedDetail"), t("searchSaveSomeFailed"));
     } catch {
-      persistenceError = uiError("No se pudieron guardar los leads en PocketBase.", "No se pudieron guardar los leads.");
+      persistenceError = uiError(t("searchSaveFailedDetail"), t("searchSaveFailed"));
     }
 
     const shortfall = leads.size < count;
@@ -390,13 +401,13 @@ export async function POST(request: Request) {
       }
     }
     if (error instanceof InsufficientCreditsError) {
-      return NextResponse.json({ error: error.message, credits: error.available }, { status: 402 });
+      return NextResponse.json({ error: t("insufficientCredits", { required: error.required, available: error.available }), credits: error.available }, { status: 402 });
     }
     if (error instanceof CreditOperationBusyError) {
-      return NextResponse.json({ error: error.message }, { status: 409 });
+      return NextResponse.json({ error: t("creditBusy") }, { status: 409 });
     }
     console.error("Search failed:", error instanceof Error ? error.message : "unknown");
-    const message = uiError(error instanceof Error ? error.message : "No se pudo completar la búsqueda.", "No se pudo completar la búsqueda. Intentá de nuevo en unos minutos.");
+    const message = uiError(error instanceof Error ? error.message : t("searchFailedDetail"), t("searchFailed"));
     return NextResponse.json({ error: message, credits }, { status: 502 });
   } finally {
     if (creditReservation) await creditReservation.release().catch(() => undefined);

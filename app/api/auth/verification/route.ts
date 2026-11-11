@@ -1,19 +1,22 @@
 import { NextResponse } from "next/server";
+import { errorTranslator, localeFrom } from "@/lib/server/locale";
 import { findEmailUser, sendVerificationEmail, updateEmailUser } from "@/lib/server/email";
 import { PocketBaseRequestError } from "@/lib/server/pocketbase";
 
 export async function POST(request: Request) {
+  let t = errorTranslator(request);
   let body: { email?: unknown; locale?: unknown };
   try {
     body = await request.json();
   } catch {
-    return NextResponse.json({ error: "Ingresá un email válido." }, { status: 400 });
+    return NextResponse.json({ error: t("invalidEmail") }, { status: 400 });
   }
 
   const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
-  const locale = body.locale === "en" ? "en" : "es";
+  const locale = localeFrom(request, body.locale);
+  t = errorTranslator(request, body.locale);
   if (!/^\S+@\S+\.\S+$/.test(email) || email.length > 254) {
-    return NextResponse.json({ error: "Ingresá un email válido." }, { status: 400 });
+    return NextResponse.json({ error: t("invalidEmail") }, { status: 400 });
   }
 
   try {

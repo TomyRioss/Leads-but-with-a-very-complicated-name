@@ -4,34 +4,36 @@ import { getOwnerSession } from "@/lib/server/owner";
 import { recordOwnerAction } from "@/lib/server/owner-audit";
 import { pocketBaseFetch } from "@/lib/server/pocketbase";
 import { errorResponse, findUserSummary, isNotFound, isValidRecordId, pocketBaseNotReady, readJsonObject, type SubscriptionRecord } from "../../_shared";
+import { errorTranslator } from "@/lib/server/locale";
 
 const allowedStatuses = ["authorized", "paused", "cancelled"] as const;
 const manualPlanIds = ["initial", "pro", "agency"];
 
 export async function PATCH(request: Request, context: { params: Promise<{ id: string }> }) {
+  const t = errorTranslator(request);
   const session = await getOwnerSession(request);
   if ("response" in session) return session.response;
-  const denied = pocketBaseNotReady();
+  const denied = pocketBaseNotReady(request);
   if (denied) return denied;
   const { id } = await context.params;
-  if (!isValidRecordId(id)) return errorResponse("No encontramos esa suscripción.", 404);
+  if (!isValidRecordId(id)) return errorResponse(t("ownerSubscriptionNotFound"), 404);
 
   const body = await readJsonObject(request);
-  if (!body) return errorResponse("Los datos no son válidos.", 400);
+  if (!body) return errorResponse(t("ownerInvalidData"), 400);
   const requestedStatus = body.status === undefined ? undefined : allowedStatuses.find((status) => status === body.status);
-  if (body.status !== undefined && !requestedStatus) return errorResponse("El estado debe ser authorized, paused o cancelled.", 400);
+  if (body.status !== undefined && !requestedStatus) return errorResponse(t("ownerSubscriptionStatus"), 400);
   const requestedPlan = body.planId === undefined
     ? undefined
     : typeof body.planId === "string" && manualPlanIds.includes(body.planId) ? getSubscriptionPlan(body.planId) : null;
-  if (requestedPlan === null) return errorResponse("El plan debe ser initial, pro o agency.", 400);
-  if (!requestedStatus && !requestedPlan) return errorResponse("Enviá status o planId.", 400);
+  if (requestedPlan === null) return errorResponse(t("ownerPlanInvalid"), 400);
+  if (!requestedStatus && !requestedPlan) return errorResponse(t("ownerSendStatusOrPlan"), 400);
 
   let subscription: SubscriptionRecord;
   try {
     subscription = await pocketBaseFetch<SubscriptionRecord>(`/api/collections/subscriptions/records/${id}`);
   } catch (error) {
-    if (isNotFound(error)) return errorResponse("No encontramos esa suscripción.", 404);
-    return errorResponse("No se pudo cargar la suscripción.", 502);
+    if (isNotFound(error)) return errorResponse(t("ownerSubscriptionNotFound"), 404);
+    return errorResponse(t("ownerSubscriptionLoadFailed"), 502);
   }
 
   // Cancelled subscriptions are stored with the "canceled" spelling.
@@ -47,7 +49,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
     await save();
   } catch (error) {
     console.error("Owner subscription save failed:", error instanceof Error ? error.name : "unknown");
-    return errorResponse("No se pudo guardar la suscripción.", 502);
+    return errorResponse(t("ownerSubscriptionSaveFailed"), 502);
   }
 
   const owner = await findUserSummary(subscription.user).catch(() => null);
