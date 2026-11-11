@@ -3,7 +3,7 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { FormEvent, KeyboardEvent as ReactKeyboardEvent, MouseEvent } from "react";
 import { useLocale, useTranslations } from "next-intl";
-import { Bug, ChevronDown, CircleAlert, CircleCheck, ExternalLink, History, LoaderCircle, LogOut, Stars, X } from "lucide-react";
+import { Bug, ChevronDown, CircleAlert, CircleCheck, ExternalLink, Headset, History, LoaderCircle, LogOut, Stars, X } from "lucide-react";
 import type { AnalysisDetail, Lead, LeadBatch, LeadColumnKey, LeadColumnLabeler } from "@/lib/types";
 import { getLeadColumnValue, getLeadColumns } from "@/lib/types";
 import { AuthForm } from "@/app/auth-form";
@@ -564,6 +564,10 @@ export default function Home() {
                   <History className="menu-icon" size={18} strokeWidth={1.8} aria-hidden="true" />
                   <span>{t("t_302027905c")}</span>
                 </Link>
+                <a href={`https://wa.me/5491134083140?text=${encodeURIComponent(s("salesSupportMessage"))}`} role="menuitem" target="_blank" rel="noopener noreferrer" onClick={() => setProfileMenuOpen(false)}>
+                  <Headset className="menu-icon" size={18} strokeWidth={1.8} aria-hidden="true" />
+                  <span>{s("salesSupport")}</span>
+                </a>
                 <div className="profile-menu-divider" />
                 <button type="button" className="signout-menu-item" role="menuitem" onClick={() => void signOut()}>
                   <LogOut className="menu-icon signout-icon" size={18} strokeWidth={1.8} aria-hidden="true" />

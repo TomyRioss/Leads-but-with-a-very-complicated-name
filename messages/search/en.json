@@ -4,6 +4,8 @@
     "creditsAria": "{credits, plural, one {# credit available} other {# credits available}}. View plans",
     "creditsTitle": "View plans and add credits",
     "accountMenu": "Account menu",
+    "salesSupport": "Sales support",
+    "salesSupportMessage": "Hi, I need sales help with Leadta.",
     "keywordsPlaceholder": "E.g.: accounting firms\nreal estate agencies",
     "keywordCount": "{count, plural, one {# keyword} other {# keywords}}",
     "countryAria": "Country (required)",
