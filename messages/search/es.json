@@ -92,6 +92,7 @@
     "reviewRating": "Calificación: {rating}/5",
     "reviewDate": "Fecha: {date}",
     "ownerResponse": "Respuesta del negocio",
+    "showFullData": "Mostrar datos completos",
     "noReview": "Sin reseña",
     "connectingHistory": "Conectando con tu historial",
     "noLeadsYet": "Todavía no hay leads",

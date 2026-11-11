@@ -38,6 +38,9 @@ const socialNetworkOptions: { id: SocialNetwork; label: string }[] = [
   { id: "linkedin", label: "LinkedIn" },
 ];
 type TableColumn = { key: LeadColumnKey | "whatsapp"; label: string };
+
+// Columnas de detalle de reseñas: ocultas en la tabla salvo con "Mostrar datos completos". El CSV las conserva siempre.
+const isReviewDetailColumn = (key: string) => key === "average_rating" || /^(review|rating)_[1-5]$/.test(key);
 type FilterChoice = "any" | "with" | "without";
 type GeographyOption = { code: string; name: string };
 type SearchFilters = {
@@ -146,6 +149,7 @@ export default function Home() {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [activeBatch, setActiveBatch] = useState<LeadBatch | null>(null);
   const [busy, setBusy] = useState(false);
+  const [showFullData, setShowFullData] = useState(false);
   const [notice, setNotice] = useState("");
   const [problem, setProblem] = useState("");
   const [historyLoading, setHistoryLoading] = useState(true);
@@ -241,7 +245,9 @@ export default function Home() {
     analysisBusy === "enrichment" ? selectedSocialNetworks : [],
     isDevelopmentEnvironment,
     columnLabel,
-  ).flatMap((column) => column.key === "phone" ? [column, { key: "whatsapp", label: s("columns.whatsapp") }] : [column]), [
+  ).flatMap<TableColumn>((column) => column.key === "phone" ? [column, { key: "whatsapp", label: s("columns.whatsapp") }] : [column])
+    .filter((column) => showFullData || !isReviewDetailColumn(column.key)), [
+    showFullData,
     leads,
     analysisBusy,
     selectedSocialNetworks,
@@ -757,8 +763,15 @@ export default function Home() {
               </div>
               {activeBatch && <p className="active-location">{placeLabel(activeBatch)} <span>·</span> {activeBatch.keywords.join(", ")}</p>}
             </div>
-            <button className="export-button" type="button" onClick={() => downloadCsv(leads, activeBatch, isDevelopmentEnvironment, columnLabel, s("ownerResponse"))} disabled={leads.length === 0}>
-              {t("t_8b9c2038c4")} </button>
+            <div className="results-actions">
+              <label className="full-data-toggle">
+                <input type="checkbox" role="switch" checked={showFullData} onChange={(event) => setShowFullData(event.target.checked)} />
+                <span className="full-data-track" aria-hidden="true" />
+                <span>{s("showFullData")}</span>
+              </label>
+              <button className="export-button" type="button" onClick={() => downloadCsv(leads, activeBatch, isDevelopmentEnvironment, columnLabel, s("ownerResponse"))} disabled={leads.length === 0}>
+                {t("t_8b9c2038c4")} </button>
+            </div>
           </div>
 
           {activeTableAction && (

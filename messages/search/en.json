@@ -92,6 +92,7 @@
     "reviewRating": "Rating: {rating}/5",
     "reviewDate": "Date: {date}",
     "ownerResponse": "Business response",
+    "showFullData": "Show full data",
     "noReview": "No review",
     "connectingHistory": "Connecting to your history",
     "noLeadsYet": "No leads yet",
