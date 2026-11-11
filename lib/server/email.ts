@@ -3,7 +3,8 @@ import { renderVerificationEmail, renderWelcomeEmail } from "@/lib/server/email-
 import type { Locale } from "@/lib/server/locale";
 import { pocketBaseFetch } from "@/lib/server/pocketbase";
 
-const sender = "Tomas Rios <tomas@leadta.app>";
+const verificationSender = "Leadta <noreply@leadta.app>";
+const welcomeSender = "Tomas Rios <tomas@leadta.app>";
 const verificationLifetimeSeconds = 60 * 60 * 24;
 const resendUrl = "https://api.resend.com/emails";
 
@@ -66,7 +67,7 @@ export function readEmailVerificationToken(token: string): { id: string; email: 
   }
 }
 
-async function sendEmail(input: { to: string; subject: string; text: string; html: string; idempotencyKey: string }) {
+async function sendEmail(input: { from: string; to: string; subject: string; text: string; html: string; idempotencyKey: string }) {
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) throw new Error("RESEND_API_KEY is not configured.");
 
@@ -78,7 +79,7 @@ async function sendEmail(input: { to: string; subject: string; text: string; htm
       "Idempotency-Key": input.idempotencyKey,
     },
     body: JSON.stringify({
-      from: sender,
+      from: input.from,
       to: [input.to],
       subject: input.subject,
       text: input.text,
@@ -94,6 +95,7 @@ export async function sendVerificationEmail(user: Pick<UserEmailRecord, "id" | "
   const token = createEmailVerificationToken(user, locale);
   const { subject, text, html } = renderVerificationEmail({ name: user.name, locale, origin: appOrigin(), token });
   await sendEmail({
+    from: verificationSender,
     to: user.email,
     subject,
     text,
@@ -103,7 +105,7 @@ export async function sendVerificationEmail(user: Pick<UserEmailRecord, "id" | "
 }
 
 export async function sendWelcomeEmail(user: Pick<UserEmailRecord, "id" | "email">, locale: Locale) {
-  await sendEmail({ to: user.email, ...renderWelcomeEmail(locale), idempotencyKey: `leadta-welcome-${user.id}` });
+  await sendEmail({ from: welcomeSender, to: user.email, ...renderWelcomeEmail(locale), idempotencyKey: `leadta-welcome-${user.id}` });
 }
 
 export async function getEmailUser(id: string) {
