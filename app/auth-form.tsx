@@ -2,15 +2,36 @@
 
 import { useState } from "react";
 import type { FormEvent } from "react";
+import { useLocale, useTranslations } from "next-intl";
 import Link from "next/link";
 import { isValidPhoneNumber } from "libphonenumber-js/min";
 import PhoneInput from "react-phone-number-input";
 import es from "react-phone-number-input/locale/es.json";
+import en from "react-phone-number-input/locale/en.json";
 import { BrandLogo, BrandMark } from "./brand-logo";
+import { LanguageSwitcher } from "./language-switcher";
 
 type AuthFormProps = { onAuthenticated: () => void; initialError?: string; initialMode?: "login" | "register" };
 
 export function AuthForm({ onAuthenticated, initialError = "", initialMode = "login" }: AuthFormProps) {
+  const t = useTranslations("Auth");
+  const locale = useLocale();
+  const localizedError = (message: string) => {
+    if (locale !== "en") return message;
+    const messages: Record<string, string> = {
+      "No se pudo conectar con el servicio de cuentas.": t("serviceUnavailable"),
+      "No se pudo completar el acceso con Google. Intenta nuevamente.": t("googleLoginFailed"),
+      "Email o contraseña incorrectos.": t("invalidCredentials"),
+      "Ingresá un email y una contraseña válidos.": t("validEmailPassword"),
+      "Ingresá un email válido.": t("validEmail"),
+      "Ingresá los datos requeridos para crear la cuenta.": t("validRequired"),
+      "No se pudo crear la cuenta. Revisá si el email ya está registrado.": t("accountExists"),
+      "Ingresá un número de teléfono válido.": t("validPhone"),
+      "La contraseña debe tener al menos 6 caracteres.": t("passwordLength"),
+      "Las contraseñas no coinciden.": t("passwordMismatch"),
+    };
+    return messages[message] ?? message;
+  };
   const [mode, setMode] = useState<"login" | "register">(initialMode);
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
@@ -19,7 +40,7 @@ export function AuthForm({ onAuthenticated, initialError = "", initialMode = "lo
   const [passwordConfirm, setPasswordConfirm] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showPasswordConfirm, setShowPasswordConfirm] = useState(false);
-  const [error, setError] = useState(initialError);
+  const [error, setError] = useState(() => localizedError(initialError));
   const [busy, setBusy] = useState(false);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
@@ -29,17 +50,17 @@ export function AuthForm({ onAuthenticated, initialError = "", initialMode = "lo
     if (mode === "register") {
       if (!phone || !isValidPhoneNumber(phone)) {
         setPhoneTouched(true);
-        setError("Ingresá un número de teléfono válido.");
+        setError(t("validPhone"));
         document.getElementById("phone")?.focus();
         return;
       }
       if (password.length < 6) {
-        setError("La contraseña debe tener al menos 6 caracteres.");
+        setError(t("passwordLength"));
         document.getElementById("password")?.focus();
         return;
       }
       if (password !== passwordConfirm) {
-        setError("Las contraseñas no coinciden.");
+        setError(t("passwordMismatch"));
         document.getElementById("password-confirm")?.focus();
         return;
       }
@@ -53,14 +74,14 @@ export function AuthForm({ onAuthenticated, initialError = "", initialMode = "lo
         body: JSON.stringify(mode === "register" ? { email, phone, password, passwordConfirm } : { email, password }),
       });
       const payload = await response.json();
-      if (!response.ok) throw new Error(payload.error || "No se pudo iniciar sesión.");
+      if (!response.ok) throw new Error(payload.error || t("loginFailed"));
       if (payload.user?.role === "owner") {
-        window.location.assign("/owner");
+        window.location.assign(window.location.pathname.startsWith("/en/") ? "/en/owner" : "/owner");
         return;
       }
       onAuthenticated();
     } catch (submitError) {
-      setError(submitError instanceof Error ? submitError.message : "No se pudo conectar con tu cuenta.");
+      setError(localizedError(submitError instanceof Error ? submitError.message : t("connectionFailed")));
     } finally {
       setBusy(false);
     }
@@ -75,13 +96,15 @@ export function AuthForm({ onAuthenticated, initialError = "", initialMode = "lo
     <main className="app-shell auth-shell">
       <header className="topbar">
         <BrandLogo />
-        <Link className="topbar-note auth-pricing-link" href="/pricing">Planes y precios</Link>
+        <div className="topbar-actions"><LanguageSwitcher /><Link className="topbar-note auth-pricing-link" href="/pricing">{t("pricing")}</Link></div>
       </header>
       <div className="auth-workspace">
         <section className="search-panel auth-panel" aria-labelledby="auth-title">
           <BrandMark className="auth-brand-mark" />
-          <h1 id="auth-title">{mode === "register" ? "Creá tu cuenta" : "Ingresá a Leadta"}</h1>
-          <p className="auth-intro">{mode === "register" && "Creá tu cuenta y recibí 25 créditos gratis. "}Tus búsquedas y leads quedan guardados en tu historial privado.</p>
+          <h1 id="auth-title">{mode === "register" ? t("registerTitle") : t("loginTitle")}</h1>
+          <p className="auth-intro">{mode === "register" && t("registerIntro")}{t("privateIntro")}</p>
+          <a className="google-auth-button" href={`/api/auth/google?locale=${locale}`}>{t("continueWithGoogle")}</a>
+          <div className="auth-divider" aria-hidden="true"><span>{t("orContinueWithEmail")}</span></div>
           <form className="auth-fields" onSubmit={submit}>
             <label className="field">
               <span className="field-label">Email<span className="required-mark" aria-hidden="true"> *</span></span>
@@ -89,26 +112,26 @@ export function AuthForm({ onAuthenticated, initialError = "", initialMode = "lo
             </label>
             {mode === "register" && (
               <div className="field">
-                <label className="field-label" htmlFor="phone">Teléfono<span className="required-mark" aria-hidden="true"> *</span></label>
+                <label className="field-label" htmlFor="phone">{t("phone")}<span className="required-mark" aria-hidden="true"> *</span></label>
                 <PhoneInput
                   id="phone"
                   defaultCountry="AR"
-                  labels={es}
+                  labels={locale === "es" ? es : en}
                   value={phone}
                   onChange={(value) => setPhone(value || "")}
                   onBlur={() => setPhoneTouched(true)}
                   autoComplete="tel"
                   aria-invalid={phoneTouched && Boolean(phone) && !isValidPhoneNumber(phone)}
                   aria-describedby={phoneTouched && !isValidPhoneNumber(phone) ? "phone-error" : "phone-help"}
-                  numberInputProps={{ id: "phone", required: true, "aria-label": "Número de teléfono", "aria-invalid": phoneTouched && Boolean(phone) && !isValidPhoneNumber(phone) }}
+                  numberInputProps={{ id: "phone", required: true, "aria-label": t("phoneAria"), "aria-invalid": phoneTouched && Boolean(phone) && !isValidPhoneNumber(phone) }}
                   international
                 />
-                <span className="field-help" id="phone-help">Elegí el país y escribí el resto del número.</span>
-                {phoneTouched && !isValidPhoneNumber(phone) && <span className="field-help auth-inline-error" id="phone-error" role="status">Ingresá un número completo y válido.</span>}
+                <span className="field-help" id="phone-help">{t("phoneHelp")}</span>
+                {phoneTouched && !isValidPhoneNumber(phone) && <span className="field-help auth-inline-error" id="phone-error" role="status">{t("phoneInvalid")}</span>}
               </div>
             )}
             <label className="field">
-              <span className="field-label">Contraseña<span className="required-mark" aria-hidden="true"> *</span></span>
+              <span className="field-label">{t("password")}<span className="required-mark" aria-hidden="true"> *</span></span>
               <span className="password-control">
                 <input
                   id="password"
@@ -121,20 +144,20 @@ export function AuthForm({ onAuthenticated, initialError = "", initialMode = "lo
                   maxLength={128}
                   aria-describedby={mode === "register" ? "password-help" : undefined}
                 />
-                <button className="password-toggle" type="button" aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"} aria-pressed={showPassword} onClick={() => setShowPassword(!showPassword)}>
-                  {showPassword ? "Ocultar" : "Mostrar"}
+                <button className="password-toggle" type="button" aria-label={showPassword ? t("hidePassword") : t("showPassword")} aria-pressed={showPassword} onClick={() => setShowPassword(!showPassword)}>
+                  {showPassword ? t("hidePassword") : t("showPassword")}
                 </button>
               </span>
               {mode === "register" && (
                 <span className="field-help password-requirements" id="password-help" aria-live="polite">
-                  <span className={password.length >= 6 ? "requirement met" : "requirement"}>{password.length >= 6 ? "✓" : "•"} Al menos 6 caracteres</span>
-                  <span className={passwordConfirm && password === passwordConfirm ? "requirement met" : "requirement"}>{passwordConfirm && password === passwordConfirm ? "✓" : "•"} La confirmación debe coincidir</span>
+                  <span className={password.length >= 6 ? "requirement met" : "requirement"}>{password.length >= 6 ? "✓" : "•"} {t("minimumPassword")}</span>
+                  <span className={passwordConfirm && password === passwordConfirm ? "requirement met" : "requirement"}>{passwordConfirm && password === passwordConfirm ? "✓" : "•"} {t("confirmMatch")}</span>
                 </span>
               )}
             </label>
             {mode === "register" && (
               <label className="field">
-                <span className="field-label">Confirmar contraseña<span className="required-mark" aria-hidden="true"> *</span></span>
+                <span className="field-label">{t("confirmPassword")}<span className="required-mark" aria-hidden="true"> *</span></span>
                 <span className="password-control">
                   <input
                     id="password-confirm"
@@ -147,22 +170,22 @@ export function AuthForm({ onAuthenticated, initialError = "", initialMode = "lo
                     aria-invalid={Boolean(passwordConfirm && password !== passwordConfirm)}
                     aria-describedby={passwordConfirm && password !== passwordConfirm ? "password-confirm-error" : undefined}
                   />
-                  <button className="password-toggle" type="button" aria-label={showPasswordConfirm ? "Ocultar confirmación" : "Mostrar confirmación"} aria-pressed={showPasswordConfirm} onClick={() => setShowPasswordConfirm(!showPasswordConfirm)}>
-                    {showPasswordConfirm ? "Ocultar" : "Mostrar"}
+                  <button className="password-toggle" type="button" aria-label={showPasswordConfirm ? t("hideConfirm") : t("showConfirm")} aria-pressed={showPasswordConfirm} onClick={() => setShowPasswordConfirm(!showPasswordConfirm)}>
+                    {showPasswordConfirm ? t("hidePassword") : t("showPassword")}
                   </button>
                 </span>
-                {passwordConfirm && password !== passwordConfirm && <span className="field-help auth-inline-error" id="password-confirm-error" role="status">Las contraseñas no coinciden.</span>}
+                {passwordConfirm && password !== passwordConfirm && <span className="field-help auth-inline-error" id="password-confirm-error" role="status">{t("passwordMismatch")}</span>}
               </label>
             )}
             {error && <p className="auth-error" role="alert">{error}</p>}
             <button className="primary-button auth-submit" type="submit" disabled={busy}>
-              {busy ? "Conectando…" : mode === "register" ? "Crear cuenta" : "Iniciar sesión"}
+              {busy ? t("connecting") : mode === "register" ? t("createAccount") : t("signIn")}
             </button>
           </form>
           <p className="auth-switch">
-            {mode === "register" ? "¿Ya tenés cuenta?" : "¿Primera vez en Leadta?"}{" "}
+            {mode === "register" ? t("alreadyAccount") : t("firstTime")}{" "}
             <button type="button" onClick={switchMode}>
-              {mode === "register" ? "Iniciá sesión" : "Crear cuenta"}
+              {mode === "register" ? t("startSession") : t("createAccount")}
             </button>
           </p>
         </section>

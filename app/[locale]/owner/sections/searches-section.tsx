@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 import { Trash2 } from "lucide-react";
+import { useTranslations } from "next-intl";
 import {
   confirmBox, dangerButton, errorBox, formatDate, formatNumber, ghostButton, mutedText, okBox, ownerFetch, rightCell,
   smallButton, stateBox, statusLabel, statusPill, tableClass, tableWrap, tdClass, theadClass, thClass, trClass,
@@ -27,6 +28,7 @@ const statusOptions = ["running", "completed", "partial", "failed"].map((value) 
 const zone = (batch: Batch) => [batch.district, batch.province, batch.country].filter(Boolean).join(", ");
 
 export default function SearchesSection({ onUnauthorized, onAction }: { onUnauthorized: () => void; onAction?: OnAction }) {
+  const t = useTranslations("UI");
   const list = useOwnerList<Batch>("/api/owner/batches", "No se pudieron cargar las búsquedas.", onUnauthorized);
   const { data, loading, error, reload } = list;
   const [target, setTarget] = useState<Batch | null>(null);
@@ -68,11 +70,10 @@ export default function SearchesSection({ onUnauthorized, onAction }: { onUnauth
       {target && (
         <div ref={dialogRef} className={`${confirmBox} mb-3.5`} role="alertdialog" aria-label="Confirmar eliminación">
           <p className="m-0 text-[13px] font-semibold">
-            ¿Eliminar la búsqueda “{target.keywords || "sin rubro"}” de {target.userEmail || "un usuario"}? Se borrarán también sus leads (hasta {formatNumber(target.resultCount)}) y no se puede deshacer.
-          </p>
+            {t("t_492ecbf844")}{target.keywords || "sin rubro"}{t("t_6a1be0c9f2")} {target.userEmail || "un usuario"}{t("t_eac3c7987b")} {formatNumber(target.resultCount)}{t("t_aa59e7049e")} </p>
           <div className="flex flex-wrap gap-2">
             <button className={dangerButton} type="button" disabled={busy} onClick={() => void remove()}>{busy ? "Eliminando…" : "Eliminar definitivamente"}</button>
-            <button className={ghostButton} type="button" disabled={busy} onClick={closeTarget} autoFocus>Volver</button>
+            <button className={ghostButton} type="button" disabled={busy} onClick={closeTarget} autoFocus>{t("t_84a715a785")}</button>
           </div>
         </div>
       )}
@@ -80,34 +81,33 @@ export default function SearchesSection({ onUnauthorized, onAction }: { onUnauth
         <table className={tableClass}>
           <thead className={theadClass}>
             <tr>
-              <th className={thClass} scope="col">Fecha</th>
-              <th className={thClass} scope="col">Usuario</th>
-              <th className={thClass} scope="col">Rubro</th>
-              <th className={thClass} scope="col">Zona</th>
-              <th className={`${thClass} ${rightCell}`} scope="col">Pedidos / resultados</th>
-              <th className={thClass} scope="col">Estado</th>
-              <th className={thClass} scope="col"><span className="sr-only">Acciones</span></th>
+              <th className={thClass} scope="col">{t("t_bcc476092d")}</th>
+              <th className={thClass} scope="col">{t("t_3f2ecdef3c")}</th>
+              <th className={thClass} scope="col">{t("t_4ddda9e10d")}</th>
+              <th className={thClass} scope="col">{t("t_27288b32b3")}</th>
+              <th className={`${thClass} ${rightCell}`} scope="col">{t("t_18f775ce6e")}</th>
+              <th className={thClass} scope="col">{t("t_87cf2a843e")}</th>
+              <th className={thClass} scope="col"><span className="sr-only">{t("t_79bd0ed912")}</span></th>
             </tr>
           </thead>
           <tbody>
             {data?.items.map((batch) => (
               <tr className={trClass} key={batch.id}>
                 <td className={tdClass} data-label="Fecha">{formatDate(batch.createdAt)}</td>
-                <td className={`${tdClass} break-all`} data-label="Usuario">{batch.userEmail || <span className={mutedText}>Sin usuario</span>}</td>
+                <td className={`${tdClass} break-all`} data-label="Usuario">{batch.userEmail || <span className={mutedText}>{t("t_8c4e704365")}</span>}</td>
                 <td className={tdClass} data-label="Rubro">{batch.keywords || "—"}</td>
                 <td className={tdClass} data-label="Zona">{zone(batch) || "—"}</td>
                 <td className={`${tdClass} ${rightCell}`} data-label="Pedidos / resultados">{formatNumber(batch.requestedCount)} / {formatNumber(batch.resultCount)}</td>
                 <td className={tdClass} data-label="Estado"><span className={statusPill(batch.status)}>{statusLabel(batch.status)}</span></td>
                 <td className={`${tdClass} max-md:justify-end`}>
                   <button className={`${dangerButton} ${smallButton}`} type="button" disabled={busy} onClick={(event) => { openerRef.current = event.currentTarget; setNotice(null); setTarget(batch); }} aria-label={`Eliminar búsqueda ${batch.keywords || batch.id}`}>
-                    <Trash2 size={14} aria-hidden="true" /> Eliminar
-                  </button>
+                    <Trash2 size={14} aria-hidden="true" /> {t("t_54e140f9f0")} </button>
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
-        {!data && loading && <p className={stateBox} role="status">Cargando búsquedas…</p>}
+        {!data && loading && <p className={stateBox} role="status">{t("t_aa403edcd9")}</p>}
         {data && data.items.length === 0 && !loading && <p className={stateBox}>{list.query || list.status ? "Sin resultados para ese filtro." : "Todavía no hay búsquedas."}</p>}
       </div>
       <Pager page={list.page} totalPages={data?.totalPages ?? 1} loading={loading} onPage={list.setPage} />

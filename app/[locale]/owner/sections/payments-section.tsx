@@ -5,6 +5,7 @@ import {
   tdClass, theadClass, thClass, trClass, useOwnerList,
 } from "../ui";
 import { ListToolbar, Pager } from "./list-controls";
+import { useTranslations } from "next-intl";
 
 type Payment = {
   id: string;
@@ -22,6 +23,7 @@ type Payment = {
 const statusOptions = ["processed", "processing", "pending", "rejected", "failed", "refunded", "canceled"].map((value) => ({ value, label: statusLabel(value) }));
 
 export default function PaymentsSection({ onUnauthorized }: { onUnauthorized: () => void }) {
+  const t = useTranslations("UI");
   const list = useOwnerList<Payment>("/api/owner/payments", "No se pudieron cargar los pagos.", onUnauthorized);
   const { data, loading, error } = list;
 
@@ -33,13 +35,13 @@ export default function PaymentsSection({ onUnauthorized }: { onUnauthorized: ()
         <table className={tableClass}>
           <thead className={theadClass}>
             <tr>
-              <th className={thClass} scope="col">Fecha</th>
-              <th className={thClass} scope="col">Usuario</th>
-              <th className={thClass} scope="col">Estado</th>
-              <th className={`${thClass} ${rightCell}`} scope="col">Monto</th>
-              <th className={`${thClass} ${rightCell}`} scope="col">Créditos</th>
-              <th className={`${thClass} ${rightCell}`} scope="col">Saldo previo</th>
-              <th className={thClass} scope="col">ID de pago</th>
+              <th className={thClass} scope="col">{t("t_bcc476092d")}</th>
+              <th className={thClass} scope="col">{t("t_3f2ecdef3c")}</th>
+              <th className={thClass} scope="col">{t("t_87cf2a843e")}</th>
+              <th className={`${thClass} ${rightCell}`} scope="col">{t("t_835dcdf0f2")}</th>
+              <th className={`${thClass} ${rightCell}`} scope="col">{t("t_fa59a5294e")}</th>
+              <th className={`${thClass} ${rightCell}`} scope="col">{t("t_ce8a5270f5")}</th>
+              <th className={thClass} scope="col">{t("t_f8a0830348")}</th>
             </tr>
           </thead>
           <tbody>
@@ -56,7 +58,7 @@ export default function PaymentsSection({ onUnauthorized }: { onUnauthorized: ()
             ))}
           </tbody>
         </table>
-        {!data && loading && <p className={stateBox} role="status">Cargando pagos…</p>}
+        {!data && loading && <p className={stateBox} role="status">{t("t_aeff15a63b")}</p>}
         {data && data.items.length === 0 && !loading && <p className={stateBox}>{list.query || list.status ? "Sin resultados para ese filtro." : "Todavía no hay pagos."}</p>}
       </div>
       <Pager page={list.page} totalPages={data?.totalPages ?? 1} loading={loading} onPage={list.setPage} />

@@ -8,7 +8,7 @@ import { uiError } from "@/lib/server/public-error";
 export const maxDuration = 300;
 
 const actorId = "tBH60CegtoC2QNtaR";
-const allowedCounts = new Set([25, 50, 75, 100, 125, 150]);
+const allowedCounts = new Set([5, 10, 25, 50, 75, 100, 125, 150]);
 const isDevelopmentEnvironment = process.env.ENVIROMENT?.trim().toLowerCase() === "dev";
 
 type ActorPlace = Record<string, unknown>;
@@ -258,7 +258,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "El país es obligatorio. Cada zona admite hasta 100 caracteres." }, { status: 400 });
   }
   if (!allowedCounts.has(count) && !(isDevelopmentEnvironment && (count === 1 || count === 2))) {
-    const allowed = isDevelopmentEnvironment ? "1, 2, 25, 50, 75, 100, 125 o 150" : "25, 50, 75, 100, 125 o 150";
+    const allowed = isDevelopmentEnvironment ? "1, 2, 5, 10, 25, 50, 75, 100, 125 o 150" : "5, 10, 25, 50, 75, 100, 125 o 150";
     return NextResponse.json({ error: `El lote debe ser de ${allowed} leads.` }, { status: 400 });
   }
   if (!minReviews.valid || !maxReviews.valid || !minRating.valid ||

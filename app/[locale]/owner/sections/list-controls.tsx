@@ -1,6 +1,7 @@
 "use client";
 
 import { ChevronLeft, ChevronRight, RefreshCw, Search } from "lucide-react";
+import { useTranslations } from "next-intl";
 import { controlClass, countBadge, ghostButton, sectionHead, sectionTitle } from "../ui";
 
 export function ListToolbar({ title, total, query, onQuery, queryLabel = "Buscar por email", status, onStatus, statusLabel = "Filtrar por estado", allLabel = "Todos los estados", statusOptions, onRefresh }: {
@@ -16,6 +17,7 @@ export function ListToolbar({ title, total, query, onQuery, queryLabel = "Buscar
   statusOptions: { value: string; label: string }[];
   onRefresh: () => void;
 }) {
+  const t = useTranslations("UI");
   return (
     <div className={sectionHead}>
       <h1 className={sectionTitle}>{title}{total === undefined ? null : <span className={countBadge}>{total.toLocaleString("es-AR")}</span>}</h1>
@@ -32,19 +34,20 @@ export function ListToolbar({ title, total, query, onQuery, queryLabel = "Buscar
             {statusOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
           </select>
         </label>
-        <button className={ghostButton} type="button" onClick={onRefresh}><RefreshCw size={15} aria-hidden="true" /> Actualizar</button>
+        <button className={ghostButton} type="button" onClick={onRefresh}><RefreshCw size={15} aria-hidden="true" /> {t("t_c725f8bffa")}</button>
       </div>
     </div>
   );
 }
 
 export function Pager({ page, totalPages, loading, onPage }: { page: number; totalPages: number; loading: boolean; onPage: (page: number) => void }) {
+  const t = useTranslations("UI");
   if (totalPages <= 1) return null;
   return (
     <nav className="mt-3.5 flex items-center justify-center gap-3.5 text-xs text-(color:--muted)" aria-label="Paginación">
-      <button className={ghostButton} type="button" disabled={page <= 1 || loading} onClick={() => onPage(page - 1)}><ChevronLeft size={15} aria-hidden="true" /> Anterior</button>
-      <span>Página {page} de {totalPages}</span>
-      <button className={ghostButton} type="button" disabled={page >= totalPages || loading} onClick={() => onPage(page + 1)}>Siguiente <ChevronRight size={15} aria-hidden="true" /></button>
+      <button className={ghostButton} type="button" disabled={page <= 1 || loading} onClick={() => onPage(page - 1)}><ChevronLeft size={15} aria-hidden="true" /> {t("t_d97f1097b8")}</button>
+      <span>{t("t_b3a7f96a26")} {page} {t("t_600ccd1b71")} {totalPages}</span>
+      <button className={ghostButton} type="button" disabled={page >= totalPages || loading} onClick={() => onPage(page + 1)}>{t("t_c4d83a3b6d")} <ChevronRight size={15} aria-hidden="true" /></button>
     </nav>
   );
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useTranslations } from "next-intl";
 import { Minus, Plus, Search, Settings2, Trash2, X } from "lucide-react";
 import { subscriptionPlans } from "@/lib/plans";
 import {
@@ -28,6 +29,7 @@ const quickAmounts = [10, 50, 100, -10];
 const live = ["authorized", "paused", "pending"];
 
 export default function UsersSection({ onUnauthorized, onAction }: { onUnauthorized: () => void; onAction?: OnAction }) {
+  const t = useTranslations("UI");
   const list = useOwnerList<UserRow>("/api/owner/users", "No se pudieron cargar los usuarios.", onUnauthorized);
   const { data, loading, error, reload } = list;
   const [selected, setSelected] = useState<{ id: string; mode?: "add" } | null>(null);
@@ -45,10 +47,10 @@ export default function UsersSection({ onUnauthorized, onAction }: { onUnauthori
   return (
     <section aria-label="Usuarios">
       <div className={sectionHead}>
-        <h1 className={sectionTitle}>Usuarios{data ? <span className={countBadge}>{formatNumber(data.totalItems)}</span> : null}</h1>
+        <h1 className={sectionTitle}>{t("t_cc13c6f5b1")}{data ? <span className={countBadge}>{formatNumber(data.totalItems)}</span> : null}</h1>
         <label className="relative flex w-full items-center sm:w-auto">
           <Search className="pointer-events-none absolute left-3 text-(color:--ash-600)" size={15} aria-hidden="true" />
-          <span className="sr-only">Buscar por email o nombre</span>
+          <span className="sr-only">{t("t_a735adfff0")}</span>
           <input className={`${controlClass} pl-[33px] sm:w-65`} type="search" placeholder="Buscar email o nombre" value={list.query} onChange={(event) => list.setQuery(event.target.value)} />
         </label>
       </div>
@@ -57,12 +59,12 @@ export default function UsersSection({ onUnauthorized, onAction }: { onUnauthori
         <table className={tableClass}>
           <thead className={theadClass}>
             <tr>
-              <th className={thClass} scope="col">Email</th>
-              <th className={thClass} scope="col">Nombre</th>
-              <th className={`${thClass} ${rightCell}`} scope="col">Créditos</th>
-              <th className={thClass} scope="col">Plan</th>
-              <th className={thClass} scope="col">Alta</th>
-              <th className={thClass} scope="col">Acciones</th>
+              <th className={thClass} scope="col">{t("t_84add5b295")}</th>
+              <th className={thClass} scope="col">{t("t_e68491e91c")}</th>
+              <th className={`${thClass} ${rightCell}`} scope="col">{t("t_fa59a5294e")}</th>
+              <th className={thClass} scope="col">{t("t_ae2f98a099")}</th>
+              <th className={thClass} scope="col">{t("t_ef9168c3d7")}</th>
+              <th className={thClass} scope="col">{t("t_79bd0ed912")}</th>
             </tr>
           </thead>
           <tbody>
@@ -79,17 +81,17 @@ export default function UsersSection({ onUnauthorized, onAction }: { onUnauthori
                     {user.role !== "owner" && (<button type="button" className={`${ghostButton} ${smallButton} min-w-9 px-0`} aria-label={`Sumar créditos a ${user.email}`} onClick={(event) => open(event.currentTarget, user.id, "add")}><Plus size={14} aria-hidden="true" /></button>)}
                   </span>
                 </td>
-                <td className={tdClass} data-label="Plan">{user.subscription ? <span>{planName(user.subscription.planId)} <span className={`${statusPill(user.subscription.status)} ml-1`}>{statusLabel(user.subscription.status)}</span></span> : <span className={mutedText}>Sin plan</span>}</td>
+                <td className={tdClass} data-label="Plan">{user.subscription ? <span>{planName(user.subscription.planId)} <span className={`${statusPill(user.subscription.status)} ml-1`}>{statusLabel(user.subscription.status)}</span></span> : <span className={mutedText}>{t("t_98b00b32d5")}</span>}</td>
                 <td className={tdClass} data-label="Alta">{formatDate(user.created)}</td>
                 <td className={`${tdClass} max-md:justify-end`} data-label="Acciones">
-                  <button type="button" className={`${primaryButton} ${smallButton}`} onClick={(event) => open(event.currentTarget, user.id)} aria-label={`Administrar a ${user.email}`}><Settings2 size={14} aria-hidden="true" /> Administrar</button>
+                  <button type="button" className={`${primaryButton} ${smallButton}`} onClick={(event) => open(event.currentTarget, user.id)} aria-label={`Administrar a ${user.email}`}><Settings2 size={14} aria-hidden="true" /> {t("t_c69cb5e666")}</button>
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
         {data && data.items.length === 0 && !loading && <p className={stateBox}>{list.query ? "Sin resultados para esa búsqueda." : "Todavía no hay usuarios."}</p>}
-        {!data && loading && <p className={stateBox} role="status">Cargando usuarios…</p>}
+        {!data && loading && <p className={stateBox} role="status">{t("t_45d00f6a40")}</p>}
       </div>
       <Pager page={list.page} totalPages={data?.totalPages ?? 1} loading={loading} onPage={list.setPage} />
 
@@ -106,6 +108,7 @@ function UserDrawer({ userId, initialMode, onClose, onChanged, onUnauthorized, o
   onUnauthorized: () => void;
   onAction?: OnAction;
 }) {
+  const t = useTranslations("UI");
   const [detail, setDetail] = useState<UserDetail | null>(null);
   const [loadError, setLoadError] = useState("");
   const [mode, setMode] = useState<"set" | "add">(initialMode ?? "set");
@@ -231,20 +234,20 @@ function UserDrawer({ userId, initialMode, onClose, onChanged, onUnauthorized, o
         <header className="flex items-start justify-between gap-3">
           <div>
             <h2 className="m-0 mb-1 break-all text-[17px] font-semibold tracking-tight">{detail?.user.email ?? "Usuario"}</h2>
-            {detail && <p className={mutedText}>{detail.user.name || "Sin nombre"} · alta {formatDate(detail.user.created)}</p>}
+            {detail && <p className={mutedText}>{detail.user.name || "Sin nombre"} {t("t_279e403bb8")} {formatDate(detail.user.created)}</p>}
           </div>
           <button ref={closeRef} className={iconButton} type="button" onClick={onClose} aria-label="Cerrar"><X size={18} aria-hidden="true" /></button>
         </header>
 
         {loadError && <p className={errorBox} role="alert">{loadError}</p>}
-        {!detail && !loadError && <p className={stateBox} role="status">Cargando…</p>}
+        {!detail && !loadError && <p className={stateBox} role="status">{t("t_6b416d9c40")}</p>}
         {notice && <p className={notice.kind === "ok" ? okBox : errorBox} role={notice.kind === "ok" ? "status" : "alert"}>{notice.text}</p>}
 
         {detail && (
           <>
             <section className={blockClass} aria-label="Datos del usuario">
-              <h3 className="m-0 text-[13px] font-semibold">Datos del usuario</h3>
-              {isOwner && <p className={mutedText}>Es el owner: sus datos son de solo lectura.</p>}
+              <h3 className="m-0 text-[13px] font-semibold">{t("t_d19b92ba7c")}</h3>
+              {isOwner && <p className={mutedText}>{t("t_2ce75981ed")}</p>}
               {([["name", "Nombre", "text", "Sin nombre"], ["email", "Email", "email", "nombre@dominio.com"], ["phone", "Teléfono", "tel", "Sin teléfono"]] as const).map(([field, label, type, placeholder]) => (
                 <label className="grid gap-1 text-xs font-semibold" key={field}>
                   {label}
@@ -252,24 +255,24 @@ function UserDrawer({ userId, initialMode, onClose, onChanged, onUnauthorized, o
                   {fieldError?.field === field && <span id={`error-${field}`} className="text-[11px] font-normal text-(color:--ash-900)" role="alert">{fieldError.text}</span>}
                 </label>
               ))}
-              {!isOwner && <div><button className={primaryButton} type="button" disabled={!hasChanges || busy} onClick={() => void saveData()}>Guardar cambios</button></div>}
+              {!isOwner && <div><button className={primaryButton} type="button" disabled={!hasChanges || busy} onClick={() => void saveData()}>{t("t_831d46b9be")}</button></div>}
             </section>
 
             <section className={blockClass} aria-label="Créditos">
-              <h3 className="m-0 text-[13px] font-semibold">Créditos: <strong className="text-lg tabular-nums">{formatNumber(detail.user.credits)}</strong></h3>
-              {isOwner ? <p className={mutedText}>Los créditos del owner no se administran desde acá.</p> : <>
+              <h3 className="m-0 text-[13px] font-semibold">{t("t_bc5ddb95e7")} <strong className="text-lg tabular-nums">{formatNumber(detail.user.credits)}</strong></h3>
+              {isOwner ? <p className={mutedText}>{t("t_57561892bb")}</p> : <>
               <div className="flex flex-wrap gap-1.5" role="group" aria-label="Atajos de créditos">
                 {quickAmounts.map((value) => (
                   <button key={value} className={`${ghostButton} ${smallButton}`} type="button" onClick={() => { setMode("add"); setAmount(String(value)); setPending(null); }}>{value > 0 ? `+${value}` : `−${Math.abs(value)}`}</button>
                 ))}
               </div>
               <fieldset className="m-0 flex gap-4 border-0 p-0 text-xs">
-                <legend className="sr-only">Tipo de cambio</legend>
-                <label className="inline-flex items-center gap-1.5"><input className="size-4 accent-(--ash-900)" type="radio" name="mode" checked={mode === "set"} onChange={() => { setMode("set"); setPending(null); }} /> Fijar</label>
-                <label className="inline-flex items-center gap-1.5"><input className="size-4 accent-(--ash-900)" type="radio" name="mode" checked={mode === "add"} onChange={() => { setMode("add"); setPending(null); }} /> Sumar / restar</label>
+                <legend className="sr-only">{t("t_3e97342fe1")}</legend>
+                <label className="inline-flex items-center gap-1.5"><input className="size-4 accent-(--ash-900)" type="radio" name="mode" checked={mode === "set"} onChange={() => { setMode("set"); setPending(null); }} /> {t("t_af4f6e4d99")}</label>
+                <label className="inline-flex items-center gap-1.5"><input className="size-4 accent-(--ash-900)" type="radio" name="mode" checked={mode === "add"} onChange={() => { setMode("add"); setPending(null); }} /> {t("t_6d8bbec5ec")}</label>
               </fieldset>
               <div className="flex flex-col items-stretch gap-2 sm:flex-row">
-                <label className="flex min-w-0 flex-1"><span className="sr-only">Cantidad de créditos</span>
+                <label className="flex min-w-0 flex-1"><span className="sr-only">{t("t_e88e9883c3")}</span>
                   <input ref={amountRef} className={controlClass} type="number" step="0.5" min={mode === "set" ? 0 : undefined} inputMode="decimal" placeholder={mode === "set" ? "Nuevo saldo" : "Ej: 10 o -2.5"} value={amount} onChange={(event) => { setAmount(event.target.value); setPending(null); }} />
                 </label>
                 <button className={primaryButton} type="button" disabled={!validAmount || busy || (mode === "add" && resulting < 0)}
@@ -277,32 +280,32 @@ function UserDrawer({ userId, initialMode, onClose, onChanged, onUnauthorized, o
                     message: `${mode === "set" ? "Fijar créditos" : `${parsed > 0 ? "Sumar" : "Restar"} ${formatNumber(Math.abs(parsed))} créditos`}: ${formatNumber(detail.user.credits)} → ${formatNumber(resulting)}. ¿Confirmás?`,
                     success: "Créditos actualizados.",
                     run: () => ownerFetch(`/api/owner/users/${encodeURIComponent(userId)}`, { method: "PATCH", body: mode === "set" ? { credits: parsed } : { addCredits: parsed } }),
-                  })}>Guardar</button>
+                  })}>{t("t_a0b626d6e9")}</button>
               </div>
-              {amount !== "" && !validAmount && <p className={hintText}>Usá múltiplos de 0,5{mode === "set" ? " y no negativos" : ""}.</p>}
-              {mode === "add" && validAmount && resulting < 0 && <p className={hintText}>El saldo no puede quedar negativo.</p>}
+              {amount !== "" && !validAmount && <p className={hintText}>{t("t_af7455545b")}{mode === "set" ? " y no negativos" : ""}.</p>}
+              {mode === "add" && validAmount && resulting < 0 && <p className={hintText}>{t("t_0a0f57280a")}</p>}
               </>}
             </section>
 
             <section className={blockClass} aria-label="Membresía">
-              <h3 className="m-0 text-[13px] font-semibold">Membresía</h3>
-              {detail.subscriptionsHasMore && <p className={mutedText}>Mostrando los últimos 50.</p>}
+              <h3 className="m-0 text-[13px] font-semibold">{t("t_c2623632fe")}</h3>
+              {detail.subscriptionsHasMore && <p className={mutedText}>{t("t_8f7e557580")}</p>}
               {current ? (
                 <>
-                  <p>{planName(current.planId)} · <span className={statusPill(current.status)}>{statusLabel(current.status)}</span> · {formatArs(current.priceArs)} / mes · {formatNumber(current.monthlyCredits)} créditos</p>
+                  <p>{planName(current.planId)} · <span className={statusPill(current.status)}>{statusLabel(current.status)}</span> · {formatArs(current.priceArs)} {t("t_41ff8e8be4")} {formatNumber(current.monthlyCredits)} {t("t_bcc0da40b3")}</p>
                   <div className="flex flex-wrap gap-2">
-                    {current.status === "authorized" && <button className={ghostButton} type="button" disabled={busy} onClick={() => changeStatus("paused", "Pausar", "Suscripción pausada.")}>Pausar</button>}
-                    {current.status === "paused" && <button className={ghostButton} type="button" disabled={busy} onClick={() => changeStatus("authorized", "Reactivar", "Suscripción reactivada.")}>Reactivar</button>}
-                    <button className={dangerButton} type="button" disabled={busy} onClick={() => changeStatus("cancelled", "Cancelar", "Suscripción cancelada.")}>Cancelar</button>
+                    {current.status === "authorized" && <button className={ghostButton} type="button" disabled={busy} onClick={() => changeStatus("paused", "Pausar", "Suscripción pausada.")}>{t("t_8e0f5ed990")}</button>}
+                    {current.status === "paused" && <button className={ghostButton} type="button" disabled={busy} onClick={() => changeStatus("authorized", "Reactivar", "Suscripción reactivada.")}>{t("t_cb081a42fc")}</button>}
+                    <button className={dangerButton} type="button" disabled={busy} onClick={() => changeStatus("cancelled", "Cancelar", "Suscripción cancelada.")}>{t("t_c111e0ab9d")}</button>
                   </div>
                 </>
               ) : (
                 <>
-                  <p className={mutedText}>Sin suscripción vigente.</p>
+                  <p className={mutedText}>{t("t_8bd612222b")}</p>
                   <div className="flex flex-col items-stretch gap-2 sm:flex-row">
-                    <label className="flex min-w-0 flex-1"><span className="sr-only">Plan</span>
+                    <label className="flex min-w-0 flex-1"><span className="sr-only">{t("t_ae2f98a099")}</span>
                       <select className={controlClass} value={planId} onChange={(event) => { setPlanId(event.target.value); setPending(null); }}>
-                        {manualPlans.map((plan) => <option key={plan.id} value={plan.id}>{plan.name} · {formatArs(plan.priceArs)} · {formatNumber(plan.credits)} créditos</option>)}
+                        {manualPlans.map((plan) => <option key={plan.id} value={plan.id}>{plan.name} · {formatArs(plan.priceArs)} · {formatNumber(plan.credits)} {t("t_bcc0da40b3")}</option>)}
                       </select>
                     </label>
                     <button className={primaryButton} type="button" disabled={busy}
@@ -310,9 +313,9 @@ function UserDrawer({ userId, initialMode, onClose, onChanged, onUnauthorized, o
                         message: `Asignar plan ${planName(planId)} a ${detail.user.email}${grant ? " y acreditar sus créditos" : ""}?`,
                         success: "Plan asignado.",
                         run: () => ownerFetch(`/api/owner/users/${encodeURIComponent(userId)}/subscription`, { method: "POST", body: { planId, grantCredits: grant } }),
-                      })}>Asignar plan</button>
+                      })}>{t("t_41c3864449")}</button>
                   </div>
-                  <label className="inline-flex items-center gap-1.5 text-xs"><input className="size-4 accent-(--ash-900)" type="checkbox" checked={grant} onChange={(event) => setGrant(event.target.checked)} /> Acreditar los créditos del plan</label>
+                  <label className="inline-flex items-center gap-1.5 text-xs"><input className="size-4 accent-(--ash-900)" type="checkbox" checked={grant} onChange={(event) => setGrant(event.target.checked)} /> {t("t_14c8621edc")}</label>
                 </>
               )}
             </section>
@@ -322,23 +325,23 @@ function UserDrawer({ userId, initialMode, onClose, onChanged, onUnauthorized, o
                 <p className="m-0 text-[13px] font-semibold">{pending.message}</p>
                 <div className="flex flex-wrap gap-2">
                   <button className={primaryButton} type="button" disabled={busy} onClick={() => void confirm()} autoFocus>{busy ? "Guardando…" : "Confirmar"}</button>
-                  <button className={ghostButton} type="button" disabled={busy} onClick={() => setPending(null)}>Volver</button>
+                  <button className={ghostButton} type="button" disabled={busy} onClick={() => setPending(null)}>{t("t_84a715a785")}</button>
                 </div>
               </div>
             )}
 
             <section className={blockClass} aria-label="Pagos">
-              <h3 className="m-0 text-[13px] font-semibold">Historial de pagos</h3>
-              {detail.paymentsHasMore && <p className={mutedText}>Mostrando los últimos 50.</p>}
-              {detail.payments.length === 0 ? <p className={mutedText}>Sin pagos registrados.</p> : (
+              <h3 className="m-0 text-[13px] font-semibold">{t("t_42c523b3ff")}</h3>
+              {detail.paymentsHasMore && <p className={mutedText}>{t("t_8f7e557580")}</p>}
+              {detail.payments.length === 0 ? <p className={mutedText}>{t("t_9fb0ad3db3")}</p> : (
                 <div className={tableWrap}>
                   <table className={tableClass}>
                     <thead className={theadClass}>
                       <tr>
-                        <th className={thClass} scope="col">Fecha</th>
-                        <th className={thClass} scope="col">Estado</th>
-                        <th className={`${thClass} ${rightCell}`} scope="col">Monto</th>
-                        <th className={`${thClass} ${rightCell}`} scope="col">Créditos</th>
+                        <th className={thClass} scope="col">{t("t_bcc476092d")}</th>
+                        <th className={thClass} scope="col">{t("t_87cf2a843e")}</th>
+                        <th className={`${thClass} ${rightCell}`} scope="col">{t("t_835dcdf0f2")}</th>
+                        <th className={`${thClass} ${rightCell}`} scope="col">{t("t_fa59a5294e")}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -357,14 +360,13 @@ function UserDrawer({ userId, initialMode, onClose, onChanged, onUnauthorized, o
             </section>
 
             {!isOwner && <section className="grid gap-2.5 rounded-[10px] border border-(color:--ash-700) bg-(--paper) p-4 [&_p]:text-xs [&_p]:leading-normal" aria-label="Zona de peligro">
-              <h3 className="m-0 text-[13px] font-semibold">Zona de peligro</h3>
-              <p>Eliminar el usuario borra también sus búsquedas, leads y suscripciones. No se puede deshacer.</p>
+              <h3 className="m-0 text-[13px] font-semibold">{t("t_fef7749db2")}</h3>
+              <p>{t("t_8733e4bbb6")}</p>
               <label className="grid gap-1.5 text-xs">
-                Escribí <strong className="break-all">{detail.user.email}</strong> para confirmar
-                <input className={controlClass} type="text" autoComplete="off" value={deleteEmail} onChange={(event) => setDeleteEmail(event.target.value)} />
+                {t("t_6aab697d45")} <strong className="break-all">{detail.user.email}</strong> {t("t_4c24745b04")} <input className={controlClass} type="text" autoComplete="off" value={deleteEmail} onChange={(event) => setDeleteEmail(event.target.value)} />
               </label>
               <div>
-                <button className={dangerButton} type="button" disabled={!canDelete || busy} onClick={() => void deleteUser()}><Trash2 size={14} aria-hidden="true" /> Eliminar usuario</button>
+                <button className={dangerButton} type="button" disabled={!canDelete || busy} onClick={() => void deleteUser()}><Trash2 size={14} aria-hidden="true" /> {t("t_dc8624f78d")}</button>
               </div>
             </section>}
           </>

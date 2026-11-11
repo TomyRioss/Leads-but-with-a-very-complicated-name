@@ -1,21 +1,23 @@
 import { ArrowRight } from "lucide-react";
+import { getTranslations, setRequestLocale } from "next-intl/server";
 
-const callHref = `https://wa.me/5491134083140?text=${encodeURIComponent("Hola, quiero agendar una llamada para conocer los planes de Leadta.")}`;
-
-export function PricingHero({ variant, id }: { variant: "landing" | "page"; id?: string }) {
+export async function PricingHero({ variant, id, locale }: { variant: "landing" | "page"; id?: string; locale: string }) {
+  setRequestLocale(locale);
+  const t = await getTranslations("Pricing");
   const Title = variant === "page" ? "h1" : "h2";
+  const callHref = `https://wa.me/5491134083140?text=${encodeURIComponent(locale === "en" ? "Hello, I'd like to schedule a call to learn about Leadta plans." : "Hola, quiero agendar una llamada para conocer los planes de Leadta.")}`;
   return (
     <section className={`pricing-hero pricing-hero-${variant}`} id={id} aria-labelledby="pricing-title">
       <div className="pricing-hero-inner">
-        <p className="pricing-eyebrow">DESDE</p>
+        <p className="pricing-eyebrow">{t("from")}</p>
         <Title id="pricing-title" className="pricing-hero-price">$15 USD/mes</Title>
-        <p className="pricing-hero-sub">escalado a tu volumen de búsquedas.</p>
+        <p className="pricing-hero-sub">{t("monthly")}</p>
         <div className="pricing-hero-rule" aria-hidden="true" />
         <div className="pricing-hero-foot">
-          <p>Sin costos de setup. Sin precio por usuario. Pagás por los leads que realmente buscás — ajustamos el plan a tu volumen mensual.</p>
+          <p>{t("noSetup")}. {t("noSeatPrice")}. {locale === "en" ? "Pay for the leads you actually search for. We tailor the plan to your monthly volume." : "Pagás por los leads que realmente buscás. Ajustamos el plan a tu volumen mensual."}</p>
           <div className="pricing-hero-cta">
-            <a className="pricing-hero-button" href={callHref} target="_blank" rel="noreferrer">Agendar llamada<ArrowRight size={16} aria-hidden="true" /></a>
-            <p className="pricing-hero-note">{"// Todos los planes incluyen búsqueda, análisis y exportación CSV. Soporte directo."}</p>
+            <a className="pricing-hero-button" href={callHref} target="_blank" rel="noreferrer">{t("call")}<ArrowRight size={16} aria-hidden="true" /></a>
+            <p className="pricing-hero-note">{t("supportNote")}</p>
           </div>
         </div>
       </div>

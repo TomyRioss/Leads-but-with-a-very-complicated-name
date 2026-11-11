@@ -26,12 +26,21 @@ function getCookie(request: Request, name: string) {
 }
 
 export function setSessionCookie(response: NextResponse, token: string) {
+  let maxAge = sessionDurationSeconds;
+  try {
+    const payload = JSON.parse(Buffer.from(token.split(".")[1] || "", "base64url").toString("utf8")) as { exp?: unknown };
+    if (typeof payload.exp === "number") {
+      maxAge = Math.max(0, Math.min(sessionDurationSeconds, payload.exp - Math.floor(Date.now() / 1000)));
+    }
+  } catch {
+    // Keep the default duration when the token payload isn't readable here.
+  }
   response.cookies.set(sessionCookieName, token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
     path: "/",
-    maxAge: sessionDurationSeconds,
+    maxAge,
   });
 }
 
@@ -50,24 +59,50 @@ export async function getCurrentUser(request: Request) {
   if (!token) return null;
 
   try {
+    const claims = readAuthTokenClaims(token);
+    if (claims?.refreshable === false && typeof claims.id === "string") {
+      const record = await pocketBasePublicFetch<PocketBaseUserRecord>(
+        `/api/collections/users/records/${encodeURIComponent(claims.id)}`,
+        { headers: { Authorization: token } },
+      );
+      return { token, user: mapUser(record) };
+    }
+
     const auth = await pocketBasePublicFetch<PocketBaseAuthResponse>(
       "/api/collections/users/auth-refresh",
       { method: "POST", headers: { Authorization: token }, body: "{}" },
     );
     return {
       token: auth.token,
-      user: {
-        id: auth.record.id,
-        email: auth.record.email,
-        name: auth.record.name || "",
-        credits: typeof auth.record.credits === "number" && auth.record.credits >= 0 ? auth.record.credits : 0,
-        role: toUserRole(auth.record.role),
-      } satisfies AppUser,
+      user: mapUser(auth.record),
     };
   } catch (error) {
     if (error instanceof PocketBaseRequestError && [400, 401, 403].includes(error.status)) return null;
     throw error;
   }
+}
+
+type PocketBaseUserRecord = { id: string; email: string; name?: string; credits?: number; role?: unknown };
+type AuthTokenClaims = { id?: unknown; refreshable?: unknown };
+
+function readAuthTokenClaims(token: string): AuthTokenClaims | null {
+  try {
+    const payload = token.split(".")[1];
+    if (!payload) return null;
+    return JSON.parse(Buffer.from(payload, "base64url").toString("utf8")) as AuthTokenClaims;
+  } catch {
+    return null;
+  }
+}
+
+function mapUser(record: PocketBaseUserRecord): AppUser {
+  return {
+    id: record.id,
+    email: record.email,
+    name: record.name || "",
+    credits: typeof record.credits === "number" && record.credits >= 0 ? record.credits : 0,
+    role: toUserRole(record.role),
+  };
 }
 
 export function withRefreshedSession(response: NextResponse, token: string) {
