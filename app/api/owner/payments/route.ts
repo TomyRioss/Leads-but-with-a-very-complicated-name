@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { requireOwner } from "@/lib/server/owner";
 import { errorResponse, filterString, listRecords, pocketBaseNotReady } from "../_shared";
 
-// Statuses written by the Mercado Pago webhook ("processing" while crediting, "processed" once credited).
+// Payment statuses ("processing" while crediting, "processed" once credited).
 const statuses = ["processing", "processed", "approved", "pending", "rejected", "failed", "canceled", "cancelled", "refunded"];
 type Row = {
   id: string;

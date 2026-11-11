@@ -17,7 +17,6 @@ type Subscription = {
   status: string;
   priceArs: number;
   monthlyCredits: number;
-  manual: boolean;
   externalReference: string;
   created: string;
 };
@@ -106,7 +105,6 @@ export default function SubscriptionsSection({ onUnauthorized, onAction }: { onU
               <th className={thClass} scope="col">Estado</th>
               <th className={`${thClass} ${rightCell}`} scope="col">Precio</th>
               <th className={`${thClass} ${rightCell}`} scope="col">Créditos/mes</th>
-              <th className={thClass} scope="col">Origen</th>
               <th className={thClass} scope="col">Acciones</th>
             </tr>
           </thead>
@@ -119,15 +117,12 @@ export default function SubscriptionsSection({ onUnauthorized, onAction }: { onU
                 <td className={tdClass} data-label="Estado"><span className={statusPill(row.status)}>{statusLabel(row.status)}</span></td>
                 <td className={`${tdClass} ${rightCell}`} data-label="Precio">{formatArs(row.priceArs)}</td>
                 <td className={`${tdClass} ${rightCell}`} data-label="Créditos/mes">{formatNumber(row.monthlyCredits)}</td>
-                <td className={tdClass} data-label="Origen">{row.manual ? "Manual" : "Mercado Pago"}</td>
                 <td className={tdClass} data-label="Acciones">
                   <div className="flex flex-wrap gap-1.5 max-md:justify-end">
                     {row.status === "authorized" && <button className={`${ghostButton} ${smallButton}`} type="button" disabled={busy} onClick={(event) => askStatus(event.currentTarget, row, "paused", "Pausar", "Suscripción pausada.")}>Pausar</button>}
                     {row.status === "paused" && <button className={`${ghostButton} ${smallButton}`} type="button" disabled={busy} onClick={(event) => askStatus(event.currentTarget, row, "authorized", "Reactivar", "Suscripción reactivada.")}>Reactivar</button>}
                     {live.includes(row.status) && <button className={`${dangerButton} ${smallButton}`} type="button" disabled={busy} onClick={(event) => askStatus(event.currentTarget, row, "cancelled", "Cancelar", "Suscripción cancelada.")}>Cancelar</button>}
-                    {live.includes(row.status) && (row.manual
-                      ? <button className={`${ghostButton} ${smallButton}`} type="button" disabled={busy} onClick={(event) => { openerRef.current = event.currentTarget; setNotice(null); setNewPlan(manualPlans.some((plan) => plan.id === row.planId) ? row.planId : (manualPlans[0]?.id ?? "initial")); setPending({ kind: "plan", row }); }}>Cambiar plan</button>
-                      : <span className={`${mutedText} self-center`}>Plan gestionado por Mercado Pago</span>)}
+                    {live.includes(row.status) && <button className={`${ghostButton} ${smallButton}`} type="button" disabled={busy} onClick={(event) => { openerRef.current = event.currentTarget; setNotice(null); setNewPlan(manualPlans.some((plan) => plan.id === row.planId) ? row.planId : (manualPlans[0]?.id ?? "initial")); setPending({ kind: "plan", row }); }}>Cambiar plan</button>}
                     {!live.includes(row.status) && <span className={mutedText}>Sin acciones</span>}
                   </div>
                 </td>

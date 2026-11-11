@@ -205,7 +205,6 @@ a { color: inherit; }
 .pricing-nav-link { display: inline-flex; min-height: 42px; align-items: center; justify-content: center; padding: 0 14px; border: 1px solid var(--line); border-radius: 999px; background: var(--paper); color: var(--ink); font-size: 12px; font-weight: 650; text-decoration: none; }
 .pricing-nav-link:hover { background: var(--ash-50); }
 .auth-pricing-link:hover { color: var(--ink); text-decoration: underline; text-underline-offset: 3px; }
-.pricing-workspace { width: min(calc(100% - 32px), 1060px); margin: 0 auto; padding: 32px 0 64px; }
 .pricing-hero { padding: 56px 0 64px; background: var(--ash-950); color: var(--ash-300); }
 .pricing-hero-inner { width: min(calc(100% - 32px), 1060px); margin: 0 auto; }
 .pricing-hero-page { padding-top: 130px; }
@@ -223,14 +222,6 @@ a { color: inherit; }
 .pricing-hero-button:hover { background: var(--lime); }
 .pricing-hero-button:focus-visible { outline: 2px solid var(--lime); outline-offset: 3px; }
 .pricing-hero-note { max-width: 300px; color: var(--ash-500); font-size: 12px; line-height: 1.5; }
-.pricing-error { margin: 18px auto 0; max-width: 620px; padding: 12px 14px; border: 1px solid var(--ash-300); border-radius: 8px; background: var(--ash-50); color: var(--ash-800); font-size: 12px; line-height: 1.45; }
-.pricing-subscription { display: flex; align-items: center; justify-content: space-between; gap: 14px; max-width: 620px; margin: 22px auto 0; padding: 15px 17px; border: 1px solid var(--line); border-radius: 12px; background: var(--paper); color: var(--ink); }
-.pricing-subscription strong { font-size: 13px; }
-.pricing-subscription p { margin: 4px 0 0; color: var(--muted); font-size: 11px; }
-.pricing-subscription button { flex: none; min-height: 40px; padding: 0 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); color: var(--ink); font: inherit; font-size: 11px; font-weight: 650; cursor: pointer; }
-.pricing-subscription button:hover { background: var(--ash-50); }
-.pricing-subscription-actions { display: flex; flex-wrap: wrap; gap: 8px; }
-@media (max-width: 500px) { .pricing-subscription { align-items: flex-start; flex-direction: column; } }
 .price-inner { width: min(calc(100% - 32px), 1160px); margin: 0 auto; }
 .price-hero { padding: 132px 0 56px; background: var(--ash-950); color: var(--ash-300); }
 .price-eyebrow { margin: 0 0 clamp(10px, 1.4vw, 16px); color: var(--ash-400); font-size: clamp(15px, 1.9vw, 22px); font-weight: 500; letter-spacing: .2em; }

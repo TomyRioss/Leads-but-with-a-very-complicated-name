@@ -15,7 +15,7 @@ type SubscriptionSummary = { id: string; planId: string; status: string; priceAr
 type UserRow = { id: string; email: string; name: string; credits: number; created: string; role?: string; subscription: SubscriptionSummary | null };
 type UserDetail = {
   user: { id: string; email: string; name: string; credits: number; created: string; phone?: string; role?: string };
-  subscriptions: (SubscriptionSummary & { externalReference?: string; manual: boolean; created: string })[];
+  subscriptions: (SubscriptionSummary & { externalReference?: string; created: string })[];
   subscriptionsHasMore?: boolean;
   paymentsHasMore?: boolean;
   payments: { id: string; paymentId: string; status: string; amountArs: number; credits: number; created: string }[];
@@ -289,7 +289,7 @@ function UserDrawer({ userId, initialMode, onClose, onChanged, onUnauthorized, o
               {detail.subscriptionsHasMore && <p className={mutedText}>Mostrando los últimos 50.</p>}
               {current ? (
                 <>
-                  <p>{planName(current.planId)} · <span className={statusPill(current.status)}>{statusLabel(current.status)}</span> · {formatArs(current.priceArs)} / mes · {formatNumber(current.monthlyCredits)} créditos{current.manual ? " · manual" : ""}</p>
+                  <p>{planName(current.planId)} · <span className={statusPill(current.status)}>{statusLabel(current.status)}</span> · {formatArs(current.priceArs)} / mes · {formatNumber(current.monthlyCredits)} créditos</p>
                   <div className="flex flex-wrap gap-2">
                     {current.status === "authorized" && <button className={ghostButton} type="button" disabled={busy} onClick={() => changeStatus("paused", "Pausar", "Suscripción pausada.")}>Pausar</button>}
                     {current.status === "paused" && <button className={ghostButton} type="button" disabled={busy} onClick={() => changeStatus("authorized", "Reactivar", "Suscripción reactivada.")}>Reactivar</button>}
@@ -358,7 +358,7 @@ function UserDrawer({ userId, initialMode, onClose, onChanged, onUnauthorized, o
 
             {!isOwner && <section className="grid gap-2.5 rounded-[10px] border border-(color:--ash-700) bg-(--paper) p-4 [&_p]:text-xs [&_p]:leading-normal" aria-label="Zona de peligro">
               <h3 className="m-0 text-[13px] font-semibold">Zona de peligro</h3>
-              <p>Eliminar el usuario borra también sus búsquedas, leads y suscripciones (las de Mercado Pago se cancelan primero). No se puede deshacer.</p>
+              <p>Eliminar el usuario borra también sus búsquedas, leads y suscripciones. No se puede deshacer.</p>
               <label className="grid gap-1.5 text-xs">
                 Escribí <strong className="break-all">{detail.user.email}</strong> para confirmar
                 <input className={controlClass} type="text" autoComplete="off" value={deleteEmail} onChange={(event) => setDeleteEmail(event.target.value)} />

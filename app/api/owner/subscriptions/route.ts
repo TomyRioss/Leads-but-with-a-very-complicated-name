@@ -26,7 +26,7 @@ export async function GET(request: Request) {
       perPage: positiveInt(params.get("perPage"), 25, 100),
       sort: "-created",
       expand: "user",
-      fields: "id,user,plan_id,status,price_ars,monthly_credits,mp_subscription_id,external_reference,created,expand.user.id,expand.user.email",
+      fields: "id,user,plan_id,status,price_ars,monthly_credits,external_reference,created,expand.user.id,expand.user.email",
       ...(filters.length ? { filter: filters.join(" && ") } : {}),
     });
     return NextResponse.json({
@@ -38,7 +38,6 @@ export async function GET(request: Request) {
         status: item.status,
         priceArs: item.price_ars,
         monthlyCredits: item.monthly_credits,
-        manual: !item.mp_subscription_id,
         externalReference: item.external_reference,
         created: item.created,
       })),

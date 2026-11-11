@@ -1,17 +1,14 @@
 import { NextResponse } from "next/server";
-import { getMercadoPagoClient } from "@/lib/server/mercadopago";
 import { getOwnerSession, requireOwner } from "@/lib/server/owner";
 import { recordOwnerAction } from "@/lib/server/owner-audit";
 import { pocketBaseFetch } from "@/lib/server/pocketbase";
 import {
-  activeSubscriptionStatuses,
   countRecords,
   errorResponse,
   findUserSummary,
   filterString,
   isNotFound,
   isValidRecordId,
-  listAllRecords,
   listRecords,
   maxCredits,
   normalizeCredits,
@@ -52,7 +49,6 @@ export async function GET(request: Request, context: Context) {
       subscriptions: subscriptions.items.slice(0, historyLimit).map((subscription) => ({
         ...toSubscriptionSummary(subscription),
         externalReference: subscription.external_reference,
-        manual: !subscription.mp_subscription_id,
         created: subscription.created,
       })),
       payments: payments.items.slice(0, historyLimit).map((payment) => ({
@@ -173,10 +169,6 @@ export async function PATCH(request: Request, context: Context) {
   }
 }
 
-function remoteStatusCode(error: unknown) {
-  return typeof error === "object" && error !== null && "status" in error ? Number((error as { status: unknown }).status) : 0;
-}
-
 export async function DELETE(request: Request, context: Context) {
   const session = await getOwnerSession(request);
   if ("response" in session) return session.response;
@@ -199,56 +191,15 @@ export async function DELETE(request: Request, context: Context) {
   if (user.role === "owner" || user.id === session.owner.id) return errorResponse("No se puede eliminar al owner ni a tu propia cuenta.", 403);
   if (body.confirmEmail.trim().toLowerCase() !== user.email.toLowerCase()) return errorResponse("El email de confirmación no coincide.", 400);
 
-  const liveFilter = `user = ${filterString(id)} && (${activeSubscriptionStatuses.map((status) => `status = "${status}"`).join(" || ")}) && mp_subscription_id != ""`;
-  const liveFields = { filter: liveFilter, fields: "id,mp_subscription_id" };
-  const cancelledInMercadoPago: string[] = [];
   const auditFailure = (reason: string) => recordOwnerAction(request, session.owner, {
     action: "user.delete",
     targetType: "user",
     targetId: id,
     targetLabel: user.email,
-    details: { status: "failed", reason, email: user.email, mercadoPagoCancelled: cancelledInMercadoPago },
+    details: { status: "failed", reason, email: user.email },
   });
 
   try {
-    // Subscriptions that Mercado Pago may still charge are cancelled there first.
-    const live = await listAllRecords<SubscriptionRecord>("subscriptions", liveFields);
-    if (live.length > 0) {
-      const client = getMercadoPagoClient();
-      if (!client) return errorResponse("Falta configurar MP_ACCESS_TOKEN en el servidor.", 503);
-      for (const subscription of live) {
-        let cancelled = false;
-        try {
-          await client.update({ id: subscription.mp_subscription_id, body: { status: "cancelled" } });
-          cancelled = true;
-        } catch (updateError) {
-          console.error("Owner Mercado Pago cancellation before delete failed:", updateError instanceof Error ? updateError.name : "unknown");
-          // The update may have failed on a stale state: if Mercado Pago already shows it cancelled (or gone), carry on.
-          try {
-            const remote = await client.get({ id: subscription.mp_subscription_id });
-            cancelled = remote.status === "cancelled" || remote.status === "canceled";
-          } catch (lookupError) {
-            cancelled = remoteStatusCode(lookupError) === 404;
-          }
-        }
-        if (!cancelled) {
-          await auditFailure("mercado_pago_cancel_failed");
-          return errorResponse(`Se canceló en Mercado Pago ${cancelledInMercadoPago.length} de ${live.length}; el usuario no se eliminó`, 502);
-        }
-        cancelledInMercadoPago.push(subscription.mp_subscription_id);
-        await pocketBaseFetch(`/api/collections/subscriptions/records/${subscription.id}`, {
-          method: "PATCH",
-          body: JSON.stringify({ status: "canceled" }),
-        }).catch((error) => console.error("Owner subscription mark-canceled failed:", error instanceof Error ? error.name : "unknown"));
-      }
-    }
-
-    // A subscription created meanwhile would be deleted without being cancelled in Mercado Pago.
-    if ((await listAllRecords<SubscriptionRecord>("subscriptions", liveFields)).length > 0) {
-      await auditFailure("new_subscription_appeared");
-      return errorResponse("Apareció una suscripción nueva; reintentá", 409);
-    }
-
     const [batches, leads, subscriptions] = await Promise.all([
       countRecords("lead_batches", `user = ${filterString(id)}`),
       countRecords("leads", `batch.user = ${filterString(id)}`),
@@ -263,7 +214,7 @@ export async function DELETE(request: Request, context: Context) {
       targetType: "user",
       targetId: id,
       targetLabel: user.email,
-      details: { email: user.email, name: user.name || "", ...deleted, mercadoPagoCancelled: cancelledInMercadoPago },
+      details: { email: user.email, name: user.name || "", ...deleted },
     });
     return NextResponse.json({ ok: true, deleted });
   } catch (error) {

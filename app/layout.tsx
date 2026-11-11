@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { Geist } from "next/font/google";
+import { Analytics } from "@vercel/analytics/next";
 import "react-phone-number-input/style.css";
 import "./globals.css";
 
@@ -20,7 +21,10 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       lang="es"
       className={`${geistSans.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">
+        {children}
+        <Analytics />
+      </body>
     </html>
   );
 }

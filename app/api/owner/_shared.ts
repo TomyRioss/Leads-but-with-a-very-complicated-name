@@ -12,7 +12,6 @@ export type SubscriptionRecord = {
   id: string;
   user: string;
   plan_id: string;
-  mp_subscription_id: string;
   external_reference: string;
   status: string;
   price_ars: number;

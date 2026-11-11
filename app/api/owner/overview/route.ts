@@ -18,7 +18,7 @@ export async function GET(request: Request) {
       listRecords("users", { perPage: 1, fields: "id" }),
       listRecords("users", { perPage: 1, fields: "id", filter: `created >= ${since}` }),
       listAllRecords<{ credits?: number }>("users", { fields: "credits" }),
-      // "processed" is the status the Mercado Pago webhook writes once a payment is approved and credited.
+      // "processed" is the status of a payment already credited.
       listAllRecords<{ amount_ars?: number }>("subscription_payments", {
         filter: `status = "processed" && created >= ${since}`,
         fields: "amount_ars",
