@@ -4,10 +4,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useFormatter, useTranslations } from "next-intl";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import type { Lead, LeadBatch, LeadColumnLabeler, SocialNetwork } from "@/lib/types";
+import type { Lead, LeadBatch, LeadColumnKey, LeadColumnLabeler, SocialNetwork } from "@/lib/types";
 import { getLeadColumnValue, getLeadColumns } from "@/lib/types";
-import { BrandLogo } from "@/app/brand-logo";
-import { LanguageSwitcher } from "@/app/language-switcher";
+import { AppSidebar } from "@/app/app-sidebar";
+import WhatsAppContact from "@/app/whatsapp-contact";
+import { painView } from "@/lib/analysis-format";
 
 type DateFormatter = (value: string) => string;
 
@@ -49,7 +50,7 @@ type HistoryView = "unified" | "batch";
 
 type AnalysisColumn = "pain_points" | "enrichment";
 
-function LeadSpreadsheet({ leads, unified, lotNumbers, batchDates, onEnrich, enrichingKey, includeEnrichment }: { leads: Lead[]; includeEnrichment: boolean; unified?: boolean; lotNumbers?: Map<string, number>; batchDates?: Map<string, string>; onEnrich?: (lead: Lead, action: AnalysisColumn) => void; enrichingKey?: string }) {
+function LeadSpreadsheet({ full, leads, unified, lotNumbers, batchDates, onEnrich, enrichingKey, includeEnrichment }: { full: boolean; leads: Lead[]; includeEnrichment: boolean; unified?: boolean; lotNumbers?: Map<string, number>; batchDates?: Map<string, string>; onEnrich?: (lead: Lead, action: AnalysisColumn) => void; enrichingKey?: string }) {
   const t = useTranslations("History");
   const format = useFormatter();
   const formatDate: DateFormatter = (value) => {
@@ -61,10 +62,16 @@ function LeadSpreadsheet({ leads, unified, lotNumbers, batchDates, onEnrich, enr
     return Number.isNaN(date.getTime()) ? value : format.dateTime(date, { dateStyle: "medium" });
   };
   const columnLabel = useColumnLabel();
-  const columns = getLeadColumns(leads, [], includeEnrichment, columnLabel);
+  const s = useTranslations("Search");
+  const allColumns = getLeadColumns(leads, [], includeEnrichment, columnLabel);
+  // Vista simple: mismas columnas esenciales que /buscar (+ WhatsApp junto al teléfono). Avanzada: todas las actuales.
+  const columns: { key: LeadColumnKey | "whatsapp"; label: string }[] = full ? allColumns : (["name", "phone", "whatsapp", "email", "average_rating", "pain_points"] as const).map((key) =>
+    key === "whatsapp"
+      ? { key, label: s("columns.whatsapp") }
+      : allColumns.find((column) => column.key === key) ?? { key, label: columnLabel(key, key) });
   return (
     <div className="table-frame history-sheet" tabIndex={0} aria-label={unified ? t("sheetAllLabel") : t("sheetBatchLabel")}>
-      <table>
+      <table className={full ? undefined : "history-compact-table"}>
         <thead><tr>
           {unified && <><th scope="col">{t("colDate")}</th><th scope="col">{t("colBatch")}</th></>}
           {columns.map((column) => <th key={column.key} scope="col">{column.label}</th>)}
@@ -77,6 +84,7 @@ function LeadSpreadsheet({ leads, unified, lotNumbers, batchDates, onEnrich, enr
                 <td>{lotNumbers?.get(lead.batch) ? t("batchLabel", { lot: lotNumbers.get(lead.batch)! }) : t("colBatch")}</td>
               </>}
               {columns.map((column) => {
+                if (column.key === "whatsapp") return <td key={column.key} title={lead.phone}><WhatsAppContact phone={lead.phone} /></td>;
                 const value = getLeadColumnValue(lead, column.key);
                 const reviewMatch = /^review_([1-5])$/.exec(column.key);
                 if (reviewMatch) {
@@ -99,6 +107,19 @@ function LeadSpreadsheet({ leads, unified, lotNumbers, batchDates, onEnrich, enr
                 }
                 if ((column.key === "maps_url" || column.key === "website") && value) {
                   return <td key={column.key} title={value}><a className="table-link" href={value} target="_blank" rel="noreferrer">{column.key === "maps_url" ? t("openMaps") : value}</a></td>;
+                }
+                if (column.key === "pain_points") {
+                  const pain = painView(lead.pain_points_detail, lead.pain_points);
+                  if (pain.hasContent) {
+                    return <td key={column.key} className="analysis-cell" title={[pain.tags.join(" · "), pain.report].filter(Boolean).join("\n")}>
+                      <span className="has-pain-tags">
+                        {pain.tags.length > 0
+                          ? <span className="pain-tags">{pain.tags.map((tag) => <span className="pain-tag" key={tag}>{tag}</span>)}</span>
+                          : <span className="pain-report-line">{pain.report}</span>}
+                        {full && pain.tags.length > 0 && pain.report && <span className="pain-report">{pain.report}</span>}
+                      </span>
+                    </td>;
+                  }
                 }
                 if ((column.key === "pain_points" || column.key === "enrichment") && !value) {
                   const detail = column.key === "pain_points" ? lead.pain_points_detail : lead.enrichment_detail;
@@ -138,6 +159,7 @@ export default function HistoryPage() {
     return Number.isNaN(date.getTime()) ? t("unknownDate") : format.dateTime(date, { dateStyle: "medium" });
   };
   const router = useRouter();
+  const [user, setUser] = useState<{ email: string; credits: number } | null>(null);
   const [batches, setBatches] = useState<LeadBatch[]>([]);
   const [view, setView] = useState<HistoryView>("unified");
   const [activeBatchId, setActiveBatchId] = useState("");
@@ -153,6 +175,7 @@ export default function HistoryPage() {
   const [enrichingKey, setEnrichingKey] = useState("");
   const [isDevelopmentEnvironment, setIsDevelopmentEnvironment] = useState(false);
   const [error, setError] = useState("");
+  const [showFullData, setShowFullData] = useState(false);
   const leadsRequest = useRef(0);
 
   const loadHistoryPage = useCallback(async (page: number, showLoading = true) => {
@@ -176,6 +199,23 @@ export default function HistoryPage() {
       setLoadingHistory(false);
     }
   }, [router, t]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    fetch("/api/auth/me", { cache: "no-store", signal: controller.signal })
+      .then((response) => response.json())
+      .then((payload) => {
+        if (!payload.user) router.replace("/");
+        else setUser({ email: String(payload.user.email), credits: Number(payload.user.credits) || 0 });
+      })
+      .catch(() => undefined);
+    return () => controller.abort();
+  }, [router]);
+
+  async function signOut() {
+    await fetch("/api/auth/logout", { method: "POST" });
+    router.replace("/");
+  }
 
   useEffect(() => {
     const controller = new AbortController();
@@ -320,10 +360,7 @@ export default function HistoryPage() {
 
   return (
     <main className="app-shell">
-      <nav className="topbar" aria-label={t("navLabel")}>
-        <BrandLogo /><LanguageSwitcher />
-        <Link className="history-back-link" href="/">{t("backToSearch")}</Link>
-      </nav>
+      {user && <AppSidebar active="history" user={user} onSignOut={signOut} />}
 
       <div className={`workspace history-workspace${view === "unified" ? " is-unified" : ""}`}>
         <section className="history-page" aria-labelledby="history-title">
@@ -348,9 +385,16 @@ export default function HistoryPage() {
 
           {batches.length > 0 && (
             <>
-              <div className="history-view-switch" role="group" aria-label={t("viewLabel")}>
-                <button type="button" className={view === "unified" ? "is-active" : ""} aria-pressed={view === "unified"} onClick={() => selectHistoryView("unified")}>{t("viewUnified")}</button>
-                <button type="button" className={view === "batch" ? "is-active" : ""} aria-pressed={view === "batch"} onClick={() => selectHistoryView("batch")}>{t("viewBatch")}</button>
+              <div className="history-toolbar">
+                <div className="history-view-switch" role="group" aria-label={t("viewLabel")}>
+                  <button type="button" className={view === "unified" ? "is-active" : ""} aria-pressed={view === "unified"} onClick={() => selectHistoryView("unified")}>{t("viewUnified")}</button>
+                  <button type="button" className={view === "batch" ? "is-active" : ""} aria-pressed={view === "batch"} onClick={() => selectHistoryView("batch")}>{t("viewBatch")}</button>
+                </div>
+                <label className="full-data-toggle">
+                  <input type="checkbox" role="switch" checked={showFullData} onChange={(event) => setShowFullData(event.target.checked)} />
+                  <span className="full-data-track" aria-hidden="true" />
+                  <span>{s("showFullData")}</span>
+                </label>
               </div>
 
               {view === "unified" && (
@@ -365,8 +409,8 @@ export default function HistoryPage() {
                   {!loadingHistory && !error && allLeads.length === 0 && <p className="history-state">{t("noBusinesses")}</p>}
                   {allLeads.length > 0 && (
                     <>
-                      <p className="history-sheet-hint">{t("scrollHint")}</p>
-                      <LeadSpreadsheet includeEnrichment={isDevelopmentEnvironment} leads={allLeads} unified lotNumbers={lotNumbers} batchDates={batchDates} onEnrich={enrichHistoryLead} enrichingKey={enrichingKey} />
+                      {showFullData && <p className="history-sheet-hint">{t("scrollHint")}</p>}
+                      <LeadSpreadsheet full={showFullData} includeEnrichment={isDevelopmentEnvironment} leads={allLeads} unified lotNumbers={lotNumbers} batchDates={batchDates} onEnrich={enrichHistoryLead} enrichingKey={enrichingKey} />
                       <div className="history-sheet-footer">
                         <span>{t("range", { from: (historyPage - 1) * 100 + 1, to: Math.min(historyPage * 100, historyTotal), total: historyTotal })}</span>
                         <div className="history-pagination">
@@ -422,8 +466,8 @@ export default function HistoryPage() {
                   {!loadingLeads && leads.length === 0 && !error && <p className="history-state">{t("noLeads")}</p>}
                   {leads.length > 0 && (
                     <>
-                      <p className="history-sheet-hint">{t("scrollHint")}</p>
-                      <LeadSpreadsheet includeEnrichment={isDevelopmentEnvironment} leads={leads} onEnrich={enrichHistoryLead} enrichingKey={enrichingKey} />
+                      {showFullData && <p className="history-sheet-hint">{t("scrollHint")}</p>}
+                      <LeadSpreadsheet full={showFullData} includeEnrichment={isDevelopmentEnvironment} leads={leads} onEnrich={enrichHistoryLead} enrichingKey={enrichingKey} />
                       <div className="history-sheet-footer"><span>{t("footerBusinesses", { count: leads.length })}</span><span>{t("footerBatch", { lot: activeLotNumber })}</span></div>
                     </>
                   )}

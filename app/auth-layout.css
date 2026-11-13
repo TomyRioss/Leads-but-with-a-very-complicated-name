@@ -1,0 +1,37 @@
+/* Auth: layout dividido. Panel de marca a la izquierda, formulario a la derecha. Todo acotado a .auth-bare. */
+.auth-bare { display: grid; grid-template-columns: minmax(0, 1fr); background: var(--paper); }
+
+.auth-aside {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-height: 64px;
+  padding: 10px 16px;
+  overflow: hidden;
+  background:
+    radial-gradient(70% 60% at 100% 100%, rgb(201 233 79 / 30%) 0%, rgb(201 233 79 / 0%) 70%),
+    radial-gradient(45% 35% at 0% 0%, rgb(201 233 79 / 9%) 0%, rgb(201 233 79 / 0%) 75%),
+    linear-gradient(160deg, var(--ash-800) 0%, var(--ash-900) 48%, var(--ash-950) 100%);
+  color: var(--paper);
+}
+.auth-aside .auth-brand-link { margin: 0; }
+.auth-aside .brand-mark { color: var(--paper); }
+.auth-aside .auth-brand-link:focus-visible { outline: 3px solid var(--lime); outline-offset: 4px; }
+.auth-aside-copy { display: none; }
+
+.auth-bare .auth-workspace { min-height: 0; padding: 32px 16px 40px; }
+.auth-bare .auth-panel { width: min(100%, 400px); padding: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; }
+.auth-bare .auth-panel h1 { font-size: 28px; line-height: 1.15; }
+.auth-bare .auth-intro { margin-top: 10px; font-size: 14px; }
+.auth-bare .primary-button.auth-submit { color: var(--ash-950); }
+.auth-bare .auth-panel input:focus-visible, .auth-bare .auth-panel button:focus-visible, .auth-bare .auth-panel a:focus-visible { outline: 3px solid var(--ash-950); outline-offset: 2px; }
+
+@media (min-width: 901px) {
+  .auth-bare { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); min-height: 100vh; min-height: 100dvh; padding: 12px; gap: 12px; }
+  .auth-aside { flex-direction: column; align-items: flex-start; justify-content: space-between; min-height: 0; padding: 36px 40px 44px; border-radius: 20px; }
+  .auth-aside-copy { display: block; max-width: 520px; }
+  .auth-aside-eyebrow { margin: 0 0 14px; color: var(--lime); font-size: 14px; font-weight: 650; }
+  .auth-aside-title { margin: 0; color: var(--paper); font-size: clamp(34px, 3.6vw, 52px); font-weight: 650; line-height: 1.04; letter-spacing: -0.035em; text-wrap: balance; }
+  .auth-aside-text { max-width: 440px; margin: 18px 0 0; color: var(--ash-300); font-size: 16px; line-height: 1.55; }
+  .auth-bare .auth-workspace { min-height: 0; padding: 40px 24px; }
+}

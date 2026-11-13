@@ -1,0 +1,19 @@
+.language-switcher { position: relative; display: inline-flex; flex: none; }
+.language-trigger { display: inline-flex; min-height: 42px; align-items: center; justify-content: center; gap: 9px; padding: 0 14px; border: 1px solid var(--ash-300); border-radius: 999px; background: var(--paper); color: var(--ash-950); font: inherit; font-size: 13px; font-weight: 700; letter-spacing: .04em; cursor: pointer; }
+.language-trigger:hover { border-color: var(--ash-700); }
+.language-trigger:focus-visible { outline: 2px solid var(--ash-950); outline-offset: 3px; }
+.language-trigger[aria-expanded="true"] .language-chevron { transform: rotate(180deg); }
+.language-flag { position: relative; display: block; width: 22px; height: 16px; flex: none; overflow: hidden; border: 1px solid rgb(32 35 32 / 16%); border-radius: 2px; box-shadow: 0 1px 2px rgb(32 35 32 / 12%); }
+.language-flag-es { background: linear-gradient(to bottom, #74acdf 0 33.34%, #fff 33.34% 66.67%, #74acdf 66.67%); }
+.language-flag-es::after { content: ""; position: absolute; top: 50%; left: 50%; width: 4px; height: 4px; border-radius: 50%; background: #f6b40e; transform: translate(-50%, -50%); }
+.language-flag-en { background: repeating-linear-gradient(to bottom, #b22234 0 1.2px, #fff 1.2px 2.4px); }
+.language-flag-canton { position: absolute; top: 0; left: 0; width: 9px; height: 8.6px; background-color: #3c3b6e; background-image: radial-gradient(#fff 0.5px, transparent 0.6px); background-size: 2.4px 2.4px; }
+.language-code { line-height: 1; }
+.language-chevron { flex: none; color: var(--muted); transition: transform .15s; }
+.language-menu { position: absolute; top: calc(100% + 8px); right: 0; z-index: 50; min-width: 190px; margin: 0; padding: 6px; list-style: none; border: 1px solid var(--line); border-radius: 14px; background: var(--paper); box-shadow: 0 12px 32px rgb(32 35 32 / 14%); }
+.side-nav-foot .language-menu { top: auto; right: auto; bottom: calc(100% + 8px); left: 0; }
+.language-option { display: flex; width: 100%; min-height: 44px; align-items: center; gap: 12px; padding: 0 12px; border: 0; border-radius: 9px; background: transparent; color: var(--ink); font: inherit; font-size: 14px; font-weight: 600; text-align: left; cursor: pointer; }
+.language-option[aria-selected="true"] { background: var(--ash-100); }
+.language-option:hover, .language-option:focus-visible { background: var(--ash-150); outline: none; }
+.language-option-name { flex: 1; }
+.language-option-check { color: var(--ash-950); }

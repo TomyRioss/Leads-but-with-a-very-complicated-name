@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { getSubscriptionPlan } from "@/lib/plans";
 import { getOwnerSession } from "@/lib/server/owner";
 import { recordOwnerAction } from "@/lib/server/owner-audit";
 import { pocketBaseFetch } from "@/lib/server/pocketbase";
@@ -7,7 +6,6 @@ import { errorResponse, findUserSummary, isNotFound, isValidRecordId, pocketBase
 import { errorTranslator } from "@/lib/server/locale";
 
 const allowedStatuses = ["authorized", "paused", "cancelled"] as const;
-const manualPlanIds = ["initial", "pro", "agency"];
 
 export async function PATCH(request: Request, context: { params: Promise<{ id: string }> }) {
   const t = errorTranslator(request);
@@ -22,11 +20,9 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
   if (!body) return errorResponse(t("ownerInvalidData"), 400);
   const requestedStatus = body.status === undefined ? undefined : allowedStatuses.find((status) => status === body.status);
   if (body.status !== undefined && !requestedStatus) return errorResponse(t("ownerSubscriptionStatus"), 400);
-  const requestedPlan = body.planId === undefined
-    ? undefined
-    : typeof body.planId === "string" && manualPlanIds.includes(body.planId) ? getSubscriptionPlan(body.planId) : null;
-  if (requestedPlan === null) return errorResponse(t("ownerPlanInvalid"), 400);
-  if (!requestedStatus && !requestedPlan) return errorResponse(t("ownerSendStatusOrPlan"), 400);
+  // Plans are managed by the external billing system: owner can only act on status.
+  if (body.planId !== undefined) return errorResponse(t("ownerPlansManagedExternally"), 405);
+  if (!requestedStatus) return errorResponse(t("ownerSubscriptionStatus"), 400);
 
   let subscription: SubscriptionRecord;
   try {
@@ -41,8 +37,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
   const save = () => pocketBaseFetch(`/api/collections/subscriptions/records/${subscription.id}`, {
     method: "PATCH",
     body: JSON.stringify({
-      ...(status ? { status } : {}),
-      ...(requestedPlan ? { plan_id: requestedPlan.id, price_ars: requestedPlan.priceArs, monthly_credits: requestedPlan.credits } : {}),
+      status,
     }),
   });
   try {
@@ -53,28 +48,13 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
   }
 
   const owner = await findUserSummary(subscription.user).catch(() => null);
-  const targetLabel = `${owner?.email ?? subscription.user} · ${requestedPlan?.name ?? subscription.plan_id}`;
-  if (status) {
-    await recordOwnerAction(request, session.owner, {
-      action: "subscription.status",
-      targetType: "subscription",
-      targetId: subscription.id,
-      targetLabel,
-      details: { status: { before: subscription.status, after: status } },
-    });
-  }
-  if (requestedPlan) {
-    await recordOwnerAction(request, session.owner, {
-      action: "subscription.plan",
-      targetType: "subscription",
-      targetId: subscription.id,
-      targetLabel,
-      details: {
-        planId: { before: subscription.plan_id, after: requestedPlan.id },
-        priceArs: { before: subscription.price_ars, after: requestedPlan.priceArs },
-        monthlyCredits: { before: subscription.monthly_credits, after: requestedPlan.credits },
-      },
-    });
-  }
-  return NextResponse.json({ ...(status ? { status } : {}), ...(requestedPlan ? { planId: requestedPlan.id } : {}) });
+  const targetLabel = `${owner?.email ?? subscription.user} · ${subscription.plan_id}`;
+  await recordOwnerAction(request, session.owner, {
+    action: "subscription.status",
+    targetType: "subscription",
+    targetId: subscription.id,
+    targetLabel,
+    details: { status: { before: subscription.status, after: status } },
+  });
+  return NextResponse.json({ status });
 }

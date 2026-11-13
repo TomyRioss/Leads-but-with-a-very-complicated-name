@@ -26,7 +26,7 @@
       "yes": "Yes",
       "no": "No",
       "perMonth": "{value} / month",
-      "planOption": "{plan} · {price} · {credits}",
+      "exclusive": "Exclusive",
       "pagerLabel": "Pagination",
       "pagerPrevious": "Previous",
       "pagerNext": "Next",
@@ -74,7 +74,20 @@
       "subscriptionCount": "{count, plural, one {# subscription} other {# subscriptions}}",
       "recent": "Recent activity",
       "viewAudit": "View audit log",
-      "noActivity": "No actions recorded yet."
+      "noActivity": "No actions recorded yet.",
+      "unknownUser": "Unknown user",
+      "events": "General events",
+      "noEvents": "No events yet.",
+      "eventsError": "Couldn't load the events.",
+      "eventSignup": "{email} signed up",
+      "eventVerified": "{email} verified their email",
+      "eventLeads": "{email} generated {count, plural, one {# lead} other {# leads}}",
+      "detailDate": "Date",
+      "detailActor": "Who",
+      "detailTarget": "Target",
+      "detailTargetType": "Target type",
+      "detailTargetId": "Target ID",
+      "detailIp": "IP"
     },
     "users": {
       "title": "Users",
@@ -98,6 +111,9 @@
       "ownerReadonly": "This is the owner account. Its details are read-only.",
       "phone": "Phone",
       "noPhone": "No phone",
+      "lastActivity": "Last activity",
+      "whatsapp": "WhatsApp",
+      "whatsappAria": "Open WhatsApp for {email} in a new tab",
       "emailPlaceholder": "name@domain.com",
       "saveChanges": "Save changes",
       "nameTooLong": "The name can be up to 100 characters.",
@@ -148,7 +164,7 @@
       "pause": "Pause",
       "resume": "Reactivate",
       "cancel": "Cancel",
-      "changePlan": "Change plan",
+      "managedExternally": "Plans and subscriptions (monthly) are managed in the external system.",
       "thisUser": "this user",
       "confirmPause": "Pause the {plan} subscription for {email}?",
       "confirmResume": "Reactivate the {plan} subscription for {email}?",
@@ -156,9 +172,6 @@
       "paused": "Subscription paused.",
       "resumed": "Subscription reactivated.",
       "cancelled": "Subscription canceled.",
-      "changePlanPrompt": "Change the plan for {email} (currently {plan}).",
-      "newPlan": "New plan",
-      "planChanged": "Plan changed to {plan}.",
       "empty": "There are no subscriptions yet."
     },
     "payments": {
@@ -252,7 +265,10 @@
       "deletedLeads": "Leads deleted",
       "batches": "Searches deleted",
       "leads": "Leads deleted",
-      "subscriptions": "Subscriptions deleted"
+      "subscriptions": "Subscriptions deleted",
+      "batchId": "Search ID",
+      "requestedCount": "Leads requested",
+      "resultCount": "Leads generated"
     },
     "plans": {
       "initial": "Starter plan",

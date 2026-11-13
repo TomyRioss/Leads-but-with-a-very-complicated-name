@@ -15,6 +15,12 @@ export type AnalysisDetail = {
   summary: string;
   findings: AnalysisFinding[];
   limitations: string;
+  /** Dolores: 1–4 etiquetas cortas. Ausente en análisis con el formato anterior. */
+  tags?: string[];
+  /** Dolores: reporte breve con evidencia y ángulo comercial. Ausente en análisis con el formato anterior. */
+  report?: string;
+  /** Foco de dolor usado en el análisis (para no repetirlo con el mismo foco). */
+  focus?: string;
   status?: "completed" | "no_data";
   social_networks?: SocialNetwork[];
 };

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { REFERRAL_COOKIE, attachReferral } from "@/lib/server/referrals";
 import { isValidPhoneNumber } from "libphonenumber-js/min";
 import { errorTranslator, localeFrom } from "@/lib/server/locale";
 import { sendVerificationEmail, updateEmailUser } from "@/lib/server/email";
@@ -58,6 +59,8 @@ export async function POST(request: Request) {
       method: "POST",
       body: JSON.stringify({ email, phone, password, passwordConfirm, name, credits: signupCredits, emailVisibility: false, verified: false }),
     });
+    const referralCode = request.headers.get("cookie")?.split(";").map((part) => part.trim()).find((part) => part.startsWith(`${REFERRAL_COOKIE}=`))?.slice(REFERRAL_COOKIE.length + 1);
+    const referred = referralCode ? await attachReferral({ id: user.id, email }, referralCode) : false;
     let verificationSent = false;
     try {
       await sendVerificationEmail(user, locale);
@@ -66,7 +69,9 @@ export async function POST(request: Request) {
     } catch (emailError) {
       console.error("Leadta verification email failed:", emailError instanceof Error ? emailError.message : "unknown error");
     }
-    return NextResponse.json({ verificationRequired: true, verificationSent }, { status: 201 });
+    const response = NextResponse.json({ verificationRequired: true, verificationSent }, { status: 201 });
+    if (referralCode && referred) response.cookies.set(REFERRAL_COOKIE, "", { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "lax", path: "/", maxAge: 0 });
+    return response;
   } catch (error) {
     console.error(
       "Leadta register failed:",

@@ -10,6 +10,7 @@ import { Hero } from "@/app/landing/hero";
 import { HowItWorks } from "@/app/landing/how-it-works";
 import { LeadRecord } from "@/app/landing/lead-record";
 import { PainsEnrichment } from "@/app/landing/pains-enrichment";
+import { WhatsappFloat } from "@/app/landing/whatsapp-float";
 import "@/app/landing/landing.css";
 
 export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }): Promise<Metadata> {
@@ -21,6 +22,7 @@ export async function generateMetadata({ params }: { params: Promise<{ locale: s
 export default async function LandingPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
   setRequestLocale(locale);
+  const wa = await getTranslations({ locale, namespace: "Landing.whatsapp" });
   return (
     <div className="lp-page">
       <LandingHeader />
@@ -35,6 +37,7 @@ export default async function LandingPage({ params }: { params: Promise<{ locale
         <FinalCta />
       </main>
       <LandingFooter />
+      <WhatsappFloat hello={wa("hello")} text={wa("text")} prefill={wa("prefill")} openLabel={wa("open")} closeLabel={wa("close")} />
     </div>
   );
 }

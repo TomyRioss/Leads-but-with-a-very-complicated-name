@@ -3,16 +3,16 @@
 import { useEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import { useLocale, useTranslations } from "next-intl";
-import { Check, CircleCheck, LoaderCircle, Mail, TriangleAlert } from "lucide-react";
+import { CircleCheck, LoaderCircle, Mail, TriangleAlert } from "lucide-react";
 import { FcGoogle } from "react-icons/fc";
 import { isValidPhoneNumber } from "libphonenumber-js/min";
 import PhoneInput from "react-phone-number-input";
 import es from "react-phone-number-input/locale/es.json";
 import en from "react-phone-number-input/locale/en.json";
-import { BrandLogo, BrandMark } from "./brand-logo";
-import { LanguageSwitcher } from "./language-switcher";
+import { BrandMark } from "./brand-logo";
 import { Link } from "@/i18n/navigation";
 import "./auth-steps.css";
+import "./auth-layout.css";
 
 type AuthFormProps = { onAuthenticated: () => void; initialError?: string; initialMode?: "login" | "register" };
 type VerifyStepState = { email: string; sent: boolean; fromLogin: boolean };
@@ -74,25 +74,6 @@ function ResendAction({ resend, type = "button", disabled = false }: { resend: R
   );
 }
 
-function AuthSteps({ current }: { current: 1 | 2 }) {
-  const t = useTranslations("Verification");
-  const steps = [t("stepAccount"), t("stepVerification")];
-  return (
-    <ol className="auth-steps" aria-label={t("stepsLabel")}>
-      {steps.map((label, index) => {
-        const number = index + 1;
-        const done = number < current;
-        return (
-          <li key={label} className="auth-step" data-done={done} aria-current={number === current ? "step" : undefined}>
-            <span className="auth-step-index" aria-hidden="true">{done ? <Check size={12} strokeWidth={3} /> : number}</span>
-            <span>{label}{done && <span className="sr-only"> ({t("stepDone")})</span>}</span>
-          </li>
-        );
-      })}
-    </ol>
-  );
-}
-
 function VerifyStep({ state, onChangeEmail, onLogin }: { state: VerifyStepState; onChangeEmail: () => void; onLogin: () => void }) {
   const t = useTranslations("Verification");
   const headingRef = useRef<HTMLHeadingElement>(null);
@@ -104,7 +85,6 @@ function VerifyStep({ state, onChangeEmail, onLogin }: { state: VerifyStepState;
 
   return (
     <>
-      <AuthSteps current={2} />
       <span className="auth-verify-icon" aria-hidden="true"><Mail size={22} /></span>
       <h1 id="auth-title" ref={headingRef} tabIndex={-1}>{t("verifyTitle")}</h1>
       <p className="auth-intro">
@@ -119,6 +99,79 @@ function VerifyStep({ state, onChangeEmail, onLogin }: { state: VerifyStepState;
         {t("alreadyVerified")}{" "}
         <button type="button" onClick={onLogin}>{t("startSession")}</button>
       </p>
+    </>
+  );
+}
+
+function PhoneStep({ onDone }: { onDone: (role?: string) => void }) {
+  const t = useTranslations("Auth");
+  const locale = useLocale();
+  const [phone, setPhone] = useState("");
+  const [touched, setTouched] = useState(false);
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+  const headingRef = useRef<HTMLHeadingElement>(null);
+  const invalid = !phone || !isValidPhoneNumber(phone);
+
+  useEffect(() => {
+    headingRef.current?.focus();
+  }, []);
+
+  async function save(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setError("");
+    if (invalid) {
+      setTouched(true);
+      setError(t("validPhone"));
+      document.getElementById("phone")?.focus();
+      return;
+    }
+    setBusy(true);
+    try {
+      const response = await fetch("/api/auth/phone", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone, locale }),
+      });
+      const payload = await response.json();
+      if (response.status === 401) throw new Error(t("googlePhoneExpired"));
+      if (response.status === 409) throw new Error(t("phoneTaken"));
+      if (!response.ok) throw new Error(response.status === 400 ? t("validPhone") : t("serviceUnavailable"));
+      onDone(payload.user?.role);
+    } catch (saveError) {
+      setError(saveError instanceof Error ? saveError.message : t("connectionFailed"));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <>
+      <h1 id="auth-title" ref={headingRef} tabIndex={-1}>{t("googlePhoneTitle")}</h1>
+      <p className="auth-intro">{t("googlePhoneIntro")}</p>
+      <form className="auth-fields" onSubmit={save}>
+        <div className="field">
+          <label className="field-label" htmlFor="phone">{t("phone")}<span className="required-mark" aria-hidden="true"> *</span></label>
+          <PhoneInput
+            id="phone"
+            defaultCountry="AR"
+            labels={locale === "es" ? es : en}
+            value={phone}
+            onChange={(value) => setPhone(value || "")}
+            onBlur={() => setTouched(true)}
+            autoComplete="tel"
+            aria-describedby={touched && invalid ? "phone-error" : "phone-help"}
+            numberInputProps={{ id: "phone", required: true, "aria-label": t("phoneAria"), "aria-invalid": touched && Boolean(phone) && invalid }}
+            international
+          />
+          <span className="field-help" id="phone-help">{t("phoneHelp")}</span>
+          {touched && invalid && <span className="field-help auth-inline-error" id="phone-error" role="status">{t("phoneInvalid")}</span>}
+        </div>
+        {error && <p className="auth-error" role="alert">{error}</p>}
+        <button className="primary-button auth-submit" type="submit" disabled={busy}>
+          {busy ? t("connecting") : t("googlePhoneSubmit")}
+        </button>
+      </form>
     </>
   );
 }
@@ -256,6 +309,7 @@ export function AuthForm({ onAuthenticated, initialError = "", initialMode = "lo
   const [error, setError] = useState(() => localizedError(initialError));
   const [verifyStep, setVerifyStep] = useState<VerifyStepState | null>(null);
   const [busy, setBusy] = useState(false);
+  const [phoneStep] = useState(() => typeof window !== "undefined" && new URLSearchParams(window.location.search).get("authStep") === "phone");
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -322,19 +376,29 @@ export function AuthForm({ onAuthenticated, initialError = "", initialMode = "lo
   }
 
   return (
-    <main className="app-shell auth-shell">
-      <header className="topbar">
-        <BrandLogo />
-        <div className="topbar-actions"><LanguageSwitcher /><Link className="topbar-note auth-pricing-link" href="/pricing">{t("pricing")}</Link></div>
-      </header>
+    <main className="app-shell auth-shell auth-bare">
+      <aside className="auth-aside">
+        <Link className="auth-brand-link" href="/" aria-label={t("goHome")}><BrandMark className="auth-brand-mark" /></Link>
+        <div className="auth-aside-copy">
+          <p className="auth-aside-eyebrow">{t("asideEyebrow")}</p>
+          <p className="auth-aside-title">{t("asideTitle")}</p>
+          <p className="auth-aside-text">{t("asideText")}</p>
+        </div>
+      </aside>
       <div className="auth-workspace">
         <section className="search-panel auth-panel" aria-labelledby="auth-title">
-          <BrandMark className="auth-brand-mark" />
-          {verifyStep ? (
+          {phoneStep ? (
+            <PhoneStep onDone={(role) => {
+              if (role === "owner") window.location.assign(window.location.pathname.startsWith("/en/") ? "/en/owner" : "/owner");
+              else {
+                window.history.replaceState(null, "", window.location.pathname);
+                onAuthenticated();
+              }
+            }} />
+          ) : verifyStep ? (
             <VerifyStep state={verifyStep} onChangeEmail={() => backToForm(mode)} onLogin={() => backToForm("login")} />
           ) : (
           <>
-          {mode === "register" && <AuthSteps current={1} />}
           <h1 id="auth-title" tabIndex={-1}>{mode === "register" ? t("registerTitle") : t("loginTitle")}</h1>
           <p className="auth-intro">{mode === "register" && t("registerIntro")}{t("privateIntro")}</p>
           <a className="google-auth-button" href={`/api/auth/google?locale=${locale}`}><FcGoogle size={18} aria-hidden="true" /><span>{t("continueWithGoogle")}</span></a>

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import { useLocale, useTranslations } from "next-intl";
-import { subscriptionPlans } from "@/lib/plans";
+import { getSubscriptionPlan, isExclusivePlan, subscriptionPlans } from "@/lib/plans";
 
 // Tailwind class constants and helpers shared by the owner sections (copied from owner-panel.tsx).
 const btn = "inline-flex min-h-10 cursor-pointer items-center justify-center gap-1.5 rounded-lg border px-3.5 text-xs! font-semibold! focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(color:--ash-950) disabled:cursor-not-allowed disabled:opacity-50";
@@ -29,6 +29,7 @@ export const blockClass = "grid gap-2.5 rounded-[10px] border border-(color:--li
 export const iconButton = "inline-grid size-10 cursor-pointer place-items-center rounded-lg border border-(color:--ash-300) bg-(--paper) text-(color:--ink) focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(color:--ash-950)";
 export const confirmBox = "grid gap-2.5 rounded-[10px] border border-(color:--ash-950) bg-(--paper) px-4 py-3.5";
 
+export const exclusivePill = "inline-flex items-center rounded-full bg-(--lime) px-2 py-0.5 text-[11px] font-semibold text-(color:--ink)";
 export const statusPill = (status: string) =>
   `inline-block rounded-full px-[7px] py-0.5 text-[10px] font-bold ${
     ["authorized", "processed", "completed"].includes(status) ? "bg-(--lime) text-(color:--ink)"
@@ -66,7 +67,8 @@ export function useOwnerFormat() {
     const formatDate = (value: string) => { const parsed = parse(value); return parsed ? dateFormat.format(parsed) : "—"; };
     const formatDateTime = (value: string) => { const parsed = parse(value); return parsed ? dateTimeFormat.format(parsed) : "—"; };
     const statusLabel = (status: string) => (t.has(`status.${status}`) ? t(`status.${status}`) : status);
-    const planName = (id: string) => (t.has(`plans.${id}`) ? t(`plans.${id}`) : (subscriptionPlans.find((plan) => plan.id === id)?.name ?? id));
+    const planName = (id: string) => (t.has(`plans.${id}`) ? t(`plans.${id}`) : (getSubscriptionPlan(id)?.name ?? id));
+    const isExclusive = (id: string) => isExclusivePlan(subscriptionPlans, id);
     const actionLabel = (action: string) => { const key = `actions.${action.replace(".", "_")}`; return t.has(key) ? t(key) : action; };
     const errorText = (error: string | undefined, fallback: string) => (error === NETWORK_ERROR ? t("common.networkError") : error || fallback);
 
@@ -92,7 +94,7 @@ export function useOwnerFormat() {
       });
     };
 
-    return { formatNumber, formatArs, formatDate, formatDateTime, statusLabel, planName, actionLabel, errorText, describeDetails };
+    return { formatNumber, formatArs, formatDate, formatDateTime, statusLabel, planName, isExclusive, actionLabel, errorText, describeDetails };
   }, [t, locale]);
 }
 

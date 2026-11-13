@@ -12,7 +12,7 @@ import { ghostButton, iconButton, isUnauthorized, ownerFetch, stateBox, useFocus
 
 export type OwnerSectionKey = "resumen" | "usuarios" | "suscripciones" | "pagos" | "busquedas" | "auditoria";
 
-const navItems: { key: OwnerSectionKey; label: string; icon: ComponentType<{ size?: number; "aria-hidden"?: boolean }> }[] = [
+const navItems: { key: OwnerSectionKey; label: string; icon: ComponentType<{ size?: number; className?: string; "aria-hidden"?: boolean }> }[] = [
   { key: "resumen", label: "navSummary", icon: LayoutDashboard },
   { key: "usuarios", label: "navUsers", icon: Users },
   { key: "suscripciones", label: "navSubscriptions", icon: CreditCard },
@@ -126,7 +126,7 @@ export default function OwnerPanel() {
   }
 
   return (
-    <div className="min-h-dvh bg-(--ash-100) text-(color:--ink) md:grid md:grid-cols-[232px_minmax(0,1fr)]">
+    <div className="min-h-dvh bg-(--ash-100) text-(color:--ink) md:grid md:grid-cols-[224px_minmax(0,1fr)]">
       <header className="sticky top-0 z-30 flex items-center gap-3 border-b border-(color:--line) bg-(--paper) px-4 py-3 md:hidden">
         <button ref={menuButtonRef} className={iconButton} type="button" onClick={() => setMenuOpen(true)} aria-label={t("shell.openMenu")} aria-expanded={menuOpen} aria-controls="owner-sidebar"><Menu size={18} aria-hidden="true" /></button>
         <span className="text-sm font-semibold">{t(`shell.${current.label}`)}</span>
@@ -139,14 +139,16 @@ export default function OwnerPanel() {
       <aside
         id="owner-sidebar"
         ref={sidebarRef}
-        className={`fixed inset-y-0 left-0 z-50 flex w-58 flex-col gap-5 border-r border-(color:--line) bg-(--paper) p-4 transition-transform md:sticky md:top-0 md:z-auto md:h-dvh md:w-auto md:translate-x-0 md:visible ${sidebarOpen}`}
+        className={`fixed inset-y-0 left-0 z-50 flex w-64 flex-col gap-4 border-r border-(color:--line) bg-(--paper) p-4 transition-transform md:sticky md:top-0 md:z-auto md:h-dvh md:w-auto md:translate-x-0 md:visible ${sidebarOpen}`}
         aria-label={t("shell.panelLabel")}
       >
-        <div className="flex items-center gap-2.5">
-          <BrandLogo />
-          <LanguageSwitcher />
-          <span className="rounded-full bg-(--ash-950) px-2 py-[3px] text-[10px] font-bold uppercase tracking-wider text-(color:--lime)">{t("shell.badge")}</span>
-          <button className={`${iconButton} ml-auto md:hidden`} type="button" onClick={closeMenu} aria-label={t("shell.closeMenu")}><X size={18} aria-hidden="true" /></button>
+        <div className="grid gap-3 border-b border-(color:--line) pb-4">
+          <div className="flex min-h-10 items-center justify-between gap-3">
+            <BrandLogo />
+            <span className="rounded-full bg-(--ash-950) px-2.5 py-1 text-[10px] font-bold uppercase leading-none tracking-wider text-(color:--lime)">{t("shell.badge")}</span>
+            <button className={`${iconButton} md:hidden`} type="button" onClick={closeMenu} aria-label={t("shell.closeMenu")}><X size={18} aria-hidden="true" /></button>
+          </div>
+          <div className="flex"><LanguageSwitcher /></div>
         </div>
 
         <nav aria-label={t("shell.sectionsLabel")} className="grid gap-1">
@@ -158,10 +160,10 @@ export default function OwnerPanel() {
                 type="button"
                 aria-current={active ? "page" : undefined}
                 onClick={() => go(key)}
-                className={`flex min-h-10 cursor-pointer items-center gap-2.5 rounded-lg border-0 px-3 text-left text-[13px]! font-semibold! focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(color:--ash-950) ${active ? "bg-(--ash-950) text-(color:--paper)! hover:bg-(--ash-900)" : "bg-transparent text-(color:--ash-800)! hover:bg-(--ash-100)"}`}
+                className={`flex min-h-11 w-full cursor-pointer items-center gap-3 rounded-lg border-0 px-3 text-left text-[13px]! font-semibold! focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(color:--ash-950) ${active ? "bg-(--ash-950) text-(color:--paper)! hover:bg-(--ash-900)" : "bg-transparent text-(color:--ash-800)! hover:bg-(--ash-100)"}`}
               >
-                <Icon size={16} aria-hidden={true} />
-                {t(`shell.${label}`)}
+                <Icon className="shrink-0" size={16} aria-hidden={true} />
+                <span className="truncate">{t(`shell.${label}`)}</span>
               </button>
             );
           })}
@@ -174,7 +176,7 @@ export default function OwnerPanel() {
       </aside>
 
       <main ref={mainRef} tabIndex={-1} className="min-w-0 outline-none">
-        <div className="mx-auto w-[calc(100%-32px)] max-w-[1160px] pb-20 pt-5 md:pt-8">
+        <div className="mx-auto w-[calc(100%-32px)] max-w-[1680px] pb-20 pt-5 md:pt-8">
           {section === "resumen" && <Overview onUnauthorized={leavePanel} onOpenAudit={() => go("auditoria")} />}
           {section === "usuarios" && <UsersSection onUnauthorized={leavePanel} onAction={onAction} />}
           {section === "suscripciones" && <SubscriptionsSection onUnauthorized={leavePanel} onAction={onAction} />}

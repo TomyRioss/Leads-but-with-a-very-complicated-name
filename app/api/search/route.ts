@@ -5,11 +5,13 @@ import { createLeadRecords, isPocketBaseConfigured, pocketBaseFetch } from "@/li
 import { CREDITS_PER_LEAD, CreditOperationBusyError, InsufficientCreditsError, reserveLeadCredits } from "@/lib/server/credits";
 import { uiError } from "@/lib/server/public-error";
 import { errorTranslator, resolveLocale } from "@/lib/server/locale";
+import { planRandomSearch, remainingCallTimeoutMs, splitEvenly, RANDOM_LOCATION_COUNTRIES, type RandomSearchSlot } from "@/lib/search-random-location";
 
 export const maxDuration = 300;
 
 const actorId = "tBH60CegtoC2QNtaR";
 const allowedCounts = new Set([5, 10, 25, 50, 75, 100, 125, 150]);
+const randomConcurrency = 5;
 const isDevelopmentEnvironment = process.env.ENVIROMENT?.trim().toLowerCase() === "dev";
 
 type ActorPlace = Record<string, unknown>;
@@ -22,6 +24,19 @@ type SearchFilters = {
   email: "any" | "with" | "without";
   skipClosed: boolean;
 };
+
+/** Ejecuta `task` sobre `items` con a lo sumo `limit` en vuelo, conservando el orden de resultados. */
+async function mapLimited<T, R>(items: T[], limit: number, task: (item: T) => Promise<R>): Promise<R[]> {
+  const results = new Array<R>(items.length);
+  let next = 0;
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, async () => {
+    while (next < items.length) {
+      const index = next++;
+      results[index] = await task(items[index]);
+    }
+  }));
+  return results;
+}
 
 type StoredReview = {
   text: string;
@@ -151,9 +166,10 @@ async function actorSearch(
   limit: number,
   monitorName: string,
   filters: SearchFilters,
+  timeoutMs = 300_000,
 ): Promise<ActorPlace[]> {
   const response = await fetch(
-    `https://api.apify.com/v2/acts/${actorId}/run-sync-get-dataset-items?timeout=300&format=json&clean=true`,
+    `https://api.apify.com/v2/acts/${actorId}/run-sync-get-dataset-items?timeout=${Math.max(1, Math.ceil(timeoutMs / 1000))}&format=json&clean=true`,
     {
       method: "POST",
       headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
@@ -173,7 +189,7 @@ async function actorSearch(
         ...(filters.skipClosed ? { skipClosed: true } : {}),
         includeDetails: true,
       }),
-      signal: AbortSignal.timeout(300_000),
+      signal: AbortSignal.timeout(timeoutMs),
       cache: "no-store",
     },
   );
@@ -189,6 +205,7 @@ async function actorSearch(
 }
 
 export async function POST(request: Request) {
+  const startedAt = Date.now();
   const t = errorTranslator(request);
   let session: Awaited<ReturnType<typeof getCurrentUser>>;
   try {
@@ -211,6 +228,7 @@ export async function POST(request: Request) {
     country?: unknown;
     province?: unknown;
     district?: unknown;
+    random?: unknown;
     count?: unknown;
     filters?: unknown;
   };
@@ -224,9 +242,14 @@ export async function POST(request: Request) {
   const keywords = Array.isArray(body.keywords)
     ? [...new Set(body.keywords.filter((value): value is string => typeof value === "string").map((value) => value.trim()).filter(Boolean))]
     : [];
-  const country = typeof body.country === "string" ? body.country.trim() : "";
-  const province = typeof body.province === "string" ? body.province.trim() : "";
-  const district = typeof body.district === "string" ? body.district.trim() : "";
+  // Ubicación aleatoria: el cliente solo manda el flag; el reparto entre países se calcula acá.
+  const random = body.random === true;
+  const locale = resolveLocale(request);
+  const country = random
+    ? (locale === "en" ? `Random location · ${RANDOM_LOCATION_COUNTRIES.length} countries` : `Ubicación aleatoria · ${RANDOM_LOCATION_COUNTRIES.length} países`)
+    : typeof body.country === "string" ? body.country.trim() : "";
+  const province = !random && typeof body.province === "string" ? body.province.trim() : "";
+  const district = !random && typeof body.district === "string" ? body.district.trim() : "";
   const count = typeof body.count === "number" ? body.count : Number(body.count);
   const rawFilters = body.filters && typeof body.filters === "object" && !Array.isArray(body.filters)
     ? body.filters as Record<string, unknown>
@@ -273,9 +296,11 @@ export async function POST(request: Request) {
   }
 
   const location = [district, province, country].filter(Boolean).join(", ");
-  const normalizedLocation = location.normalize("NFKD").replace(/\p{Diacritic}/gu, "").replace(/\s+/g, " ").trim().toLowerCase();
-  const monitorScope = [session.user.id, normalizedLocation, "es"].join("|");
-  const monitorName = `leadta-${createHash("sha256").update(monitorScope).digest("hex").slice(0, 24)}`;
+  const monitorFor = (place: string) => {
+    const normalizedLocation = place.normalize("NFKD").replace(/\p{Diacritic}/gu, "").replace(/\s+/g, " ").trim().toLowerCase();
+    return `leadta-${createHash("sha256").update([session.user.id, normalizedLocation, "es"].join("|")).digest("hex").slice(0, 24)}`;
+  };
+  const monitorName = monitorFor(location);
   let currentBatchId: string | null = null;
   let persistedCount = 0;
   let creditReservation: Awaited<ReturnType<typeof reserveLeadCredits>> | null = null;
@@ -309,22 +334,53 @@ export async function POST(request: Request) {
     const leads = new Map<string, ReturnType<typeof mapPlace>>();
     let actorError = "";
 
-    for (const keyword of keywords) {
-      const remaining = count - leads.size;
-      if (remaining <= 0) break;
+    const addPlaces = (places: ActorPlace[]) => {
+      for (const place of places) {
+        const mapped = mapPlace(place);
+        if (!mapped.name) continue;
+        if (filters.email === "without" && mapped.email) continue;
+        leads.set(mapped.source_key, mapped);
+        if (leads.size >= count) break;
+      }
+    };
 
-      try {
-        const places = await actorSearch(token, keyword, location, remaining, monitorName, filters);
-        for (const place of places) {
-          const mapped = mapPlace(place);
-          if (!mapped.name) continue;
-          if (filters.email === "without" && mapped.email) continue;
-          leads.set(mapped.source_key, mapped);
-          if (leads.size >= count) break;
+    if (random) {
+      const runSlots = (slots: RandomSearchSlot[]) => mapLimited(slots, randomConcurrency, async (slot) => {
+        // Deadline global: sin tiempo suficiente la búsqueda se omite y solo se cobra lo que se guarde.
+        const timeoutMs = remainingCallTimeoutMs(Date.now() - startedAt);
+        if (timeoutMs === 0) return { slot, places: [] as ActorPlace[], failed: true };
+        try {
+          const places = await actorSearch(token, slot.keyword, slot.country, slot.limit, monitorFor(slot.country), filters, timeoutMs);
+          return { slot, places, failed: false };
+        } catch (error) {
+          actorError ||= uiError(error instanceof Error ? error.message : t("searchApifyFailed"), t("generic"));
+          return { slot, places: [] as ActorPlace[], failed: true };
         }
-      } catch (error) {
-        actorError = uiError(error instanceof Error ? error.message : t("searchApifyFailed"), t("generic"));
-        break;
+      });
+      const plan = planRandomSearch(count, keywords, Math.floor(Math.random() * RANDOM_LOCATION_COUNTRIES.length));
+      const firstPass = await runSlots(plan);
+      for (const { places } of firstPass) addPlaces(places);
+
+      // Si faltan resultados, se pide más solo a los países/keywords que devolvieron todo lo pedido (todavía tienen), sin pasar de `count`.
+      const missing = count - leads.size;
+      const saturated = firstPass.filter(({ slot, places, failed }) => !failed && places.length >= slot.limit);
+      if (missing > 0 && saturated.length > 0 && remainingCallTimeoutMs(Date.now() - startedAt) > 0) {
+        const extras = splitEvenly(Math.min(missing, saturated.length * 5), saturated.length);
+        const secondPass = await runSlots(saturated.flatMap(({ slot }, index) => extras[index] > 0 ? [{ ...slot, limit: slot.limit + extras[index] }] : []));
+        for (const { places } of secondPass) addPlaces(places);
+      }
+    } else {
+      for (const keyword of keywords) {
+        const remaining = count - leads.size;
+        if (remaining <= 0) break;
+
+        try {
+          const places = await actorSearch(token, keyword, location, remaining, monitorName, filters);
+          addPlaces(places);
+        } catch (error) {
+          actorError = uiError(error instanceof Error ? error.message : t("searchApifyFailed"), t("generic"));
+          break;
+        }
       }
     }
 

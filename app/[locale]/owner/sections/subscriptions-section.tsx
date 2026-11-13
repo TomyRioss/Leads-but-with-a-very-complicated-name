@@ -2,9 +2,8 @@
 
 import { useRef, useState } from "react";
 import { useTranslations } from "next-intl";
-import { subscriptionPlans } from "@/lib/plans";
 import {
-  confirmBox, controlClass, dangerButton, errorBox, ghostButton, isUnauthorized, mutedText, type OnAction,
+  confirmBox, dangerButton, errorBox, ghostButton, isUnauthorized, mutedText, type OnAction,
   okBox, ownerFetch, primaryButton, rightCell, smallButton, stateBox, statusPill, tableClass, tableWrap, tdClass,
   theadClass, thClass, trClass, useFocusTrap, useOwnerFormat, useOwnerList,
 } from "../ui";
@@ -21,11 +20,8 @@ type Subscription = {
   externalReference: string;
   created: string;
 };
-type Pending =
-  | { kind: "status"; row: Subscription; status: "authorized" | "paused" | "cancelled"; message: string; success: string }
-  | { kind: "plan"; row: Subscription };
+type Pending = { kind: "status"; row: Subscription; status: "authorized" | "paused" | "cancelled"; message: string; success: string };
 
-const manualPlans = subscriptionPlans.filter((plan) => ["initial", "pro", "agency"].includes(plan.id));
 const live = ["authorized", "paused", "pending"];
 const statusValues = ["authorized", "paused", "pending", "canceled", "rejected", "creating"];
 
@@ -37,7 +33,6 @@ export default function SubscriptionsSection({ onUnauthorized, onAction }: { onU
   const list = useOwnerList<Subscription>("/api/owner/subscriptions", t("loadError"), onUnauthorized);
   const { data, loading, error, reload } = list;
   const [pending, setPending] = useState<Pending | null>(null);
-  const [newPlan, setNewPlan] = useState<string>(manualPlans[0]?.id ?? "initial");
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<{ kind: "ok" | "error"; text: string } | null>(null);
 
@@ -65,8 +60,8 @@ export default function SubscriptionsSection({ onUnauthorized, onAction }: { onU
     if (!pending || busy) return;
     setBusy(true);
     const { row } = pending;
-    const body = pending.kind === "status" ? { status: pending.status } : { planId: newPlan };
-    const success = pending.kind === "status" ? pending.success : t("planChanged", { plan: planName(newPlan) });
+    const body = { status: pending.status };
+    const success = pending.success;
     const result = await ownerFetch(`/api/owner/subscriptions/${encodeURIComponent(row.id)}`, { method: "PATCH", body });
     setBusy(false);
     closePending();
@@ -83,22 +78,12 @@ export default function SubscriptionsSection({ onUnauthorized, onAction }: { onU
   return (
     <section aria-label={t("title")}>
       <ListToolbar title={t("title")} total={data?.totalItems} query={list.query} onQuery={list.setQuery} status={list.status} onStatus={list.setStatus} statusOptions={statusOptions} onRefresh={() => void reload()} />
+      <p className={mutedText}>{t("managedExternally")}</p>
       {error && <p className={errorBox} role="alert">{error}</p>}
       {notice && <p className={notice.kind === "ok" ? okBox : errorBox} role={notice.kind === "ok" ? "status" : "alert"}>{notice.text}</p>}
       {pending && (
         <div ref={dialogRef} className={`${confirmBox} mb-3.5`} role="alertdialog" aria-label={common("confirmAction")}>
-          {pending.kind === "status" ? (
-            <p className="m-0 text-[13px] font-semibold">{pending.message}</p>
-          ) : (
-            <>
-              <p className="m-0 text-[13px] font-semibold">{t("changePlanPrompt", { email: pending.row.userEmail || t("thisUser"), plan: planName(pending.row.planId) })}</p>
-              <label className="grid gap-1.5 text-xs">
-                {t("newPlan")} <select className={controlClass} value={newPlan} onChange={(event) => setNewPlan(event.target.value)}>
-                  {manualPlans.map((plan) => <option key={plan.id} value={plan.id}>{common("planOption", { plan: planName(plan.id), price: formatArs(plan.priceArs), credits: common("creditsCount", { count: plan.credits }) })}</option>)}
-                </select>
-              </label>
-            </>
-          )}
+          <p className="m-0 text-[13px] font-semibold">{pending.message}</p>
           <div className="flex flex-wrap gap-2">
             <button className={primaryButton} type="button" disabled={busy} onClick={() => void confirm()}>{busy ? common("saving") : common("confirm")}</button>
             <button className={ghostButton} type="button" disabled={busy} onClick={closePending} autoFocus>{common("back")}</button>
@@ -132,7 +117,6 @@ export default function SubscriptionsSection({ onUnauthorized, onAction }: { onU
                     {row.status === "authorized" && <button className={`${ghostButton} ${smallButton}`} type="button" disabled={busy} onClick={(event) => askStatus(event.currentTarget, row, "paused")}>{t("pause")}</button>}
                     {row.status === "paused" && <button className={`${ghostButton} ${smallButton}`} type="button" disabled={busy} onClick={(event) => askStatus(event.currentTarget, row, "authorized")}>{t("resume")}</button>}
                     {live.includes(row.status) && <button className={`${dangerButton} ${smallButton}`} type="button" disabled={busy} onClick={(event) => askStatus(event.currentTarget, row, "cancelled")}>{t("cancel")}</button>}
-                    {live.includes(row.status) && <button className={`${ghostButton} ${smallButton}`} type="button" disabled={busy} onClick={(event) => { openerRef.current = event.currentTarget; setNotice(null); setNewPlan(manualPlans.some((plan) => plan.id === row.planId) ? row.planId : (manualPlans[0]?.id ?? "initial")); setPending({ kind: "plan", row }); }}>{t("changePlan")}</button>}
                     {!live.includes(row.status) && <span className={mutedText}>{common("noActions")}</span>}
                   </div>
                 </td>

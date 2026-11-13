@@ -1,6 +1,7 @@
 import type { CSSProperties } from "react";
 import { FileSpreadsheet, Search, Star } from "lucide-react";
 import { getTranslations } from "next-intl/server";
+import { PainReveal } from "./pain-reveal";
 
 type SheetRow = {
   name: string;
@@ -11,6 +12,7 @@ type SheetRow = {
   email: string;
   socials: string;
   pain: string;
+  service: string;
 };
 
 export async function LeadSheet() {
@@ -57,7 +59,14 @@ export async function LeadSheet() {
               <td data-label={t("cols.phone")}>{value(row.phone)}</td>
               <td data-label={t("cols.email")}>{value(row.email)}</td>
               <td data-label={t("cols.socials")} className="lp-col-socials">{value(row.socials)}</td>
-              <td data-label={t("cols.pain")}>{row.pain ? <span className="lp-pain-chip">{row.pain}</span> : <span className="lp-missing">{missing}</span>}</td>
+              <td data-label={t("cols.pain")}>{row.pain ? (
+                <span className="lp-pain-cell">
+                  <span className="lp-pain-chip">{row.pain}</span>
+                  <small className="lp-service"><b>{t("serviceLabel")}</b> {row.service}</small>
+                </span>
+              ) : (
+                <PainReveal label={t("analyzePain")} result={t("analyzedPain")} serviceLabel={t("serviceLabel")} service={t("analyzedService")} />
+              )}</td>
             </tr>
           ))}
         </tbody>

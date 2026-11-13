@@ -4,22 +4,27 @@
       "title": "Leadta | Encontrá negocios para contactar",
       "description": "Buscá negocios locales de Google Maps por rubro y zona, con teléfono, mail, redes y dolores detectados en reseñas. Exportá cada lote a CSV o XLSX."
     },
+    "whatsapp": {
+      "hello": "¡Hola! 👋",
+      "text": "¿Tenés dudas? Te respondemos por WhatsApp en minutos.",
+      "prefill": "Hola, quiero saber más sobre Leadta",
+      "open": "Escribinos por WhatsApp (se abre en una pestaña nueva)",
+      "close": "Cerrar mensaje"
+    },
     "nav": {
       "aria": "Navegación principal",
-      "how": "Cómo funciona",
-      "data": "Qué trae un lead",
-      "pains": "Dolores y redes",
+      "how": "Producto",
       "plans": "Pricing",
       "faq": "Preguntas",
       "login": "Ingresar",
       "signup": "Crear cuenta"
     },
     "hero": {
-      "title": "Negocios de Google Maps, listos para contactar.",
-      "description": "Elegí un rubro y una zona. Leadta arma una hoja con teléfono, mail, redes y lo que dicen las reseñas de cada negocio, y la dejás lista para exportar.",
+      "title": "No pierdas más tiempo buscando <mark>Leads</mark>",
+      "description": "Leadta es <strong>la herramienta para vos o tu equipo comercial</strong>: genera leads, busca dolores, audita las páginas, revisa las reseñas y rastrea contactos directos.",
       "primary": "Crear cuenta gratis",
-      "secondary": "Probar una búsqueda",
-      "note": "240 créditos de bienvenida al registrarte."
+      "demo": "Agendar Demo",
+      "demoMessage": "Hola, quiero agendar una demo de Leadta"
     },
     "sheet": {
       "caption": "Lote de ejemplo con leads de veterinarias",
@@ -28,6 +33,10 @@
       "count": "25 leads",
       "sample": "Datos de ejemplo",
       "missing": "Sin dato",
+      "analyzePain": "Analizar Dolor con IA",
+      "analyzedPain": "Poco seguimiento de reseñas negativas",
+      "analyzedService": "Gestión de reseñas",
+      "serviceLabel": "Servicio:",
       "csv": "CSV",
       "xlsx": "XLSX",
       "cols": {
@@ -39,16 +48,16 @@
         "pain": "Dolor detectado"
       },
       "rows": [
-        { "name": "Veterinaria Huellitas del Sur", "category": "Veterinaria", "rating": "4,7", "reviews": "212", "phone": "+54 11 4555-0132", "email": "hola@huellitas.example", "socials": "Instagram, Facebook", "pain": "Turnos difíciles de conseguir" },
-        { "name": "Clínica Vet Belgrano", "category": "Clínica veterinaria", "rating": "4,3", "reviews": "96", "phone": "+54 11 4555-0178", "email": "", "socials": "Instagram", "pain": "Esperas largas con turno" },
-        { "name": "Mascotas del Plata", "category": "Veterinaria", "rating": "4,5", "reviews": "58", "phone": "+54 11 4555-0145", "email": "contacto@mascotasdelplata.example", "socials": "", "pain": "No responden por WhatsApp" },
-        { "name": "Vet 24 Villa Crespo", "category": "Urgencias 24 h", "rating": "4,1", "reviews": "143", "phone": "+54 11 4555-0199", "email": "", "socials": "Facebook, LinkedIn", "pain": "Precios poco claros" },
-        { "name": "Pet Care Recoleta", "category": "Veterinaria", "rating": "4,8", "reviews": "301", "phone": "", "email": "info@petcare.example", "socials": "Instagram, YouTube", "pain": "" }
+        { "name": "Veterinaria Huellitas del Sur", "category": "Veterinaria", "rating": "4,7", "reviews": "212", "phone": "+54 11 4555-0132", "email": "hola@huellitas.example", "socials": "Instagram, Facebook", "pain": "Turnos difíciles de conseguir", "service": "Integración de reservas" },
+        { "name": "Pet Care Recoleta", "category": "Veterinaria", "rating": "4,8", "reviews": "301", "phone": "", "email": "info@petcare.example", "socials": "Instagram, YouTube", "pain": "", "service": "" },
+        { "name": "Clínica Vet Belgrano", "category": "Clínica veterinaria", "rating": "4,3", "reviews": "96", "phone": "+54 11 4555-0178", "email": "", "socials": "Instagram", "pain": "Esperas largas con turno", "service": "Turnos online con recordatorios" },
+        { "name": "Mascotas del Plata", "category": "Veterinaria", "rating": "4,5", "reviews": "58", "phone": "+54 11 4555-0145", "email": "contacto@mascotasdelplata.example", "socials": "", "pain": "No responden por WhatsApp", "service": "Chatbot de WhatsApp" },
+        { "name": "Vet 24 Villa Crespo", "category": "Urgencias 24 h", "rating": "4,1", "reviews": "143", "phone": "+54 11 4555-0199", "email": "", "socials": "Facebook, LinkedIn", "pain": "Precios poco claros", "service": "Diseño web con precios" }
       ]
     },
     "how": {
-      "title": "De una búsqueda a una lista para trabajar.",
-      "intro": "Tres pasos. Lo demás, como el análisis de reseñas o la búsqueda de redes, es opcional y lo activás sobre el lote que ya tenés.",
+      "title": "El primer paso de la intención a la acción.",
+      "intro": "Poné tu rubro, la cantidad de clientes potenciales que querés y dale a generar. En 1 minuto ya tenés suficiente para comenzar a vender.",
       "steps": [
         { "title": "Elegí rubro y zona", "text": "Escribí una o varias keywords y elegí país, provincia y distrito. Solo el país es obligatorio." },
         { "title": "Definí el tamaño del lote", "text": "Pedí hasta 150 negocios por búsqueda. El máximo se respeta aunque uses varias keywords." },
@@ -56,42 +65,81 @@
       ]
     },
     "data": {
-      "title": "Qué trae cada lead.",
-      "text": "Cada fila combina datos de Google Maps con lo que Leadta agrega después. Si un dato no existe, la celda queda vacía y la columna se mantiene: tus exportaciones siempre tienen el mismo formato.",
-      "recordLabel": "Ficha de un lead de ejemplo",
-      "recordName": "Veterinaria Huellitas del Sur",
-      "recordSubtitle": "Veterinaria · Palermo, Buenos Aires",
-      "sources": {
-        "search": "Búsqueda",
-        "analysis": "Análisis",
-        "enrichment": "Enriquecimiento"
-      },
-      "fields": [
-        { "label": "Dirección", "value": "Av. Santa Fe 4120, Palermo", "source": "search" },
-        { "label": "Teléfono", "value": "+54 11 4555-0132", "source": "search" },
-        { "label": "Mail", "value": "hola@huellitas.example", "source": "search" },
-        { "label": "Web", "value": "huellitas.example", "source": "search" },
-        { "label": "Reseñas", "value": "4,7 de 5 en 212 reseñas", "source": "search" },
-        { "label": "Google Maps", "value": "Enlace al negocio", "source": "search" },
-        { "label": "Dolor detectado", "value": "Turnos difíciles de conseguir", "source": "analysis" },
-        { "label": "Instagram", "value": "@huellitasdelsur", "source": "enrichment" }
+      "title": "La inteligencia que va a <mark>cambiar tus ventas</mark>.",
+      "text": "Usamos modelos de Inteligencia Artificial que analizan los datos geográficos, rastrean datos de negocios y te entregan a tu cliente ideal con fuentes exactas.",
+      "radarLabel": "Radar de alcance de ejemplo",
+      "range": "Radio 3 km · Palermo",
+      "feedLabel": "Leads detectados",
+      "serviceLabel": "Servicio:",
+      "metrics": [
+        {
+          "value": "25",
+          "label": "leads"
+        },
+        {
+          "value": "18",
+          "label": "teléfonos"
+        },
+        {
+          "value": "12",
+          "label": "dolores"
+        }
+      ],
+      "leads": [
+        {
+          "name": "Veterinaria Huellitas del Sur",
+          "rating": "4,7",
+          "pain": "Turnos difíciles de conseguir",
+          "service": "Integración de reservas"
+        },
+        {
+          "name": "Pet Care Recoleta",
+          "rating": "4,8",
+          "pain": "Poco seguimiento de reseñas negativas",
+          "service": "Gestión de reseñas"
+        },
+        {
+          "name": "Clínica Vet Belgrano",
+          "rating": "4,3",
+          "pain": "Esperas largas con turno",
+          "service": "Turnos online con recordatorios"
+        },
+        {
+          "name": "Mascotas del Plata",
+          "rating": "4,5",
+          "pain": "No responden por WhatsApp",
+          "service": "Chatbot de WhatsApp"
+        },
+        {
+          "name": "Vet 24 Villa Crespo",
+          "rating": "4,1",
+          "pain": "Precios poco claros",
+          "service": "Diseño web con precios"
+        },
+        {
+          "name": "Centro Animal Núñez",
+          "rating": "4,6",
+          "pain": "Horarios poco claros",
+          "service": "Ficha de Google optimizada"
+        }
       ]
     },
     "pains": {
       "title": "Descubrí qué le duele a cada negocio antes de escribirle.",
-      "text": "Leadta lee las reseñas guardadas de cada lead y resume los problemas que se repiten. Cada hallazgo cita la reseña que lo respalda.",
-      "reviewsLabel": "Reseñas analizadas de ejemplo",
-      "findingLabel": "Dolor",
-      "reviews": [
-        { "stars": "2 estrellas", "quote": "Llamé tres veces y nunca atendieron. Tuve que ir al local para sacar turno.", "pain": "No atienden el teléfono" },
-        { "stars": "3 estrellas", "quote": "Muy buenos con los animales, pero esperamos casi dos horas teniendo turno.", "pain": "Demoras aun con turno" },
-        { "stars": "3 estrellas", "quote": "No encontré los precios en ningún lado, me enteré en el mostrador.", "pain": "Precios no publicados" }
+      "text": "Llegá con la propuesta justa, no con un mensaje genérico.",
+      "rowsLabel": "Ejemplos de señal, dolor y oportunidad",
+      "signalLabel": "Señal",
+      "painLabel": "Dolor",
+      "offerLabel": "Oportunidad",
+      "rows": [
+        { "signal": "Llamadas sin respuesta", "pain": "Pierden clientes por teléfono", "offer": "Atención por WhatsApp" },
+        { "signal": "Esperas largas", "pain": "Clientes que se impacientan", "offer": "Turnos online" },
+        { "signal": "Precios poco claros", "pain": "Dudas antes de comprar", "offer": "Catálogo y tarifas web" },
+        { "signal": "Poca presencia online", "pain": "Invisibles para quien los busca", "offer": "Sitio web y redes" }
       ],
-      "honest": "Si un negocio no tiene reseñas legibles, Leadta no inventa dolores: te avisa que no pudo analizarlo.",
       "enrichTitle": "Sumá sus redes, verificadas.",
-      "enrichText": "Elegí las redes que te sirven y Leadta busca el perfil oficial de cada negocio. Solo se guardan los enlaces que encuentra y cada red se muestra como su propia columna.",
-      "networks": ["Facebook", "Instagram", "YouTube", "LinkedIn"],
-      "credit": "El análisis de dolores suma 0,5 créditos por lead analizado."
+      "enrichText": "Sus perfiles oficiales, a un clic de distancia.",
+      "networks": ["Facebook", "Instagram", "YouTube", "LinkedIn"]
     },
     "export": {
       "title": "Exportá y volvé cuando quieras.",

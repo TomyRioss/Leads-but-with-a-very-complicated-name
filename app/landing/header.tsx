@@ -11,8 +11,6 @@ export async function LandingHeader() {
         <BrandLogo />
         <ul className="lp-header-links">
           <li><a href="#how">{t("how")}</a></li>
-          <li><a href="#data">{t("data")}</a></li>
-          <li><a href="#pains">{t("pains")}</a></li>
           <li><a href="#plans">{t("plans")}</a></li>
           <li><a href="#faq">{t("faq")}</a></li>
         </ul>
@@ -20,7 +18,7 @@ export async function LandingHeader() {
           <LanguageSwitcher />
           <Link className="lp-btn lp-btn-ghost lp-btn-sm lp-hide-sm" href="/buscar">{t("login")}</Link>
           <Link className="lp-btn lp-btn-ink lp-btn-sm lp-show-sm" href="/buscar">{t("login")}</Link>
-          <Link className="lp-btn lp-btn-ink lp-btn-sm lp-hide-sm" href="/buscar?signup=1">{t("signup")}</Link>
+          <Link className="lp-btn lp-btn-lime lp-btn-sm lp-hide-sm" href="/buscar?signup=1">{t("signup")}</Link>
         </div>
       </nav>
     </header>

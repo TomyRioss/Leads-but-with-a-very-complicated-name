@@ -1,41 +1,53 @@
-import { BadgeCheck, MessageSquareQuote } from "lucide-react";
+import { ArrowRight, BadgeCheck } from "lucide-react";
 import { getTranslations } from "next-intl/server";
+import "./pains.css";
 
-type Review = { stars: string; quote: string; pain: string };
+type Row = { signal: string; pain: string; offer: string };
 
 export async function PainsEnrichment() {
   const t = await getTranslations("Landing.pains");
-  const reviews = t.raw("reviews") as Review[];
+  const rows = t.raw("rows") as Row[];
   const networks = t.raw("networks") as string[];
   return (
     <section className="lp-dark" id="pains" aria-labelledby="lp-pains-title">
-      <div className="lp-wrap lp-dark-inner">
-        <div className="lp-split lp-split-wide">
-          <div className="lp-split-copy">
-            <h2 id="lp-pains-title">{t("title")}</h2>
-            <p className="lp-lead">{t("text")}</p>
-            <p className="lp-honest">{t("honest")}</p>
-            <p className="lp-credit-note">{t("credit")}</p>
+      <div className="lp-wrap pn-inner">
+        <div className="pn-head">
+          <h2 id="lp-pains-title">{t("title")}</h2>
+          <p className="lp-lead">{t("text")}</p>
+        </div>
+        <div>
+          <div className="pn-head-row" aria-hidden="true">
+            <span className="pn-k">{t("signalLabel")}</span>
+            <span className="pn-k">{t("painLabel")}</span>
+            <span className="pn-k">{t("offerLabel")}</span>
           </div>
-          <ul className="lp-reviews" aria-label={t("reviewsLabel")}>
-            {reviews.map((review) => (
-              <li key={review.quote}>
-                <blockquote>
-                  <MessageSquareQuote size={18} aria-hidden="true" />
-                  <p>{review.quote}</p>
-                  <footer>{review.stars}</footer>
-                </blockquote>
-                <p className="lp-finding"><span>{t("findingLabel")}</span> <strong>{review.pain}</strong></p>
+          <ul className="pn-grid" aria-label={t("rowsLabel")}>
+            {rows.map((row) => (
+              <li className="pn-row" key={row.pain}>
+                <div className="pn-cell">
+                  <span className="pn-k">{t("signalLabel")}</span>
+                  <span className="pn-signal">{row.signal}</span>
+                </div>
+                <ArrowRight className="pn-arrow" size={18} aria-hidden="true" />
+                <div className="pn-cell">
+                  <span className="pn-k">{t("painLabel")}</span>
+                  <strong className="pn-pain">{row.pain}</strong>
+                </div>
+                <ArrowRight className="pn-arrow" size={18} aria-hidden="true" />
+                <div className="pn-cell">
+                  <span className="pn-k">{t("offerLabel")}</span>
+                  <span className="pn-offer">{row.offer}</span>
+                </div>
               </li>
             ))}
           </ul>
         </div>
-        <div className="lp-enrich">
+        <div className="pn-networks">
           <div>
             <h3>{t("enrichTitle")}</h3>
             <p>{t("enrichText")}</p>
           </div>
-          <ul className="lp-networks">
+          <ul className="pn-chips">
             {networks.map((network) => (
               <li key={network}><BadgeCheck size={16} aria-hidden="true" />{network}</li>
             ))}

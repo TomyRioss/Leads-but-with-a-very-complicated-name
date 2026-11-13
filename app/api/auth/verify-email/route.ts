@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { rewardReferral } from "@/lib/server/referrals";
 import { getEmailUser, readEmailVerificationToken, sendWelcomeEmail, updateEmailUser } from "@/lib/server/email";
 
 type Result = "verified" | "invalid" | "failed";
@@ -50,6 +51,9 @@ export async function POST(request: NextRequest) {
     } else if (!user.verified) {
       await updateEmailUser(user.id, { verified: true, verification_sent_at: "" });
     }
+
+    // Idempotent and never blocks verification: only a pending referral of this user pays out.
+    await rewardReferral(user.id).catch((error) => console.error("Leadta referral reward failed:", error instanceof Error ? error.message : "unknown error"));
 
     return respond(request, locale, "verified", json);
   } catch (error) {

@@ -1,0 +1,37 @@
+/* Sección oscura de dolores: señales → dolor → oportunidad */
+.pn-inner { display: grid; gap: clamp(32px, 4.5vw, 52px); padding-block: clamp(56px, 7vw, 96px); }
+.pn-head { display: grid; justify-items: center; gap: 14px; max-width: 720px; margin-inline: auto; text-align: center; }
+.pn-head h2 { max-width: 20ch; }
+.pn-head .lp-lead { margin-inline: auto; }
+
+.pn-grid { display: grid; margin: 0; padding: 0; list-style: none; border-top: 1px solid var(--ash-700); }
+.pn-head-row { display: none; }
+.pn-row { display: grid; gap: 14px; padding: 20px 4px; border-bottom: 1px solid var(--ash-700); }
+.pn-cell { display: grid; gap: 4px; justify-items: start; min-width: 0; }
+.pn-k { color: var(--ash-400); font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; }
+.pn-signal { color: var(--ash-300); font-size: 16px; line-height: 1.4; }
+.pn-pain { color: var(--paper); font-size: clamp(1.0625rem, 1rem + 0.3vw, 1.25rem); font-weight: 600; letter-spacing: -0.015em; line-height: 1.25; }
+.pn-offer { display: inline-flex; align-items: center; min-height: 32px; padding: 0 12px; border-radius: 999px; background: var(--lime); color: var(--ash-950); font-size: 14px; font-weight: 650; line-height: 1.2; }
+.pn-arrow { display: none; color: var(--ash-500); }
+
+@media (min-width: 900px) {
+  .pn-head-row, .pn-row { grid-template-columns: minmax(0, 1fr) 28px minmax(0, 1.2fr) 28px minmax(0, 1fr); align-items: center; gap: 0 16px; }
+  .pn-head-row { display: grid; padding: 12px 4px; border-bottom: 1px solid var(--ash-700); }
+  .pn-head-row .pn-k:nth-child(2) { grid-column: 3; }
+  .pn-head-row .pn-k:nth-child(3) { grid-column: 5; }
+  .pn-row { padding: 22px 4px; }
+  .pn-cell .pn-k { display: none; }
+  .pn-arrow { display: inline-flex; justify-content: center; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .pn-row { transition: background-color 180ms ease; }
+  .pn-row:hover { background: var(--ash-900); }
+}
+
+/* Redes */
+.pn-networks { display: grid; justify-items: center; gap: 16px; padding-top: clamp(28px, 4vw, 40px); border-top: 1px solid var(--ash-700); text-align: center; }
+.pn-networks h3 { font-size: clamp(1.125rem, 1.05rem + 0.4vw, 1.375rem); font-weight: 600; letter-spacing: -0.02em; }
+.pn-networks p { max-width: 52ch; margin: 6px 0 0; color: var(--ash-300); font-size: 16px; line-height: 1.5; }
+.pn-chips { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin: 0; padding: 0; list-style: none; }
+.pn-chips li { display: inline-flex; min-height: 40px; align-items: center; gap: 8px; padding: 0 14px; border: 1px solid var(--ash-600); border-radius: 999px; color: var(--paper); font-size: 14px; font-weight: 600; }
+.pn-chips svg { color: var(--lime); }

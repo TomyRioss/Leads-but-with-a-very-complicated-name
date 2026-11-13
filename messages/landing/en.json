@@ -4,22 +4,27 @@
       "title": "Leadta | Find businesses to contact",
       "description": "Find local businesses on Google Maps by industry and area, with phone, email, socials and pain points detected from reviews. Export each batch to CSV or XLSX."
     },
+    "whatsapp": {
+      "hello": "Hi! 👋",
+      "text": "Questions? We reply on WhatsApp within minutes.",
+      "prefill": "Hi, I'd like to know more about Leadta",
+      "open": "Message us on WhatsApp (opens in a new tab)",
+      "close": "Close message"
+    },
     "nav": {
       "aria": "Main navigation",
-      "how": "How it works",
-      "data": "What a lead includes",
-      "pains": "Pain points and socials",
+      "how": "Product",
       "plans": "Pricing",
       "faq": "FAQ",
       "login": "Sign in",
       "signup": "Create account"
     },
     "hero": {
-      "title": "Google Maps businesses, ready to contact.",
-      "description": "Pick an industry and an area. Leadta builds a sheet with each business's phone, email, socials and what its reviews say, ready to export.",
+      "title": "Stop wasting time searching for <mark>leads</mark>",
+      "description": "Leadta is <strong>the tool for you or your sales team</strong>: generate leads, find pain points, audit websites, review ratings and track direct contacts.",
       "primary": "Create a free account",
-      "secondary": "Try a search",
-      "note": "240 welcome credits when you sign up."
+      "demo": "Book a demo",
+      "demoMessage": "Hi, I'd like to book a Leadta demo"
     },
     "sheet": {
       "caption": "Sample batch of veterinary clinic leads",
@@ -28,6 +33,10 @@
       "count": "25 leads",
       "sample": "Sample data",
       "missing": "No data",
+      "analyzePain": "Analyze pain with AI",
+      "analyzedPain": "Little follow-up on negative reviews",
+      "analyzedService": "Review management",
+      "serviceLabel": "Service:",
       "csv": "CSV",
       "xlsx": "XLSX",
       "cols": {
@@ -39,16 +48,16 @@
         "pain": "Pain point found"
       },
       "rows": [
-        { "name": "Huellitas del Sur Veterinary", "category": "Veterinary clinic", "rating": "4.7", "reviews": "212", "phone": "+54 11 4555-0132", "email": "hola@huellitas.example", "socials": "Instagram, Facebook", "pain": "Appointments hard to get" },
-        { "name": "Belgrano Vet Clinic", "category": "Animal hospital", "rating": "4.3", "reviews": "96", "phone": "+54 11 4555-0178", "email": "", "socials": "Instagram", "pain": "Long waits even with a booking" },
-        { "name": "Mascotas del Plata", "category": "Veterinary clinic", "rating": "4.5", "reviews": "58", "phone": "+54 11 4555-0145", "email": "contacto@mascotasdelplata.example", "socials": "", "pain": "No reply on WhatsApp" },
-        { "name": "Vet 24 Villa Crespo", "category": "24-hour emergency vet", "rating": "4.1", "reviews": "143", "phone": "+54 11 4555-0199", "email": "", "socials": "Facebook, LinkedIn", "pain": "Unclear pricing" },
-        { "name": "Pet Care Recoleta", "category": "Veterinary clinic", "rating": "4.8", "reviews": "301", "phone": "", "email": "info@petcare.example", "socials": "Instagram, YouTube", "pain": "" }
+        { "name": "Huellitas del Sur Veterinary", "category": "Veterinary clinic", "rating": "4.7", "reviews": "212", "phone": "+54 11 4555-0132", "email": "hola@huellitas.example", "socials": "Instagram, Facebook", "pain": "Appointments hard to get", "service": "Booking integration" },
+        { "name": "Pet Care Recoleta", "category": "Veterinary clinic", "rating": "4.8", "reviews": "301", "phone": "", "email": "info@petcare.example", "socials": "Instagram, YouTube", "pain": "", "service": "" },
+        { "name": "Belgrano Vet Clinic", "category": "Animal hospital", "rating": "4.3", "reviews": "96", "phone": "+54 11 4555-0178", "email": "", "socials": "Instagram", "pain": "Long waits even with a booking", "service": "Online booking with reminders" },
+        { "name": "Mascotas del Plata", "category": "Veterinary clinic", "rating": "4.5", "reviews": "58", "phone": "+54 11 4555-0145", "email": "contacto@mascotasdelplata.example", "socials": "", "pain": "No reply on WhatsApp", "service": "WhatsApp chatbot" },
+        { "name": "Vet 24 Villa Crespo", "category": "24-hour emergency vet", "rating": "4.1", "reviews": "143", "phone": "+54 11 4555-0199", "email": "", "socials": "Facebook, LinkedIn", "pain": "Unclear pricing", "service": "Web design with pricing" }
       ]
     },
     "how": {
-      "title": "From one search to a list you can work with.",
-      "intro": "Three steps. Everything else, like review analysis or social profile lookup, is optional and runs on the batch you already have.",
+      "title": "The first step from intent to action.",
+      "intro": "Enter your industry, how many potential customers you want, and hit generate. In 1 minute you'll have enough to start selling.",
       "steps": [
         { "title": "Pick an industry and area", "text": "Type one or more keywords and choose a country, province and district. Only the country is required." },
         { "title": "Set the batch size", "text": "Ask for up to 150 businesses per search. The cap holds even when you use several keywords." },
@@ -56,42 +65,81 @@
       ]
     },
     "data": {
-      "title": "What every lead includes.",
-      "text": "Each row combines Google Maps data with what Leadta adds afterwards. If a value doesn't exist, the cell stays empty and the column stays in place, so your exports always have the same format.",
-      "recordLabel": "Sample lead record",
-      "recordName": "Huellitas del Sur Veterinary",
-      "recordSubtitle": "Veterinary clinic · Palermo, Buenos Aires",
-      "sources": {
-        "search": "Search",
-        "analysis": "Analysis",
-        "enrichment": "Enrichment"
-      },
-      "fields": [
-        { "label": "Address", "value": "Av. Santa Fe 4120, Palermo", "source": "search" },
-        { "label": "Phone", "value": "+54 11 4555-0132", "source": "search" },
-        { "label": "Email", "value": "hola@huellitas.example", "source": "search" },
-        { "label": "Website", "value": "huellitas.example", "source": "search" },
-        { "label": "Reviews", "value": "4.7 out of 5 from 212 reviews", "source": "search" },
-        { "label": "Google Maps", "value": "Link to the business", "source": "search" },
-        { "label": "Pain point", "value": "Appointments hard to get", "source": "analysis" },
-        { "label": "Instagram", "value": "@huellitasdelsur", "source": "enrichment" }
+      "title": "The intelligence that will <mark>change your sales</mark>.",
+      "text": "We use AI models that analyze geographic data, track business data and deliver your ideal customer with exact sources.",
+      "radarLabel": "Sample reach radar",
+      "range": "3 km radius · Palermo",
+      "feedLabel": "Leads detected",
+      "serviceLabel": "Service:",
+      "metrics": [
+        {
+          "value": "25",
+          "label": "leads"
+        },
+        {
+          "value": "18",
+          "label": "phones"
+        },
+        {
+          "value": "12",
+          "label": "pain points"
+        }
+      ],
+      "leads": [
+        {
+          "name": "Huellitas del Sur Veterinary",
+          "rating": "4.7",
+          "pain": "Appointments hard to get",
+          "service": "Booking integration"
+        },
+        {
+          "name": "Pet Care Recoleta",
+          "rating": "4.8",
+          "pain": "Little follow-up on negative reviews",
+          "service": "Review management"
+        },
+        {
+          "name": "Belgrano Vet Clinic",
+          "rating": "4.3",
+          "pain": "Long waits even with a booking",
+          "service": "Online booking with reminders"
+        },
+        {
+          "name": "Mascotas del Plata",
+          "rating": "4.5",
+          "pain": "No reply on WhatsApp",
+          "service": "WhatsApp chatbot"
+        },
+        {
+          "name": "Vet 24 Villa Crespo",
+          "rating": "4.1",
+          "pain": "Unclear pricing",
+          "service": "Web design with pricing"
+        },
+        {
+          "name": "Núñez Animal Center",
+          "rating": "4.6",
+          "pain": "Unclear opening hours",
+          "service": "Optimized Google profile"
+        }
       ]
     },
     "pains": {
       "title": "Know what hurts each business before you write to it.",
-      "text": "Leadta reads the saved reviews of each lead and summarizes the problems that keep coming up. Every finding quotes the review that backs it.",
-      "reviewsLabel": "Sample analyzed reviews",
-      "findingLabel": "Pain point",
-      "reviews": [
-        { "stars": "2 stars", "quote": "I called three times and nobody picked up. I had to go to the clinic to book.", "pain": "Phone goes unanswered" },
-        { "stars": "3 stars", "quote": "Great with the animals, but we waited almost two hours with an appointment.", "pain": "Delays even with a booking" },
-        { "stars": "3 stars", "quote": "I couldn't find prices anywhere, I only found out at the counter.", "pain": "Prices not published" }
+      "text": "Show up with the right offer, not a generic message.",
+      "rowsLabel": "Examples of signal, pain point and opportunity",
+      "signalLabel": "Signal",
+      "painLabel": "Pain point",
+      "offerLabel": "Opportunity",
+      "rows": [
+        { "signal": "Unanswered calls", "pain": "Losing customers by phone", "offer": "WhatsApp support" },
+        { "signal": "Long waits", "pain": "Customers losing patience", "offer": "Online booking" },
+        { "signal": "Unclear prices", "pain": "Doubts before buying", "offer": "Web catalog and rates" },
+        { "signal": "Little online presence", "pain": "Invisible to people searching", "offer": "Website and socials" }
       ],
-      "honest": "If a business has no readable reviews, Leadta doesn't make up pain points: it tells you it couldn't analyze it.",
       "enrichTitle": "Add their socials, verified.",
-      "enrichText": "Choose the networks you care about and Leadta looks for each business's official profile. Only the links it finds are saved, and each network gets its own column.",
-      "networks": ["Facebook", "Instagram", "YouTube", "LinkedIn"],
-      "credit": "Pain point analysis adds 0.5 credits per analyzed lead."
+      "enrichText": "Their official profiles, one click away.",
+      "networks": ["Facebook", "Instagram", "YouTube", "LinkedIn"]
     },
     "export": {
       "title": "Export it, and come back whenever you want.",

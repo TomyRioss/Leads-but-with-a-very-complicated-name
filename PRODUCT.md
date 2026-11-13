@@ -30,7 +30,7 @@ Each operator registers or signs in with email and password, then selects a coun
 - Missing values remain empty in the table and CSV.
 - Apify and PocketBase credentials are server-side environment variables.
 - Searches save the sample reviews and place details returned by the normal Apify search. Users can run post-generation pain analysis or lead enrichment on a batch with DeepSeek V4.1 Flash via OpenRouter.
-- Pain analysis and lead enrichment use OpenRouter server web search and fetch tools. Pain analysis prioritizes review text persisted by the normal search and may try the Maps URL if that text is missing; Maps review text is not guaranteed to be readable through web fetch. Findings require review text as evidence. Enrichment checks selected public social networks. Neither analysis calls Apify.
+- Pain analysis uses review text persisted by the normal search and may audit the lead's website with OpenRouter web fetch. It does not scrape reviews again or treat a Maps URL as review text. Findings require review or website evidence. Enrichment checks selected public social networks. Neither analysis calls Apify.
 
 ## Evidence on Hand
 
@@ -42,7 +42,7 @@ The active Apify Actor is `k-data-lab/google-maps-scraper`, with a monitor scope
 - Enforce the requested batch maximum across keywords.
 - Preserve empty cells and a stable CSV schema.
 - Keep credentials out of the browser.
-- Never present review topics, ratings, or a Maps URL as review text. If a search result has no saved review text and Maps fetch is empty, return no pain findings and surface the access limitation.
+- Never present review topics, ratings, or a Maps URL as review text. If a lead has no saved review text and no verifiable website evidence, return no pain findings and surface the limitation.
 - Every lead-enrichment run must execute at least one web search on the selected social networks before saving a result; if no search runs, report an error instead of marking it complete.
 - Persist verified social profile URLs with the selected network list; show only those selected networks as separate lead-table columns.
 - Keep the shared Ash and Lime brand palette defined in AGENTS.md.

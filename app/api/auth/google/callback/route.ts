@@ -1,6 +1,7 @@
 import { randomBytes, timingSafeEqual } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
-import { setSessionCookie, toUserRole } from "@/lib/server/auth";
+import { clearSessionCookie, setPendingPhoneCookie, setSessionCookie, toUserRole } from "@/lib/server/auth";
+import { REFERRAL_COOKIE, attachReferral, rewardReferral } from "@/lib/server/referrals";
 import { sendWelcomeEmail, updateEmailUser } from "@/lib/server/email";
 import { pocketBaseFetch } from "@/lib/server/pocketbase";
 
@@ -11,7 +12,7 @@ const sessionDurationSeconds = 60 * 60 * 24 * 30;
 const signupCredits = 240;
 
 type GoogleProfile = { sub?: unknown; email?: unknown; email_verified?: unknown; name?: unknown };
-type PocketBaseUser = { id: string; email: string; name?: string; credits?: number; role?: unknown; verified?: boolean; welcome_email_sent_at?: string };
+type PocketBaseUser = { id: string; email: string; name?: string; credits?: number; role?: unknown; verified?: boolean; phone?: string; welcome_email_sent_at?: string };
 type PocketBaseList = { items: PocketBaseUser[] };
 type PocketBaseAuth = { token: string; record: PocketBaseUser };
 
@@ -29,7 +30,7 @@ function sameState(actual: string, expected: string) {
 }
 
 function clearOauthCookies(response: NextResponse) {
-  for (const name of [stateCookie, verifierCookie, localeCookie]) {
+  for (const name of [stateCookie, verifierCookie, localeCookie, REFERRAL_COOKIE]) {
     response.cookies.set(name, "", {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
@@ -95,9 +96,10 @@ export async function GET(request: NextRequest) {
     }
 
     const filter = `email = ${JSON.stringify(email)}`;
-    const query = new URLSearchParams({ filter, perPage: "1", fields: "id,email,name,credits,role,verified,welcome_email_sent_at" });
+    const query = new URLSearchParams({ filter, perPage: "1", fields: "id,email,name,credits,role,verified,phone,welcome_email_sent_at" });
     const result = await pocketBaseFetch<PocketBaseList>(`/api/collections/users/records?${query.toString()}`);
     let user = result.items[0];
+    const isNewUser = !user;
     if (!user) {
       const password = randomBytes(48).toString("base64url");
       user = await pocketBaseFetch<PocketBaseUser>("/api/collections/users/records", {
@@ -121,6 +123,14 @@ export async function GET(request: NextRequest) {
       });
     }
 
+    if (isNewUser) {
+      // Google emails arrive verified, so a new referred user is rewarded right away.
+      const referralCode = request.cookies.get(REFERRAL_COOKIE)?.value;
+      if (referralCode && await attachReferral(user, referralCode)) {
+        await rewardReferral(user.id).catch((error) => console.error("Leadta referral reward failed:", error instanceof Error ? error.message : "unknown error"));
+      }
+    }
+
     if (user.verified && !user.welcome_email_sent_at) {
       try {
         await sendWelcomeEmail(user, locale);
@@ -134,6 +144,15 @@ export async function GET(request: NextRequest) {
       method: "POST",
       body: JSON.stringify({ duration: sessionDurationSeconds }),
     });
+    if (!user.phone) {
+      // No session until the phone is saved (POST /api/auth/phone); AuthForm shows the phone step.
+      const response = NextResponse.redirect(new URL(`${locale === "en" ? "/en/buscar" : "/buscar"}?authStep=phone`, origin));
+      setPendingPhoneCookie(response, auth.token);
+      clearSessionCookie(response);
+      clearOauthCookies(response);
+      response.headers.set("Cache-Control", "no-store");
+      return response;
+    }
     const isOwner = toUserRole(auth.record.role) === "owner";
     const destination = locale === "en" ? (isOwner ? "/en/owner" : "/en/buscar") : (isOwner ? "/owner" : "/buscar");
     const response = NextResponse.redirect(new URL(destination, origin));

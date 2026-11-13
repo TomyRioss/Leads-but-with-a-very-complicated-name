@@ -3,9 +3,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Minus, Plus, Search, Settings2, Trash2, X } from "lucide-react";
-import { subscriptionPlans } from "@/lib/plans";
 import {
-  blockClass, confirmBox, controlClass, countBadge, dangerButton, errorBox, ghostButton,
+  blockClass, confirmBox, controlClass, exclusivePill, countBadge, dangerButton, errorBox, ghostButton,
   hintText, iconButton, isUnauthorized, mutedText, okBox, ownerFetch, primaryButton, rightCell, sectionHead, smallButton,
   sectionTitle, stateBox, statusPill, tableClass, tableWrap, tdClass, theadClass, thClass, trClass, useFocusTrap,
   useOwnerFormat, useOwnerList, type OnAction, type OwnerResult,
@@ -13,7 +12,7 @@ import {
 import { Pager } from "./list-controls";
 
 type SubscriptionSummary = { id: string; planId: string; status: string; priceArs: number; monthlyCredits: number };
-type UserRow = { id: string; email: string; name: string; credits: number; created: string; role?: string; subscription: SubscriptionSummary | null };
+type UserRow = { id: string; email: string; name: string; credits: number; created: string; phone?: string; lastActivity?: string; role?: string; subscription: SubscriptionSummary | null };
 type UserDetail = {
   user: { id: string; email: string; name: string; credits: number; created: string; phone?: string; role?: string };
   subscriptions: (SubscriptionSummary & { externalReference?: string; created: string })[];
@@ -23,15 +22,21 @@ type UserDetail = {
 };
 type Pending = { message: string; run: () => Promise<OwnerResult<unknown>>; success: string };
 
-const manualPlans = subscriptionPlans.filter((plan) => ["initial", "pro", "agency"].includes(plan.id));
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const quickAmounts = [10, 50, 100, -10];
 const live = ["authorized", "paused", "pending"];
 
+/** wa.me link from the stored phone (digits only, country code included); "—" when missing. */
+function whatsappLink(phone: string | undefined, label: string) {
+  const digits = (phone ?? "").replace(/\D/g, "").replace(/^00/, "");
+  if (digits.length < 8) return "—";
+  return <a href={`https://wa.me/${digits}`} target="_blank" rel="noopener noreferrer" aria-label={label} className="whitespace-nowrap rounded text-xs font-semibold text-(color:--ink) underline decoration-(--ash-300) underline-offset-[3px] hover:decoration-(--ink) focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(color:--ash-950)">{phone}</a>;
+}
+
 export default function UsersSection({ onUnauthorized, onAction }: { onUnauthorized: () => void; onAction?: OnAction }) {
   const t = useTranslations("Owner.users");
   const common = useTranslations("Owner.common");
-  const { formatDate, formatNumber, planName, statusLabel } = useOwnerFormat();
+  const { formatDate, formatDateTime, formatNumber, planName, isExclusive, statusLabel } = useOwnerFormat();
   const list = useOwnerList<UserRow>("/api/owner/users", t("loadError"), onUnauthorized);
   const { data, loading, error, reload } = list;
   const [selected, setSelected] = useState<{ id: string; mode?: "add" } | null>(null);
@@ -58,7 +63,7 @@ export default function UsersSection({ onUnauthorized, onAction }: { onUnauthori
       </div>
       {error && <p className={errorBox} role="alert">{error}</p>}
       <div className={`${tableWrap}${loading ? " opacity-60 transition-opacity" : ""}`} aria-busy={loading}>
-        <table className={tableClass}>
+        <table className={`${tableClass} md:[&_td]:px-2! md:[&_th]:px-2!`}>
           <thead className={theadClass}>
             <tr>
               <th className={thClass} scope="col">{common("email")}</th>
@@ -66,6 +71,8 @@ export default function UsersSection({ onUnauthorized, onAction }: { onUnauthori
               <th className={`${thClass} ${rightCell}`} scope="col">{common("credits")}</th>
               <th className={thClass} scope="col">{common("plan")}</th>
               <th className={thClass} scope="col">{common("created")}</th>
+              <th className={thClass} scope="col">{t("lastActivity")}</th>
+              <th className={thClass} scope="col">{t("whatsapp")}</th>
               <th className={thClass} scope="col">{common("actions")}</th>
             </tr>
           </thead>
@@ -83,8 +90,10 @@ export default function UsersSection({ onUnauthorized, onAction }: { onUnauthori
                     {user.role !== "owner" && (<button type="button" className={`${ghostButton} ${smallButton} min-w-9 px-0`} aria-label={t("addAria", { email: user.email })} onClick={(event) => open(event.currentTarget, user.id, "add")}><Plus size={14} aria-hidden="true" /></button>)}
                   </span>
                 </td>
-                <td className={tdClass} data-label={common("plan")}>{user.subscription ? <span>{planName(user.subscription.planId)} <span className={`${statusPill(user.subscription.status)} ml-1`}>{statusLabel(user.subscription.status)}</span></span> : <span className={mutedText}>{t("noPlan")}</span>}</td>
+                <td className={tdClass} data-label={common("plan")}>{user.subscription ? <span>{planName(user.subscription.planId)} {isExclusive(user.subscription.planId) && <span className={exclusivePill}>{common("exclusive")}</span>} <span className={`${statusPill(user.subscription.status)} ml-1`}>{statusLabel(user.subscription.status)}</span></span> : <span className={mutedText}>{t("noPlan")}</span>}</td>
                 <td className={tdClass} data-label={common("created")}>{formatDate(user.created)}</td>
+                <td className={`${tdClass} whitespace-nowrap`} data-label={t("lastActivity")}>{user.lastActivity ? formatDateTime(user.lastActivity) : "—"}</td>
+                <td className={tdClass} data-label={t("whatsapp")}>{whatsappLink(user.phone, t("whatsappAria", { email: user.email }))}</td>
                 <td className={`${tdClass} max-md:justify-end`} data-label={common("actions")}>
                   <button type="button" className={`${primaryButton} ${smallButton}`} onClick={(event) => open(event.currentTarget, user.id)} aria-label={t("manageAria", { email: user.email })}><Settings2 size={14} aria-hidden="true" /> {t("manage")}</button>
                 </td>
@@ -113,7 +122,7 @@ function UserDrawer({ userId, initialMode, onClose, onChanged, onUnauthorized, o
   const t = useTranslations("Owner.users");
   const common = useTranslations("Owner.common");
   const sub = useTranslations("Owner.subscriptions");
-  const { formatArs, formatDate, formatNumber, planName, statusLabel, errorText } = useOwnerFormat();
+  const { formatArs, formatDate, formatNumber, planName, isExclusive, statusLabel, errorText } = useOwnerFormat();
   const [detail, setDetail] = useState<UserDetail | null>(null);
   const [loadError, setLoadError] = useState("");
   const [mode, setMode] = useState<"set" | "add">(initialMode ?? "set");
@@ -122,8 +131,6 @@ function UserDrawer({ userId, initialMode, onClose, onChanged, onUnauthorized, o
   const [fieldError, setFieldError] = useState<{ field: "name" | "email" | "phone"; text: string } | null>(null);
   const amountRef = useRef<HTMLInputElement>(null);
   const focusedAmount = useRef(false);
-  const [planId, setPlanId] = useState<string>(manualPlans[0]?.id ?? "initial");
-  const [grant, setGrant] = useState(true);
   const [deleteEmail, setDeleteEmail] = useState("");
   const [pending, setPending] = useState<Pending | null>(null);
   const [busy, setBusy] = useState(false);
@@ -300,7 +307,7 @@ function UserDrawer({ userId, initialMode, onClose, onChanged, onUnauthorized, o
               {detail.subscriptionsHasMore && <p className={mutedText}>{t("showingLatest")}</p>}
               {current ? (
                 <>
-                  <p>{planName(current.planId)} · <span className={statusPill(current.status)}>{statusLabel(current.status)}</span> · {t("planLine", { price: formatArs(current.priceArs), credits: common("creditsCount", { count: current.monthlyCredits }) })}</p>
+                  <p>{planName(current.planId)} {isExclusive(current.planId) && <span className={exclusivePill}>{common("exclusive")}</span>} · <span className={statusPill(current.status)}>{statusLabel(current.status)}</span> · {t("planLine", { price: formatArs(current.priceArs), credits: common("creditsCount", { count: current.monthlyCredits }) })}</p>
                   <div className="flex flex-wrap gap-2">
                     {current.status === "authorized" && <button className={ghostButton} type="button" disabled={busy} onClick={() => changeStatus("paused")}>{sub("pause")}</button>}
                     {current.status === "paused" && <button className={ghostButton} type="button" disabled={busy} onClick={() => changeStatus("authorized")}>{sub("resume")}</button>}
@@ -308,23 +315,7 @@ function UserDrawer({ userId, initialMode, onClose, onChanged, onUnauthorized, o
                   </div>
                 </>
               ) : (
-                <>
-                  <p className={mutedText}>{t("noSubscription")}</p>
-                  <div className="flex flex-col items-stretch gap-2 sm:flex-row">
-                    <label className="flex min-w-0 flex-1"><span className="sr-only">{common("plan")}</span>
-                      <select className={controlClass} value={planId} onChange={(event) => { setPlanId(event.target.value); setPending(null); }}>
-                        {manualPlans.map((plan) => <option key={plan.id} value={plan.id}>{common("planOption", { plan: planName(plan.id), price: formatArs(plan.priceArs), credits: common("creditsCount", { count: plan.credits }) })}</option>)}
-                      </select>
-                    </label>
-                    <button className={primaryButton} type="button" disabled={busy}
-                      onClick={() => ask({
-                        message: t("confirmAssign", { plan: planName(planId), email: detail.user.email, grant: grant ? "yes" : "no" }),
-                        success: t("planAssigned"),
-                        run: () => ownerFetch(`/api/owner/users/${encodeURIComponent(userId)}/subscription`, { method: "POST", body: { planId, grantCredits: grant } }),
-                      })}>{t("assignPlan")}</button>
-                  </div>
-                  <label className="inline-flex items-center gap-1.5 text-xs"><input className="size-4 accent-(--ash-900)" type="checkbox" checked={grant} onChange={(event) => setGrant(event.target.checked)} /> {t("grantCredits")}</label>
-                </>
+                <p className={mutedText}>{t("noSubscription")}</p>
               )}
             </section>
 

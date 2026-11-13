@@ -26,7 +26,7 @@
       "yes": "Sí",
       "no": "No",
       "perMonth": "{value} / mes",
-      "planOption": "{plan} · {price} · {credits}",
+      "exclusive": "Exclusivo",
       "pagerLabel": "Paginación",
       "pagerPrevious": "Anterior",
       "pagerNext": "Siguiente",
@@ -74,7 +74,20 @@
       "subscriptionCount": "{count, plural, one {# suscripción} other {# suscripciones}}",
       "recent": "Actividad reciente",
       "viewAudit": "Ver auditoría",
-      "noActivity": "Todavía no hay acciones registradas."
+      "noActivity": "Todavía no hay acciones registradas.",
+      "unknownUser": "Usuario desconocido",
+      "events": "Eventos generales",
+      "noEvents": "Todavía no hay eventos.",
+      "eventsError": "No se pudieron cargar los eventos.",
+      "eventSignup": "{email} se registró",
+      "eventVerified": "{email} verificó su correo",
+      "eventLeads": "{email} generó {count, plural, one {# lead} other {# leads}}",
+      "detailDate": "Fecha",
+      "detailActor": "Quién",
+      "detailTarget": "Objetivo",
+      "detailTargetType": "Tipo de objetivo",
+      "detailTargetId": "ID del objetivo",
+      "detailIp": "IP"
     },
     "users": {
       "title": "Usuarios",
@@ -98,6 +111,9 @@
       "ownerReadonly": "Es el owner: sus datos son de solo lectura.",
       "phone": "Teléfono",
       "noPhone": "Sin teléfono",
+      "lastActivity": "Última actividad",
+      "whatsapp": "WhatsApp",
+      "whatsappAria": "Abrir WhatsApp de {email} en una pestaña nueva",
       "emailPlaceholder": "nombre@dominio.com",
       "saveChanges": "Guardar cambios",
       "nameTooLong": "El nombre admite hasta 100 caracteres.",
@@ -148,7 +164,7 @@
       "pause": "Pausar",
       "resume": "Reactivar",
       "cancel": "Cancelar",
-      "changePlan": "Cambiar plan",
+      "managedExternally": "Los planes y suscripciones (mensuales) se gestionan en el sistema externo.",
       "thisUser": "este usuario",
       "confirmPause": "¿Pausar la suscripción {plan} de {email}?",
       "confirmResume": "¿Reactivar la suscripción {plan} de {email}?",
@@ -156,9 +172,6 @@
       "paused": "Suscripción pausada.",
       "resumed": "Suscripción reactivada.",
       "cancelled": "Suscripción cancelada.",
-      "changePlanPrompt": "Cambiar el plan de {email} (hoy {plan}).",
-      "newPlan": "Nuevo plan",
-      "planChanged": "Plan cambiado a {plan}.",
       "empty": "Todavía no hay suscripciones."
     },
     "payments": {
@@ -252,7 +265,10 @@
       "deletedLeads": "Leads eliminados",
       "batches": "Búsquedas eliminadas",
       "leads": "Leads eliminados",
-      "subscriptions": "Suscripciones eliminadas"
+      "subscriptions": "Suscripciones eliminadas",
+      "batchId": "ID de búsqueda",
+      "requestedCount": "Leads pedidos",
+      "resultCount": "Leads generados"
     },
     "plans": {
       "initial": "Plan Inicial",

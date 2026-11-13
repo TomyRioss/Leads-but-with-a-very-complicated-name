@@ -3,16 +3,15 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { FormEvent, KeyboardEvent as ReactKeyboardEvent, MouseEvent } from "react";
 import { useLocale, useTranslations } from "next-intl";
-import { Bug, ChevronDown, CircleAlert, CircleCheck, ExternalLink, Headset, History, LoaderCircle, LogOut, Stars, X } from "lucide-react";
+import { Bug, CircleAlert, CircleCheck, ExternalLink, LoaderCircle, Stars, X } from "lucide-react";
+import { isPainAnalysisCurrent, painView } from "@/lib/analysis-format";
 import type { AnalysisDetail, Lead, LeadBatch, LeadColumnKey, LeadColumnLabeler } from "@/lib/types";
-import { getLeadColumnValue, getLeadColumns } from "@/lib/types";
+import { getLeadColumnValue, getLeadColumns, getSocialProfileUrl } from "@/lib/types";
 import { AuthForm } from "@/app/auth-form";
-import { BrandLogo } from "@/app/brand-logo";
-import { LanguageSwitcher } from "@/app/language-switcher";
+import { AppSidebar } from "@/app/app-sidebar";
 import CellDetailsPopover from "@/app/cell-details-popover";
 import WhatsAppContact from "@/app/whatsapp-contact";
 import { Onboarding } from "@/app/onboarding/onboarding";
-import { Link } from "@/i18n/navigation";
 
 const productionBatchSizes = [5, 10, 25, 50, 75, 100, 125, 150];
 type TableAction = "pain_points" | "enrichment";
@@ -37,10 +36,9 @@ const socialNetworkOptions: { id: SocialNetwork; label: string }[] = [
   { id: "youtube", label: "YouTube" },
   { id: "linkedin", label: "LinkedIn" },
 ];
-type TableColumn = { key: LeadColumnKey | "whatsapp"; label: string };
+type TableColumn = { key: LeadColumnKey | "whatsapp" | "socials"; label: string };
 
 // Columnas de detalle de reseñas: ocultas en la tabla salvo con "Mostrar datos completos". El CSV las conserva siempre.
-const isReviewDetailColumn = (key: string) => key === "average_rating" || /^(review|rating)_[1-5]$/.test(key);
 type FilterChoice = "any" | "with" | "without";
 type GeographyOption = { code: string; name: string };
 type SearchFilters = {
@@ -131,6 +129,7 @@ export default function Home() {
     return s.has(`columns.${key}`) ? s(`columns.${key}`) : fallback;
   }, [s]);
   const [country, setCountry] = useState("");
+  const [randomLocation, setRandomLocation] = useState(false);
   const [province, setProvince] = useState("");
   const [district, setDistrict] = useState("");
   const [countryCode, setCountryCode] = useState("");
@@ -159,8 +158,6 @@ export default function Home() {
   const [currentUser, setCurrentUser] = useState<{ id: string; email: string; credits: number } | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [authProblem, setAuthProblem] = useState("");
-  const [profileMenuOpen, setProfileMenuOpen] = useState(false);
-  const profileMenuRef = useRef<HTMLDivElement>(null);
   const [activeTableAction, setActiveTableAction] = useState<TableAction | null>(null);
   const [analysisBusy, setAnalysisBusy] = useState<TableAction | null>(null);
   const [analysisRowBusyId, setAnalysisRowBusyId] = useState("");
@@ -176,11 +173,14 @@ export default function Home() {
   const lastAnalysisTapRef = useRef<{ key: string; at: number } | null>(null);
   const analysisPopoverRef = useRef<HTMLElement>(null);
   const tableActionCardRef = useRef<HTMLDivElement>(null);
+  const painFocusInputRef = useRef<HTMLInputElement>(null);
   const batchSizes = guidedCount ? [guidedCount] : isDevelopmentEnvironment ? [1, 2, ...productionBatchSizes] : productionBatchSizes;
   const selectedPainLead = leads.find((lead) => lead.id === analysisLeadId) ?? leads[0];
+  // Mismo criterio que el servidor: solo se cobra por filas con reseñas guardadas o sitio web; en lote se omiten las ya analizadas con el mismo foco.
+  const hasPainSources = (lead?: Lead) => Boolean(lead && (lead.source_reviews?.some((review) => review.text?.trim()) || /^https?:\/\//i.test(lead.website || "")));
   const painLeadCount = analysisScope === "row"
-    ? Number(Boolean(selectedPainLead?.maps_url && /^https?:\/\//i.test(selectedPainLead.maps_url)))
-    : leads.filter((lead) => Boolean(lead.maps_url && /^https?:\/\//i.test(lead.maps_url))).length;
+    ? Number(hasPainSources(selectedPainLead))
+    : leads.filter((lead) => hasPainSources(lead) && !isPainAnalysisCurrent(analysisDetail(lead.pain_points_detail), painFocus)).length;
   const numberLocale = locale === "es" ? "es-AR" : "en-US";
   const googleAuthError = typeof window !== "undefined" && new URLSearchParams(window.location.search).get("authError") === "google"
     ? s("googleAuthFailed")
@@ -240,13 +240,20 @@ export default function Home() {
       });
     return () => controller.abort();
   }, [countryCode, provinceCode, s]);
-  const tableColumns: TableColumn[] = useMemo(() => getLeadColumns(
-    leads,
-    analysisBusy === "enrichment" ? selectedSocialNetworks : [],
-    isDevelopmentEnvironment,
-    columnLabel,
-  ).flatMap<TableColumn>((column) => column.key === "phone" ? [column, { key: "whatsapp", label: s("columns.whatsapp") }] : [column])
-    .filter((column) => showFullData || !isReviewDetailColumn(column.key)), [
+  const tableColumns: TableColumn[] = useMemo(() => showFullData
+    ? getLeadColumns(
+      leads,
+      analysisBusy === "enrichment" ? selectedSocialNetworks : [],
+      isDevelopmentEnvironment,
+      columnLabel,
+    ).flatMap<TableColumn>((column) => column.key === "phone" ? [column, { key: "whatsapp", label: s("columns.whatsapp") }] : [column])
+    : [
+      { key: "name", label: s("compactColumns.business") },
+      { key: "phone", label: s("columns.phone") },
+      { key: "email", label: s("columns.email") },
+      { key: "socials", label: s("compactColumns.socials") },
+      { key: "pain_points", label: s("compactColumns.pain") },
+    ], [
     showFullData,
     leads,
     analysisBusy,
@@ -284,6 +291,14 @@ export default function Home() {
       onKeyDown: (event: ReactKeyboardEvent<HTMLTableCellElement>) => openCellDetail(event, lead, column, value),
     };
   }
+
+  useEffect(() => {
+    // ?ref=<code> from a shared link: remember it (httpOnly cookie) until signup.
+    const params = new URLSearchParams(window.location.search);
+    const ref = params.get("ref");
+    if (!ref) return;
+    void fetch("/api/referrals/capture", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ code: ref }) }).catch(() => undefined);
+  }, []);
 
   useEffect(() => {
     let current = true;
@@ -346,26 +361,6 @@ export default function Home() {
   }, [s]);
 
   useEffect(() => {
-    if (!profileMenuOpen) return;
-
-    function handlePointerDown(event: PointerEvent) {
-      if (event.target instanceof Node && !profileMenuRef.current?.contains(event.target)) {
-        setProfileMenuOpen(false);
-      }
-    }
-    function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") setProfileMenuOpen(false);
-    }
-
-    document.addEventListener("pointerdown", handlePointerDown);
-    document.addEventListener("keydown", handleKeyDown);
-    return () => {
-      document.removeEventListener("pointerdown", handlePointerDown);
-      document.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [profileMenuOpen]);
-
-  useEffect(() => {
     if (activeTableAction) tableActionCardRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
   }, [activeTableAction]);
 
@@ -397,7 +392,6 @@ export default function Home() {
   }, [analysisDialog]);
 
   async function signOut() {
-    setProfileMenuOpen(false);
     await fetch("/api/auth/logout", { method: "POST" });
     setCurrentUser(null);
     setLeads([]);
@@ -414,7 +408,7 @@ export default function Home() {
       setProblem(s("keywordRequired"));
       return;
     }
-    if (!country.trim()) {
+    if (!randomLocation && !country.trim()) {
       setProblem(s("countryRequired"));
       return;
     }
@@ -429,7 +423,8 @@ export default function Home() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          keywords, country, province, district, count,
+          keywords, count,
+          ...(randomLocation ? { random: true } : { country, province, district }),
           filters: {
             ...filters,
             minReviews: filters.minReviews === "" ? undefined : Number(filters.minReviews),
@@ -502,7 +497,7 @@ export default function Home() {
       } else {
         setNotice(s("enrichDone", { count: payload.analyzedCount }));
       }
-      if (payload.noEvidenceCount > 0 || payload.failedCount > 0) {
+      if (payload.noEvidenceCount > 0 || payload.failedCount > 0 || payload.skippedCount > 0) {
         const issues: string[] = [];
         if (payload.noEvidenceCount > 0) {
           issues.push(action === "pain_points"
@@ -512,6 +507,7 @@ export default function Home() {
         const failureMessages = Array.isArray(payload.failures)
           ? [...new Set(payload.failures.map((failure: { message?: unknown }) => typeof failure?.message === "string" ? failure.message : "" ).filter(Boolean))]
           : [];
+        if (payload.skippedCount > 0) issues.push(s("issueSkipped", { count: payload.skippedCount }));
         if (payload.failedCount > 0) {
           issues.push(failureMessages.length ? s("issueFailedDetail", { count: payload.failedCount, details: failureMessages.join("; ") }) : s("issueFailed", { count: payload.failedCount }));
         }
@@ -524,6 +520,18 @@ export default function Home() {
       setAnalysisBusy(null);
       setAnalysisRowBusyId("");
     }
+  }
+
+  // Sin foco definido en la configuración se mantiene el pedido: abre la tarjeta de dolor para esa fila y enfoca el campo.
+  function requestPainAnalysis(leadId: string) {
+    if (painFocus.trim()) {
+      void startAnalysis("pain_points", leadId);
+      return;
+    }
+    setAnalysisScope("row");
+    setAnalysisLeadId(leadId);
+    setActiveTableAction("pain_points");
+    requestAnimationFrame(() => painFocusInputRef.current?.focus());
   }
 
   function handleAnalysisCellPointer(lead: Lead, action: TableAction, pointerType: string, now: number) {
@@ -539,51 +547,11 @@ export default function Home() {
   }
 
   if (authLoading) return <main className="app-shell auth-loading" aria-live="polite">{t("t_50aa6fdfd6")}</main>;
-  if (!currentUser) return <AuthForm initialError={authProblem || googleAuthError} initialMode={typeof window !== "undefined" && new URLSearchParams(window.location.search).get("signup") === "1" ? "register" : "login"} onAuthenticated={() => window.location.reload()} />;
+  if (!currentUser) return <AuthForm initialError={authProblem || googleAuthError} initialMode={typeof window !== "undefined" && new URLSearchParams(window.location.search).get("signup") === "1" || new URLSearchParams(window.location.search).has("ref") ? "register" : "login"} onAuthenticated={() => window.location.reload()} />;
 
   return (
     <main className="app-shell">
-      <nav className="topbar" aria-label={s("mainNav")}>
-        <BrandLogo /><LanguageSwitcher />
-        <div className="topbar-account">
-          <Link className="credits-pill" href="/pricing" aria-label={s("creditsAria", { credits: currentUser.credits })} title={s("creditsTitle")}>
-            <Stars className="credits-icon" size={17} strokeWidth={1.9} aria-hidden="true" />
-            <span className="credits-value"><strong>{currentUser.credits.toLocaleString(numberLocale)}</strong><small>{t("t_bcc0da40b3")}</small></span>
-            <span className="credits-add-sign" aria-hidden="true">+</span>
-          </Link>
-          <div className="profile-menu-wrap" ref={profileMenuRef}>
-            <button
-              type="button"
-              className="profile-pill"
-              aria-expanded={profileMenuOpen}
-              aria-haspopup="menu"
-              aria-controls="profile-menu"
-              onClick={() => setProfileMenuOpen((open) => !open)}
-            >
-              <span className="connection-dot" aria-hidden="true" />
-              <span className="profile-email">{currentUser.email}</span>
-              <ChevronDown className={`profile-chevron${profileMenuOpen ? " is-open" : ""}`} size={15} strokeWidth={1.8} aria-hidden="true" />
-            </button>
-            {profileMenuOpen && (
-              <div className="profile-menu" id="profile-menu" role="menu" aria-label={s("accountMenu")}>
-                <Link href="/historial" role="menuitem" onClick={() => setProfileMenuOpen(false)}>
-                  <History className="menu-icon" size={18} strokeWidth={1.8} aria-hidden="true" />
-                  <span>{t("t_302027905c")}</span>
-                </Link>
-                <a href={`https://wa.me/5491134083140?text=${encodeURIComponent(s("salesSupportMessage"))}`} role="menuitem" target="_blank" rel="noopener noreferrer" onClick={() => setProfileMenuOpen(false)}>
-                  <Headset className="menu-icon" size={18} strokeWidth={1.8} aria-hidden="true" />
-                  <span>{s("salesSupport")}</span>
-                </a>
-                <div className="profile-menu-divider" />
-                <button type="button" className="signout-menu-item" role="menuitem" onClick={() => void signOut()}>
-                  <LogOut className="menu-icon signout-icon" size={18} strokeWidth={1.8} aria-hidden="true" />
-                  <span>{t("t_f394d0254e")}</span>
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-      </nav>
+      <AppSidebar active="search" user={currentUser} onSignOut={signOut} />
 
       <div className="workspace">
         <form className="search-panel" onSubmit={submitSearch}>
@@ -597,7 +565,7 @@ export default function Home() {
                 userId={currentUser.id}
                 ready={!historyLoading}
                 hasHistory={Boolean(activeBatch)}
-                hasCountry={Boolean(country.trim())}
+                hasCountry={randomLocation || Boolean(country.trim())}
                 busy={busy}
                 resultCount={leads.length}
                 onGuidedCountChange={setGuidedCount}
@@ -610,8 +578,14 @@ export default function Home() {
             <KeywordsField />
 
             <div className="field geography-field" data-onboarding="location">
-              <span className="field-label">{t("t_ae0ddfcae9")} <span className="required-mark">*</span></span>
-              <div className="location-grid">
+              <span className="field-label">{t("t_ae0ddfcae9")} {!randomLocation && <span className="required-mark">*</span>}</span>
+              <label className="full-data-toggle random-location-toggle">
+                <input type="checkbox" role="switch" checked={randomLocation} onChange={(event) => setRandomLocation(event.target.checked)} disabled={busy} />
+                <span className="full-data-track" aria-hidden="true" />
+                <span>{s("randomLocation")}</span>
+              </label>
+              {randomLocation && <span className="field-help">{s("randomLocationHelp")}</span>}
+              <div className="location-grid" hidden={randomLocation}>
                 <label>
                   <span className="sr-only">{t("t_c4a5d0602b")}</span>
                   <span className="select-control"><select
@@ -628,7 +602,7 @@ export default function Home() {
                       setGeographyLoading((current) => ({ ...current, provinces: Boolean(nextCountryCode), districts: false }));
                       setGeographyError("");
                     }}
-                    required
+                    required={!randomLocation}
                     aria-label={s("countryAria")}
                     disabled={geographyLoading.countries || countries.length === 0}
                   >
@@ -669,7 +643,7 @@ export default function Home() {
                   </select><span className="select-chevron" aria-hidden="true" /></span>
                 </label>
               </div>
-              <span className="field-help">{t("t_08a1c28ca4")}</span>
+              {!randomLocation && <span className="field-help">{t("t_08a1c28ca4")}</span>}
               {geographyError && <span className="field-error" role="alert">{geographyError}</span>}
             </div>
 
@@ -688,6 +662,19 @@ export default function Home() {
                 <strong>{(count * 2).toLocaleString(numberLocale)} {t("t_66376a612c")}</strong>
               </p>
             </fieldset>
+
+            <label className="field service-focus-field">
+              <span className="field-label">{s("serviceFocusLabel")} <span className="optional-mark">{s("optional")}</span></span>
+              <input
+                type="text"
+                value={painFocus}
+                maxLength={300}
+                placeholder={s("painFocusPlaceholder")}
+                onChange={(event) => setPainFocus(event.target.value)}
+                disabled={Boolean(analysisBusy)}
+              />
+              <span className="field-help">{s("serviceFocusHelp")}</span>
+            </label>
 
             <details className="filter-panel">
               <summary>{t("t_dc3b882450")}</summary>
@@ -731,7 +718,7 @@ export default function Home() {
             </details>
 
             <div className="search-action">
-              <button className="primary-button" type="submit" data-onboarding="submit" disabled={busy || !apifyConfigured || !pocketBaseConfigured || !country.trim()}>
+              <button className="primary-button" type="submit" data-onboarding="submit" disabled={busy || !apifyConfigured || !pocketBaseConfigured || (!randomLocation && !country.trim())}>
                 {busy ? <><span className="button-spinner" aria-hidden="true" /> {t("t_b6d453ae3d")}</> : s("searchButton")}
               </button>
               <span className="action-caption">{!apifyConfigured ? s("missingApify") : !pocketBaseConfigured ? s("missingPocketBase") : s("maxPerBatch", { count })}</span>
@@ -764,10 +751,10 @@ export default function Home() {
               {activeBatch && <p className="active-location">{placeLabel(activeBatch)} <span>·</span> {activeBatch.keywords.join(", ")}</p>}
             </div>
             <div className="results-actions">
-              <label className="full-data-toggle">
+          <label className="full-data-toggle">
                 <input type="checkbox" role="switch" checked={showFullData} onChange={(event) => setShowFullData(event.target.checked)} />
                 <span className="full-data-track" aria-hidden="true" />
-                <span>{s("showFullData")}</span>
+            <span>{s("showFullData")}</span>
               </label>
               <button className="export-button" type="button" onClick={() => downloadCsv(leads, activeBatch, isDevelopmentEnvironment, columnLabel, s("ownerResponse"))} disabled={leads.length === 0}>
                 {t("t_8b9c2038c4")} </button>
@@ -789,6 +776,7 @@ export default function Home() {
                   <label className="analysis-focus-field">
                     <span>{t("t_ea9c745083")}</span>
                     <input
+                      ref={painFocusInputRef}
                       type="text"
                       value={painFocus}
                       maxLength={300}
@@ -845,7 +833,7 @@ export default function Home() {
 
           <p className="table-scroll-hint">{t("t_00c94041d2")}</p>
           <div className="table-frame" data-onboarding="results" tabIndex={0} aria-label={s("resultsTableAria")}>
-            <table>
+            <table className={showFullData ? undefined : "compact-lead-table"}>
               <thead>
                 <tr>{tableColumns.map((column) => {
                   const action: TableAction | null = column.key === "pain_points" ? "pain_points" : column.key === "enrichment" ? "enrichment" : null;
@@ -881,6 +869,27 @@ export default function Home() {
                       if (column.key === "whatsapp") {
                         return <td key={column.key} {...cellDetailProps(lead, column, lead.phone || s("noData"))}><WhatsAppContact phone={lead.phone} /></td>;
                       }
+                      if (column.key === "socials") {
+                        const profiles = socialNetworkOptions.flatMap(({ id, label }) => {
+                          const url = getSocialProfileUrl(lead.social_profiles || "", id);
+                          return url ? [{ id, label, url }] : [];
+                        });
+                        const value = profiles.map((profile) => profile.label).join(", ") || s("noData");
+                        return <td key={column.key} className="compact-social-cell" {...cellDetailProps(lead, column, value)}>
+                          {profiles.length
+                            ? <div className="compact-social-links">{profiles.map((profile) => <a className="table-link" key={profile.id} href={profile.url} target="_blank" rel="noreferrer">{profile.label}</a>)}</div>
+                            : <span className="compact-missing">{s("noData")}</span>}
+                        </td>;
+                      }
+                      if (column.key === "name" && !showFullData) {
+                        const businessDetails = [lead.category, lead.average_rating ? `★ ${lead.average_rating}${lead.review_count ? ` (${lead.review_count})` : ""}` : ""].filter(Boolean).join(" · ");
+                        return <td key={column.key} className="compact-business-cell" {...cellDetailProps(lead, column, [lead.name, businessDetails, lead.address].filter(Boolean).join("\n"))}>
+                          {lead.maps_url
+                            ? <a className="compact-business-name" href={lead.maps_url} target="_blank" rel="noreferrer">{lead.name}</a>
+                            : <strong className="compact-business-name">{lead.name}</strong>}
+                          {businessDetails && <span className="compact-business-meta">{businessDetails}</span>}
+                        </td>;
+                      }
                       const reviewMatch = /^review_([1-5])$/.exec(column.key);
                       if (reviewMatch) {
                         const review = lead.source_reviews?.[Number(reviewMatch[1]) - 1];
@@ -901,6 +910,9 @@ export default function Home() {
                         </td>;
                       }
                       const value = getLeadColumnValue(lead, column.key, s("ownerResponse"));
+                      if (!showFullData && (column.key === "phone" || column.key === "email") && !value) {
+                        return <td key={column.key} className="compact-missing-cell">{s("noData")}</td>;
+                      }
                       const socialNetworkMatch = /^social_(facebook|instagram|youtube|linkedin)$/.exec(column.key);
                       if (socialNetworkMatch) {
                         const network = socialNetworkMatch[1] as SocialNetwork;
@@ -912,19 +924,34 @@ export default function Home() {
                       if (column.key === "pain_points" || column.key === "enrichment") {
                         const action: TableAction = column.key;
                         const detail = analysisDetail(action === "pain_points" ? lead.pain_points_detail : lead.enrichment_detail);
-                        const content = action === "pain_points"
-                          ? (detail?.findings.map((finding) => finding.title.trim()).filter(Boolean).join("; ") || "")
+                        const pain = action === "pain_points" ? painView(detail, lead.pain_points) : null;
+                        const content = pain
+                          ? (pain.tags.join("; ") || pain.report)
                           : String(value || "");
-                        const fullAnalysis = action === "pain_points"
-                          ? detail?.findings.map((finding) => [finding.title, finding.detail, ...finding.sources.map((source) => `${source.label}: ${source.text}${source.url ? ` (${source.url})` : ""}`)].filter(Boolean).join("\n")).join("\n\n") || content
+                        const fullAnalysis = pain
+                          ? [
+                              pain.tags.join(" · "),
+                              pain.report,
+                              detail?.findings.map((finding) => [finding.title, finding.detail, ...finding.sources.map((source) => `${source.label}: ${source.text}${source.url ? ` (${source.url})` : ""}`)].filter(Boolean).join("\n")).join("\n\n"),
+                            ].filter(Boolean).join("\n\n") || content
                           : [detail?.summary, content].filter((part, index, parts) => Boolean(part) && parts.indexOf(part) === index).join("\n\n");
                         const noData = !content && Boolean(detail?.status);
                         const needsAnalysis = !content && !noData;
                         const cellText = content || (action === "pain_points" && detail?.status === "completed" ? s("noPains") : noData ? s("noData") : s("notAnalyzed"));
                         return (
                           <td key={column.key} className="analysis-cell" {...cellDetailProps(lead, column, fullAnalysis || cellText)}>
-                            <button
-                              className={`analysis-cell-trigger${noData ? " is-no-data" : ""}`}
+                            {needsAnalysis && action === "pain_points"
+                              ? <button
+                                className="analysis-cell-trigger is-enrich"
+                                type="button"
+                                disabled={Boolean(analysisBusy)}
+                                onClick={() => requestPainAnalysis(lead.id)}
+                                aria-label={s("analyzePainAria", { name: lead.name })}
+                              >
+                                {analysisBusy === action && (!analysisRowBusyId || analysisRowBusyId === lead.id) ? s("analyzing") : s("analyzePain")}
+                              </button>
+                              : <button
+                              className={`analysis-cell-trigger${noData ? " is-no-data" : ""}${pain?.hasContent ? " has-pain-tags" : ""}`}
                               type="button"
                               disabled={needsAnalysis && Boolean(analysisBusy)}
                               onClick={needsAnalysis ? () => void startAnalysis(action, lead.id) : (event) => {
@@ -936,8 +963,17 @@ export default function Home() {
                               onKeyDown={needsAnalysis ? undefined : (event) => { if (event.key === "Enter" || event.key === " ") setAnalysisDialog({ leadId: lead.id, action }); }}
                               title={needsAnalysis ? s("analyzeLead") : s("openAnalysisHint")}
                             >
-                              {analysisBusy === action && needsAnalysis && (!analysisRowBusyId || analysisRowBusyId === lead.id) ? s("analyzing") : cellText}
-                            </button>
+                              {analysisBusy === action && needsAnalysis && (!analysisRowBusyId || analysisRowBusyId === lead.id)
+                                ? s("analyzing")
+                                : pain?.hasContent
+                                  ? <>
+                                    {pain.tags.length > 0
+                                      ? <span className="pain-tags">{pain.tags.map((tag) => <span className="pain-tag" key={tag}>{tag}</span>)}</span>
+                                      : <span className="pain-report-line">{pain.report}</span>}
+                                    {showFullData && pain.tags.length > 0 && pain.report && <span className="pain-report">{pain.report}</span>}
+                                  </>
+                                  : cellText}
+                            </button>}
                             {detail && <span className="analysis-source-count">{detail.findings.length} {t("t_a1c92c8aa4")}</span>}
                           </td>
                         );
@@ -999,7 +1035,15 @@ export default function Home() {
                 {detail ? (
                   <>
                     {action === "enrichment" && detail.summary && <p className="analysis-popover-summary">{detail.summary}</p>}
-                    {action === "pain_points" && detail.findings.length === 0 && <p className="analysis-popover-empty">{t("t_63b75cd9df")}</p>}
+                    {action === "pain_points" && (() => {
+                      const pain = painView(detail, lead.pain_points);
+                      return pain.hasContent
+                        ? <>
+                          {pain.tags.length > 0 && <span className="pain-tags">{pain.tags.map((tag) => <span className="pain-tag" key={tag}>{tag}</span>)}</span>}
+                          {pain.report && <p className="analysis-popover-summary">{pain.report}</p>}
+                        </>
+                        : <p className="analysis-popover-empty">{t("t_63b75cd9df")}</p>;
+                    })()}
                     {detail.findings.length > 0 && <ol className="analysis-findings">
                       {detail.findings.map((finding, index) => (
                         <li key={`${finding.title}-${index}`}>

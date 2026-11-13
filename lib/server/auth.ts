@@ -3,6 +3,8 @@ import { PocketBaseRequestError, pocketBasePublicFetch } from "@/lib/server/pock
 
 const sessionCookieName = "leadta_session";
 const sessionDurationSeconds = 60 * 60 * 24 * 30;
+const pendingPhoneCookieName = "leadta_google_phone";
+const pendingPhoneMaxAgeSeconds = 60 * 15;
 
 export type UserRole = "user" | "owner";
 export type AppUser = { id: string; email: string; name: string; credits: number; role: UserRole };
@@ -54,8 +56,33 @@ export function clearSessionCookie(response: NextResponse) {
   });
 }
 
-export async function getCurrentUser(request: Request) {
-  const token = getCookie(request, sessionCookieName);
+/** Google sign-in without users.phone: the token waits here (no session yet) until the phone is saved. */
+export function setPendingPhoneCookie(response: NextResponse, token: string) {
+  response.cookies.set(pendingPhoneCookieName, token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    path: "/",
+    maxAge: pendingPhoneMaxAgeSeconds,
+  });
+}
+
+export function clearPendingPhoneCookie(response: NextResponse) {
+  response.cookies.set(pendingPhoneCookieName, "", {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    path: "/",
+    maxAge: 0,
+  });
+}
+
+export function getPendingPhoneUser(request: Request) {
+  return getCurrentUser(request, pendingPhoneCookieName);
+}
+
+export async function getCurrentUser(request: Request, cookieName = sessionCookieName) {
+  const token = getCookie(request, cookieName);
   if (!token) return null;
 
   try {
