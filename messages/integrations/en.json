@@ -1,0 +1,53 @@
+{
+  "integrations": {
+    "metaTitle": "Integrations | Leadta",
+    "title": "Integrations",
+    "lede": "Connect your tools so Leadtita can work with your own data.",
+    "description": "Pick spreadsheets, docs, CSV or PDF files from your Drive and Leadtita reads them when you ask.",
+    "connectedAs": "Connected as {email}",
+    "connected": "Connected",
+    "loading": "Checking your connection…",
+    "retry": "Retry",
+    "loadError": "We couldn't check your Google connection.",
+    "notConfigured": "Integration not configured. Let us know and we'll turn it on.",
+    "connect": "Connect Google Drive",
+    "hintFiles": "You only share the files you pick. You can disconnect at any time.",
+    "hintFull": "Leadtita will be able to search your whole Drive (read-only). You can disconnect at any time.",
+    "pickFiles": "Pick files",
+    "pickerNotConfigured": "The file picker isn't configured yet.",
+    "pickerError": "We couldn't open the Google picker. Try again.",
+    "filesLabel": "Connected files",
+    "noFiles": "You haven't picked any files yet. Add a spreadsheet or a doc to start.",
+    "removeFile": "Remove {name}",
+    "removeError": "We couldn't remove the file.",
+    "addError": "We couldn't add those files.",
+    "someRejected": "{count, plural, one {# file couldn't be added} other {# files couldn't be added}}: check that you have access and that it's a spreadsheet, doc, CSV or PDF.",
+    "disconnect": "Disconnect Google",
+    "disconnectTitle": "Disconnect Google",
+    "disconnectBody": "Drive, Gmail and Calendar disconnect together: Leadtita stops using them and we revoke access on Google. You can reconnect at any time.",
+    "disconnectConfirm": "Yes, disconnect",
+    "disconnecting": "Disconnecting…",
+    "disconnectError": "We couldn't disconnect. Try again.",
+    "cancel": "Cancel",
+    "noticeConnected": "Done: Google Drive is connected.",
+    "noticeDenied": "You cancelled the Google permission. You can try again any time.",
+    "noticeError": "We couldn't finish connecting to Google. Try again.",
+    "features": {
+      "drive": {
+        "connect": "Connect Google Drive"
+      },
+      "gmail": {
+        "title": "Gmail",
+        "connect": "Connect Gmail",
+        "description": "Leadtita sends the emails you confirm from your account.",
+        "hint": "Send-only permission: we never read your inbox."
+      },
+      "calendar": {
+        "title": "Google Calendar",
+        "connect": "Connect Calendar",
+        "description": "Leadtita books meetings with your leads on your primary calendar.",
+        "hint": "Permission to create and edit events; we don't read the rest of your calendar."
+      }
+    }
+  }
+}

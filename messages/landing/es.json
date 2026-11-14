@@ -2,7 +2,7 @@
   "Landing": {
     "meta": {
       "title": "Leadta | Encontrá negocios para contactar",
-      "description": "Buscá negocios locales de Google Maps por rubro y zona, con teléfono, mail, redes y dolores detectados en reseñas. Exportá cada lote a CSV o XLSX."
+      "description": "Buscá negocios locales por rubro y zona, con teléfono, mail, redes y dolores detectados en reseñas. Exportá cada lote a CSV o XLSX."
     },
     "whatsapp": {
       "hello": "¡Hola! 👋",
@@ -16,6 +16,7 @@
       "how": "Producto",
       "plans": "Pricing",
       "faq": "Preguntas",
+      "blog": "Blog",
       "login": "Ingresar",
       "signup": "Crear cuenta"
     },
@@ -71,20 +72,11 @@
       "range": "Radio 3 km · Palermo",
       "feedLabel": "Leads detectados",
       "serviceLabel": "Servicio:",
-      "metrics": [
-        {
-          "value": "25",
-          "label": "leads"
-        },
-        {
-          "value": "18",
-          "label": "teléfonos"
-        },
-        {
-          "value": "12",
-          "label": "dolores"
-        }
-      ],
+      "metrics": {
+        "leads": "Leads encontrados",
+        "pains": "Dolores analizados",
+        "categories": "Rubros encontrados"
+      },
       "leads": [
         {
           "name": "Veterinaria Huellitas del Sur",
@@ -120,7 +112,7 @@
           "name": "Centro Animal Núñez",
           "rating": "4,6",
           "pain": "Horarios poco claros",
-          "service": "Ficha de Google optimizada"
+          "service": "Perfil del negocio optimizado"
         }
       ]
     },
@@ -160,16 +152,16 @@
       "credits": [
         { "value": "240", "label": "créditos de bienvenida al crear tu cuenta" },
         { "value": "2", "label": "créditos por cada lead de tu búsqueda" },
-        { "value": "0,5", "label": "créditos extra por lead analizado" }
+        { "value": "0", "label": "créditos por analizar dolores: es gratis" }
       ]
     },
     "faq": {
       "title": "Preguntas frecuentes",
       "items": [
-        { "q": "¿De dónde salen los negocios?", "a": "De Google Maps. Buscás por rubro y zona y Leadta trae los negocios con los datos públicos que figuran en su ficha." },
-        { "q": "¿Siempre vienen teléfono y mail?", "a": "No. Si Google Maps o el sitio del negocio no publican un dato, la celda queda vacía. Nunca rellenamos con datos inventados." },
+        { "q": "¿De dónde salen los negocios?", "a": "De fuentes públicas de negocios locales. Buscás por rubro y zona y Leadta trae los negocios con los datos públicos que figuran en su ficha." },
+        { "q": "¿Siempre vienen teléfono y mail?", "a": "No. Si la ficha pública o el sitio del negocio no publican un dato, la celda queda vacía. Nunca rellenamos con datos inventados." },
         { "q": "¿Cómo se detectan los dolores?", "a": "Se analizan las reseñas guardadas de cada negocio y cada hallazgo cita la reseña que lo respalda. Sin reseñas legibles no hay hallazgos." },
-        { "q": "¿Cuántos leads rinde un plan?", "a": "Cada lead consume 2 créditos. Con 500 créditos obtenés hasta 250 leads, y el análisis de dolores suma 0,5 créditos por lead analizado." },
+        { "q": "¿Cuántos leads rinde un plan?", "a": "Cada lead consume 2 créditos. Con 500 créditos obtenés hasta 250 leads El análisis de dolores es gratis." },
         { "q": "¿Puedo repetir una búsqueda en la misma zona?", "a": "Sí. Leadta recuerda los negocios que ya te trajo en esa zona para devolverte resultados nuevos en las búsquedas siguientes." },
         { "q": "¿Mis búsquedas son privadas?", "a": "Sí. Cada cuenta tiene su propio historial y nadie más ve tus lotes ni tus leads." }
       ]
@@ -184,8 +176,21 @@
       "aria": "Enlaces de Leadta",
       "tagline": "Encontrá. Organizá. Avanzá.",
       "plans": "Pricing",
+      "blog": "Blog",
       "login": "Ingresar",
       "signup": "Crear cuenta"
+    },
+    "signupPopup": {
+      "close": "Cerrar",
+      "title": "Encontrá tus primeros clientes en 2 minutos",
+      "text": "Creá tu cuenta y recibí <strong>{leads} leads</strong> gratis.",
+      "google": "Continuar con Google",
+      "or": "o",
+      "emailLabel": "Tu email",
+      "emailPlaceholder": "nombre@empresa.com",
+      "submit": "Reclamar mis {leads} leads",
+      "noCard": "Sin tarjeta de crédito.",
+      "legal": "Al crear una cuenta aceptás los Términos y la Política de privacidad de Leadta."
     }
   }
 }

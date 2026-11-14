@@ -1,0 +1,291 @@
+{
+  "leadSuiteChat": {
+    "title": "Registrá tus contactos",
+    "intro": "Decime el negocio, el canal, cuándo y qué le mandaste. Yo lo registro.",
+    "example1": "Ya le hablé a Inmobiliaria Sur por WhatsApp hoy 15hs, le mandé: Hola, vi su web y les puedo ayudar con más consultas.",
+    "example2": "Ayer le mandé un email a Café Central ofreciendo el rediseño de su sitio.",
+    "example3": "Inmobiliaria Sur me respondió, tenemos reunión el jueves.",
+    "useExample": "Usar ejemplo",
+    "inputLabel": "Mensaje",
+    "placeholder": "Pedile a Leadtita que busque, registre o redacte…",
+    "hint": "Enter envía, Shift+Enter agrega una línea.",
+    "send": "Enviar",
+    "sending": "Enviando…",
+    "you": "Vos",
+    "assistant": "Leadtita",
+    "error": "No se pudo enviar el mensaje.",
+    "retry": "Reintentar",
+    "contextFull": {
+      "title": "Esta conversación se hizo muy larga para Leadtita.",
+      "body": "Empezá un chat nuevo para seguir: tus leads y contactos no se pierden."
+    },
+    "chooseLead": "¿Cuál de estos leads es?",
+    "pickReply": "Es {name}",
+    "channels": {
+      "whatsapp": "WhatsApp",
+      "email": "Email",
+      "phone": "Teléfono",
+      "instagram": "Instagram",
+      "linkedin": "LinkedIn",
+      "in_person": "En persona",
+      "other": "Otro"
+    },
+    "statuses": {
+      "not_contacted": "Sin contactar",
+      "contacted": "Contactado",
+      "replied": "Respondió",
+      "meeting": "Reunión",
+      "won": "Ganado",
+      "lost": "Perdido"
+    },
+    "introTitle": "¿A quién contactaste hoy?",
+    "examplesLabel": "Probá con",
+    "exampleChannel1": "WhatsApp",
+    "exampleChannel2": "Email",
+    "exampleChannel3": "Reunión",
+    "confirmPrompt": "¿Confirmás el cambio?",
+    "fields": {
+      "channel": "Canal",
+      "contactedAt": "Fecha",
+      "message": "Mensaje",
+      "status": "Estado",
+      "notes": "Notas",
+      "preview": "Ver detalle",
+      "doubtful": "Revisá estas coincidencias"
+    },
+    "confirming": "Guardando…",
+    "confirmError": "No se pudo guardar. Probá de nuevo.",
+    "cancelled": "No hice cambios. ¿Qué querés ajustar?",
+    "done": {
+      "record_contact": "Listo: registré el contacto con **{lead}**.",
+      "update_contact": "Listo: actualicé el contacto de **{lead}**.",
+      "delete_contact": "Listo: borré el contacto de **{lead}**.",
+      "update_status": "Listo: actualicé el estado de **{lead}**.",
+      "add_note": "Listo: agregué la nota a **{lead}**.",
+      "add_lead": "Listo: agregué **{lead}** a tu lote Manual. [Ver en historial]({href})",
+      "analyze_pains": "Listo: analicé **{lead}**. Dolores: {tags}. ¿Te armo un mensaje?",
+      "search_businesses": "Listo: {delivered} leads entregados, {charged} créditos cobrados. [Ver el lote]({href})",
+      "search_people": "Listo: {delivered} personas entregadas, {charged} créditos cobrados. [Ver el lote]({href})",
+      "import_leads": "Listo: cargué {created, plural, one {# lead} other {# leads}} de **{lead}**; omití {skipped} (ya existían o sin nombre){failed, plural, =0 {} other {, # fallaron}}. [Ver en historial]({href})",
+      "import_contacts": "Listo: registré {created, plural, one {# contacto} other {# contactos}} de **{lead}**; omití {skipped} ya registrados{failed, plural, =0 {} other {, # fallaron}}.",
+      "send_email": "Listo: envié el mail a **{lead}** desde tu Gmail y lo registré en Lead Suite.",
+      "send_email_batch": "Listo: envié {delivered, plural, one {# mail} other {# mails}}{failed, plural, =0 {} other {, # fallaron}}{skipped, plural, =0 {} other {, # quedaron sin enviar}}. Quedaron registrados en Lead Suite.",
+      "create_meeting": "Listo: agendé la reunión con **{lead}** y la registré como Reunión en Lead Suite. [Abrir en Google Calendar]({event})",
+      "update_commercial_profile": "Listo: guardé tu perfil comercial. Lo uso para analizar dolores y sugerirte rubros."
+    },
+    "pageTitle": "Leadtita",
+    "pageIntroTitle": "¿En qué te ayudo hoy?",
+    "pageIntro": "Escribime como le hablarías a un compañero. Antes de guardar algo o gastar créditos te pido confirmación.",
+    "pageExample1": "Ayer le escribí a Inmobiliaria Sur por WhatsApp ofreciéndole una web nueva.",
+    "pageExampleLabel1": "Registrar contacto",
+    "pageExample2": "¿Cómo vengo con el seguimiento? Dame feedback.",
+    "pageExampleLabel2": "Feedback",
+    "pageExample3": "Armame un mensaje para Café Central ofreciéndole más reservas online.",
+    "pageExampleLabel3": "Mensaje recomendado",
+    "pageExample4": "Cargá un lead: Ferretería San Martín, Rosario, 341 555-0123.",
+    "pageExampleLabel4": "Cargar lead",
+    "pageExample5": "Buscame 10 inmobiliarias en Córdoba, Argentina.",
+    "pageExampleLabel5": "Generar leads",
+    "creditsMax": "Hasta {count} créditos",
+    "free": "Gratis",
+    "chargedOnlyDelivered": "Solo se cobran los resultados entregados.",
+    "running": "Procesando…",
+    "staleChange": "Este cambio ya se aplicó o el contacto cambió. Pedímelo de nuevo si hace falta.",
+    "draftsFor": "Mensajes sugeridos para {lead}",
+    "option": "opción {n}",
+    "copy": "Copiar",
+    "copied": "Copiado",
+    "copyDraft": "Copiar mensaje {n}",
+    "attach": "Adjuntar archivos",
+    "attachHint": "Adjuntá imágenes, PDF, Markdown o CSV (hasta 5, 10 MB c/u, CSV hasta 2.000 filas). También podés arrastrarlos o pegar una captura.",
+    "attachedFiles": "Archivos adjuntos",
+    "attachReading": "Leyendo…",
+    "attachmentDefaultPrompt": "Usá estos archivos para cargar leads o contactos.",
+    "pastedImage": "captura.png",
+    "removeFile": "Quitar {name}",
+    "csvRows": "{count, plural, one {# fila} other {# filas}}",
+    "truncated": "recortado",
+    "previewFile": "Ver {name}",
+    "previewSummary": "{rows, plural, one {# fila} other {# filas}} · {cols, plural, one {# columna} other {# columnas}}",
+    "previewShowing": "Mostrando las primeras {count} filas",
+    "previewClose": "Cerrar vista previa",
+    "kinds": {
+      "image": "Imagen",
+      "pdf": "PDF",
+      "text": "Texto",
+      "csv": "CSV"
+    },
+    "attachErrors": {
+      "count": "Máximo {max} archivos.",
+      "type": "Tipo no admitido.",
+      "size": "Supera 10 MB.",
+      "empty": "Sin contenido legible.",
+      "extract": "No se pudo leer.",
+      "rate": "Demasiados archivos seguidos, esperá unos minutos."
+    },
+    "targets": {
+      "manual": "Lote Manual",
+      "new_batch": "Lote nuevo con el nombre del archivo"
+    },
+    "confirmAction": "Confirmar",
+    "cancelAction": "Cancelar",
+    "deleteAction": "Borrar",
+    "statusConfirmed": "Confirmado",
+    "statusCancelled": "Cancelado",
+    "irreversible": "Esto no se puede deshacer.",
+    "typing": "Leadtita está escribiendo…",
+    "jumpToLatest": "Ir al final",
+    "summary": "Resumen",
+    "titles": {
+      "record_contact": "Registrar contacto con {lead}",
+      "update_contact": "Editar el contacto de {lead}",
+      "delete_contact": "Borrar el contacto de {lead}",
+      "update_status": "Cambiar el estado de {lead}",
+      "add_note": "Agregar una nota a {lead}",
+      "add_lead": "Agregar {lead} a tus leads",
+      "analyze_pains": "Analizar los dolores de {lead}",
+      "search_businesses": "Buscar {count} {query}{hasPlace, select, yes { en {place}} other {}}",
+      "search_people": "Buscar {count, plural, one {# persona} other {# personas}}: {query}{hasPlace, select, yes { en {place}} other {}}",
+      "import_leads": "Cargar {count, plural, one {# lead} other {# leads}} de {file}",
+      "import_contacts": "Registrar {count, plural, one {# contacto} other {# contactos}} de {file}",
+      "send_email": "Enviar mail a {lead}",
+      "send_email_batch": "Enviar {count, plural, one {# mail} other {# mails}}",
+      "create_meeting": "Agendar reunión con {lead}",
+      "update_commercial_profile": "Guardar tu perfil comercial"
+    },
+    "filters": {
+      "minReviews": "Al menos {n} reseñas",
+      "maxReviews": "Menos de {n} reseñas",
+      "minRating": "Calificación ≥ {n}",
+      "website": {
+        "with": "Con web",
+        "without": "Sin web"
+      },
+      "phone": {
+        "with": "Con teléfono",
+        "without": "Sin teléfono"
+      },
+      "email": {
+        "with": "Con email",
+        "without": "Sin email"
+      },
+      "focus": "Foco: {focus}",
+      "hints": {
+        "minReviews": "Solo negocios con al menos {n} reseñas: más establecidos y con clientes activos.",
+        "maxReviews": "Negocios con hasta {max} reseñas: suelen ser más chicos y receptivos.",
+        "minRating": "Solo negocios con calificación promedio de {n} o más.",
+        "website": {
+          "with": "Solo negocios que tienen sitio web propio.",
+          "without": "Solo negocios sin sitio web: buenos candidatos para ofrecerles uno."
+        },
+        "phone": {
+          "with": "Solo negocios con teléfono publicado.",
+          "without": "Solo negocios sin teléfono publicado."
+        },
+        "email": {
+          "with": "Solo negocios con email publicado.",
+          "without": "Solo negocios sin email publicado."
+        }
+      },
+      "service": "Tu servicio: {service}",
+      "sectors": "Sectores: {sectors}"
+    },
+    "importTags": {
+      "toCreate": "{n, plural, one {# nuevo} other {# nuevos}}",
+      "duplicates": "{n} ya existen",
+      "invalid": "{n} sin nombre",
+      "toRecord": "{n, plural, one {# a registrar} other {# a registrar}}",
+      "doubtful": "{n, plural, one {# dudoso} other {# dudosos}}",
+      "unmatched": "{n} sin lead"
+    },
+    "result": {
+      "title": {
+        "search_businesses": "{count, plural, one {# lead entregado} other {# leads entregados}}",
+        "search_people": "{count, plural, one {# persona entregada} other {# personas entregadas}}",
+        "import_leads": "{count, plural, one {# lead cargado} other {# leads cargados}}"
+      },
+      "charged": "{count} créditos cobrados",
+      "preview": "Primeros leads del lote",
+      "noContact": "Sin contacto público",
+      "xlsx": "Descargar Excel",
+      "analyze": "Analizar dolores",
+      "analyzing": "Analizando…",
+      "analyzed": "Analicé {analyzed, plural, one {# lead} other {# leads}}: {findings} con dolores detectados.",
+      "analyzeError": "No se pudo analizar el lote. Probá de nuevo en un rato.",
+      "downloadError": "No se pudo descargar. Probá de nuevo.",
+      "csv": "Descargar CSV",
+      "analyzeBatch": "Analizar dolores del lote",
+      "analyzeLead": "Analizar dolores de {lead}",
+      "analyzedOne": "Analizado",
+      "pains": "Dolores detectados",
+      "noPains": "Sin dolores con evidencia.",
+      "viewMore": "Ver más",
+      "openInHistory": "Ver el lote en historial",
+      "filter": "Filtrar por nombre, rubro, zona o contacto",
+      "noMatch": "Ningún lead coincide con el filtro.",
+      "loading": "Cargando leads…",
+      "close": "Cerrar",
+      "viewProposal": "Ver propuesta",
+      "proposalTitle": "Propuesta para {lead}",
+      "proposals": "Propuestas",
+      "sources": "Fuentes",
+      "viewSource": "Ver fuente"
+    },
+    "placeholderShort": "Pedile algo a Leadtita…",
+    "newChat": "Nuevo chat",
+    "untitled": "Conversación sin título",
+    "statusExpired": "Vencida — pedila de nuevo",
+    "history": {
+      "open": "Conversaciones anteriores",
+      "title": "Conversaciones anteriores",
+      "confirmDelete": "¿Borrar esta conversación?",
+      "delete": "Borrar «{title}»",
+      "empty": "Todavía no hay conversaciones guardadas."
+    },
+    "attachMenu": {
+      "upload": "Subir archivo",
+      "uploadHint": "Imagen, PDF, Markdown o CSV",
+      "drive": "Desde Google Drive",
+      "driveHint": "Sheets, Docs y archivos conectados"
+    },
+    "drive": {
+      "useTitle": "Adjuntar al chat",
+      "read": "Leí «{name}» de Google Drive",
+      "errors": {
+        "not_connected": "Conectá Google Drive primero.",
+        "not_found": "El archivo no está conectado o ya no existe.",
+        "forbidden": "Sin acceso a ese archivo.",
+        "too_large": "El archivo es demasiado grande.",
+        "unsupported": "Tipo de archivo no admitido.",
+        "failed": "No se pudo leer de Google Drive."
+      }
+    },
+    "keywords": {
+      "label": "Palabras clave de la búsqueda",
+      "hint": "Busca negocios que coincidan con «{keyword}». La cantidad y el costo son totales, no por palabra.",
+      "remove": "Quitar «{keyword}» de la búsqueda"
+    },
+    "emailCard": {
+      "to": "Para",
+      "subject": "Asunto",
+      "body": "Mensaje",
+      "batchNote": "Se envían de a uno, cada {seconds} segundos, desde tu Gmail."
+    },
+    "meetingCard": {
+      "title": "Título",
+      "start": "Fecha y hora",
+      "duration": "Duración",
+      "minutes": "{minutes} min",
+      "meet": "Agregar link de Google Meet",
+      "invite": "Invitar a {email}"
+    },
+    "googleNeeds": {
+      "gmail": "Para enviar mails desde tu cuenta, conectá Gmail.",
+      "calendar": "Para agendar reuniones, conectá Google Calendar."
+    },
+    "dropzone": {
+      "title": "Soltá los archivos para adjuntarlos",
+      "types": "Imágenes, PDF, Markdown o CSV · hasta 5, 10 MB c/u"
+    }
+  }
+}

@@ -1,0 +1,29 @@
+.leadtita-main { display: flex; min-height: 100dvh; background: var(--ash-100); }
+.leadtita-main > .ls-chat { flex: 1; height: 100dvh; min-height: 0; max-height: none; border: 0; border-radius: 0; }
+.leadtita-main .ls-chat__log { padding: 68px max(16px, calc((100% - 760px) / 2)) 32px; }
+.leadtita-main .ls-chat__intro { max-width: 640px; }
+.leadtita-main .ls-chat__form { padding: 12px max(16px, calc((100% - 760px) / 2)) 20px; }
+@media (max-width: 640px) {
+  /* The log scrolls inside the chat (not the page) so new messages and "jump to latest" work on mobile too. */
+  .leadtita-main > .ls-chat { height: calc(100dvh - 56px); }
+  .leadtita-main .ls-chat__log { padding: 60px 12px 24px; }
+}
+
+/* Pantalla inicial de asistente: marca centrada, nombre y bienvenida; sin barra superior. */
+.leadtita-main .ls-chat { background: var(--ash-50); }
+.leadtita-main .ls-chat__log--empty { justify-content: safe center; }
+.leadtita-main .ls-chat__intro { display: flex; flex-direction: column; align-items: center; text-align: center; padding-top: 24px; }
+.leadtita-main .ls-chat__intro .ls-chat__examples-label { align-self: stretch; text-align: left; }
+.leadtita-main .ls-chat__examples { align-self: stretch; }
+.ls-chat__hero { display: flex; flex-direction: column; align-items: center; gap: 10px; margin-bottom: 18px; }
+.ls-chat__hero .ls-chat__hero-logo { min-height: 0; font-size: 64px; line-height: 1; }
+.leadtita-main .ls-chat__intro-title { font-size: 1.5rem; font-weight: 680; letter-spacing: -0.035em; }
+@media (max-width: 640px) {
+  .leadtita-main .ls-chat__intro { padding-top: 12px; }
+  .ls-chat__hero .ls-chat__hero-logo { font-size: 48px; }
+  .leadtita-main .ls-chat__intro-title { font-size: 1.3rem; }
+}
+
+/* Aviso único del resultado de una integración (flash cookie), sobre el chat sin moverlo. */
+.leadtita-main { position: relative; }
+.leadtita-main > .leadtita-flash { position: absolute; top: 16px; left: 50%; z-index: 5; width: max-content; max-width: calc(100% - 32px); margin: 0; transform: translateX(-50%); }

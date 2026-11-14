@@ -1,6 +1,12 @@
 import { ArrowRight, Check, Download, History, MapPin, Plus, Sparkles, Table2 } from "lucide-react";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 
+/** Título con el punto final en lime, como el logo "Leadta.". */
+function Dotted({ text }: { text: string }) {
+  if (!text.endsWith(".")) return text;
+  return <>{text.slice(0, -1)}<span className="price-dot" aria-hidden="true">.</span></>;
+}
+
 async function CallButton({ tone = "light" }: { tone?: "light" | "dark" }) {
   const t = await getTranslations("Pricing");
   const callHref = `https://wa.me/5491134083140?text=${encodeURIComponent(t("callMessage"))}`;
@@ -17,8 +23,9 @@ export async function PriceHero({ locale }: { locale: string }) {
   return (
     <section className="price-hero" aria-labelledby="price-title">
       <div className="price-inner">
+        <h1 id="price-title" className="sr-only">{t("pageTitle").split(" | ")[0]}</h1>
         <p className="price-eyebrow">{t("from")}</p>
-        <h1 id="price-title" className="price-amount">{t("price")}</h1>
+        <p className="price-amount">{t("price")}</p>
         <p className="price-lede">{t("monthly")}</p>
         <div className="price-hero-row">
           <ul className="price-facts" aria-label={t("conditionsLabel")}>
@@ -70,7 +77,7 @@ export async function PriceSections({ locale }: { locale: string }) {
         <div className="price-inner price-split">
           <div className="price-head">
             <p className="price-kicker">{t("credits")}</p>
-            <h2 id="price-credits">{t("leadCost")}</h2>
+            <h2 id="price-credits"><Dotted text={t("leadCost")} /></h2>
             <p>{t("payAsYouGo")}</p>
           </div>
           <dl className="price-examples">
@@ -88,7 +95,7 @@ export async function PriceSections({ locale }: { locale: string }) {
         <div className="price-inner">
           <div className="price-head">
             <p className="price-kicker">{t("included")}</p>
-            <h2 id="price-included">{t("includedTitle")}</h2>
+            <h2 id="price-included"><Dotted text={t("includedTitle")} /></h2>
           </div>
           <ul className="price-included">
             {included.map(({ icon: Icon, title, text }) => (
@@ -106,7 +113,7 @@ export async function PriceSections({ locale }: { locale: string }) {
         <div className="price-inner">
           <div className="price-head">
             <p className="price-kicker">{t("planSteps")}</p>
-            <h2 id="price-steps">{t("stepsTitle")}</h2>
+            <h2 id="price-steps"><Dotted text={t("stepsTitle")} /></h2>
           </div>
           <ol className="price-steps">
             {steps.map((step, index) => (
@@ -124,7 +131,7 @@ export async function PriceSections({ locale }: { locale: string }) {
         <div className="price-inner price-split">
           <div className="price-head">
             <p className="price-kicker">{t("questions")}</p>
-            <h2 id="price-faq">{t("faqTitle")}</h2>
+            <h2 id="price-faq"><Dotted text={t("faqTitle")} /></h2>
           </div>
           <div className="price-faq">
             {faqs.map((item) => (
@@ -139,7 +146,7 @@ export async function PriceSections({ locale }: { locale: string }) {
 
       <section className="price-final" aria-labelledby="price-final-title">
         <div className="price-inner price-final-row">
-          <h2 id="price-final-title">{t("talkVolume")}</h2>
+          <h2 id="price-final-title"><Dotted text={t("talkVolume")} /></h2>
           <CallButton tone="dark" />
         </div>
       </section>

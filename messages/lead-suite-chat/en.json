@@ -1,0 +1,291 @@
+{
+  "leadSuiteChat": {
+    "title": "Log your contacts",
+    "intro": "Tell me the business, the channel, when and what you sent. I'll log it.",
+    "example1": "I messaged Inmobiliaria Sur on WhatsApp today at 3pm, I sent: Hi, I saw your site and can help you get more inquiries.",
+    "example2": "Yesterday I emailed Café Central offering a website redesign.",
+    "example3": "Inmobiliaria Sur replied, we have a meeting on Thursday.",
+    "useExample": "Use example",
+    "inputLabel": "Message",
+    "placeholder": "Ask Leadtita to find, log or write…",
+    "hint": "Enter sends, Shift+Enter adds a line.",
+    "send": "Send",
+    "sending": "Sending…",
+    "you": "You",
+    "assistant": "Leadtita",
+    "error": "The message couldn't be sent.",
+    "retry": "Retry",
+    "contextFull": {
+      "title": "This conversation got too long for Leadtita.",
+      "body": "Start a new chat to keep going: your leads and contacts stay saved."
+    },
+    "chooseLead": "Which of these leads is it?",
+    "pickReply": "It's {name}",
+    "channels": {
+      "whatsapp": "WhatsApp",
+      "email": "Email",
+      "phone": "Phone",
+      "instagram": "Instagram",
+      "linkedin": "LinkedIn",
+      "in_person": "In person",
+      "other": "Other"
+    },
+    "statuses": {
+      "not_contacted": "Not contacted",
+      "contacted": "Contacted",
+      "replied": "Replied",
+      "meeting": "Meeting",
+      "won": "Won",
+      "lost": "Lost"
+    },
+    "introTitle": "Who did you reach out to today?",
+    "examplesLabel": "Try",
+    "exampleChannel1": "WhatsApp",
+    "exampleChannel2": "Email",
+    "exampleChannel3": "Meeting",
+    "confirmPrompt": "Confirm this change?",
+    "fields": {
+      "channel": "Channel",
+      "contactedAt": "Date",
+      "message": "Message",
+      "status": "Status",
+      "notes": "Notes",
+      "preview": "See details",
+      "doubtful": "Check these matches"
+    },
+    "confirming": "Saving…",
+    "confirmError": "Couldn't save. Try again.",
+    "cancelled": "I didn't change anything. What should I adjust?",
+    "done": {
+      "record_contact": "Done: logged the contact with **{lead}**.",
+      "update_contact": "Done: updated the contact for **{lead}**.",
+      "delete_contact": "Done: deleted the contact for **{lead}**.",
+      "update_status": "Done: updated the status of **{lead}**.",
+      "add_note": "Done: added the note to **{lead}**.",
+      "add_lead": "Done: added **{lead}** to your Manual batch. [Open history]({href})",
+      "analyze_pains": "Done: analyzed **{lead}**. Pains: {tags}. Want me to draft a message?",
+      "search_businesses": "Done: {delivered} leads delivered, {charged} credits charged. [Open the batch]({href})",
+      "search_people": "Done: {delivered} people delivered, {charged} credits charged. [Open the batch]({href})",
+      "import_leads": "Done: loaded {created, plural, one {# lead} other {# leads}} from **{lead}**; skipped {skipped} (already existed or no name){failed, plural, =0 {} other {, # failed}}. [Open history]({href})",
+      "import_contacts": "Done: logged {created, plural, one {# contact} other {# contacts}} from **{lead}**; skipped {skipped} already logged{failed, plural, =0 {} other {, # failed}}.",
+      "send_email": "Done: emailed **{lead}** from your Gmail and logged it in Lead Suite.",
+      "send_email_batch": "Done: sent {delivered, plural, one {# email} other {# emails}}{failed, plural, =0 {} other {, # failed}}{skipped, plural, =0 {} other {, # not sent}}. Logged in Lead Suite.",
+      "create_meeting": "Done: scheduled the meeting with **{lead}** and logged it as Meeting in Lead Suite. [Open in Google Calendar]({event})",
+      "update_commercial_profile": "Done: I saved your business profile. I use it to analyze pains and suggest sectors."
+    },
+    "pageTitle": "Leadtita",
+    "pageIntroTitle": "How can I help today?",
+    "pageIntro": "Write to me like you'd talk to a teammate. I'll ask you to confirm before saving anything or spending credits.",
+    "pageExample1": "Yesterday I messaged Southside Realty on WhatsApp offering them a new website.",
+    "pageExampleLabel1": "Log contact",
+    "pageExample2": "How is my follow-up going? Give me feedback.",
+    "pageExampleLabel2": "Feedback",
+    "pageExample3": "Write a message for Central Café offering them more online bookings.",
+    "pageExampleLabel3": "Suggested message",
+    "pageExample4": "Add a lead: Main Street Hardware, Denver, +1 303 555 0123.",
+    "pageExampleLabel4": "Add lead",
+    "pageExample5": "Find me 10 real estate agencies in Austin, United States.",
+    "pageExampleLabel5": "Generate leads",
+    "creditsMax": "Up to {count} credits",
+    "free": "Free",
+    "chargedOnlyDelivered": "Only delivered results are charged.",
+    "running": "Working…",
+    "staleChange": "This change was already applied or the contact changed. Ask me again if needed.",
+    "draftsFor": "Suggested messages for {lead}",
+    "option": "option {n}",
+    "copy": "Copy",
+    "copied": "Copied",
+    "copyDraft": "Copy message {n}",
+    "attach": "Attach files",
+    "attachHint": "Attach images, PDF, Markdown or CSV (up to 5, 10 MB each, CSV up to 2,000 rows). You can also drag them or paste a screenshot.",
+    "attachedFiles": "Attached files",
+    "attachReading": "Reading…",
+    "attachmentDefaultPrompt": "Use these files to load leads or contacts.",
+    "pastedImage": "screenshot.png",
+    "removeFile": "Remove {name}",
+    "csvRows": "{count, plural, one {# row} other {# rows}}",
+    "truncated": "truncated",
+    "previewFile": "View {name}",
+    "previewSummary": "{rows, plural, one {# row} other {# rows}} · {cols, plural, one {# column} other {# columns}}",
+    "previewShowing": "Showing the first {count} rows",
+    "previewClose": "Close preview",
+    "kinds": {
+      "image": "Image",
+      "pdf": "PDF",
+      "text": "Text",
+      "csv": "CSV"
+    },
+    "attachErrors": {
+      "count": "Up to {max} files.",
+      "type": "File type not supported.",
+      "size": "Over 10 MB.",
+      "empty": "No readable content.",
+      "extract": "Could not read it.",
+      "rate": "Too many files in a row, wait a few minutes."
+    },
+    "targets": {
+      "manual": "Manual batch",
+      "new_batch": "New batch named after the file"
+    },
+    "confirmAction": "Confirm",
+    "cancelAction": "Cancel",
+    "deleteAction": "Delete",
+    "statusConfirmed": "Confirmed",
+    "statusCancelled": "Canceled",
+    "irreversible": "This can't be undone.",
+    "typing": "Leadtita is typing…",
+    "jumpToLatest": "Jump to latest",
+    "summary": "Summary",
+    "titles": {
+      "record_contact": "Log contact with {lead}",
+      "update_contact": "Edit the contact with {lead}",
+      "delete_contact": "Delete the contact with {lead}",
+      "update_status": "Change the status of {lead}",
+      "add_note": "Add a note to {lead}",
+      "add_lead": "Add {lead} to your leads",
+      "analyze_pains": "Analyze the pains of {lead}",
+      "search_businesses": "Find {count} {query}{hasPlace, select, yes { in {place}} other {}}",
+      "search_people": "Find {count, plural, one {# person} other {# people}}: {query}{hasPlace, select, yes { in {place}} other {}}",
+      "import_leads": "Load {count, plural, one {# lead} other {# leads}} from {file}",
+      "import_contacts": "Log {count, plural, one {# contact} other {# contacts}} from {file}",
+      "send_email": "Email {lead}",
+      "send_email_batch": "Send {count, plural, one {# email} other {# emails}}",
+      "create_meeting": "Schedule a meeting with {lead}",
+      "update_commercial_profile": "Save your business profile"
+    },
+    "filters": {
+      "minReviews": "At least {n} reviews",
+      "maxReviews": "Fewer than {n} reviews",
+      "minRating": "Rating ≥ {n}",
+      "website": {
+        "with": "Has website",
+        "without": "No website"
+      },
+      "phone": {
+        "with": "Has phone",
+        "without": "No phone"
+      },
+      "email": {
+        "with": "Has email",
+        "without": "No email"
+      },
+      "focus": "Focus: {focus}",
+      "hints": {
+        "minReviews": "Only businesses with at least {n} reviews: more established, with active customers.",
+        "maxReviews": "Businesses with up to {max} reviews: usually smaller and more receptive.",
+        "minRating": "Only businesses rated {n} or higher on average.",
+        "website": {
+          "with": "Only businesses with their own website.",
+          "without": "Only businesses without a website: good candidates to offer one."
+        },
+        "phone": {
+          "with": "Only businesses with a published phone.",
+          "without": "Only businesses without a published phone."
+        },
+        "email": {
+          "with": "Only businesses with a published email.",
+          "without": "Only businesses without a published email."
+        }
+      },
+      "service": "Your service: {service}",
+      "sectors": "Sectors: {sectors}"
+    },
+    "importTags": {
+      "toCreate": "{n} new",
+      "duplicates": "{n} already exist",
+      "invalid": "{n} without a name",
+      "toRecord": "{n} to log",
+      "doubtful": "{n, plural, one {# doubtful} other {# doubtful}}",
+      "unmatched": "{n} without a lead"
+    },
+    "result": {
+      "title": {
+        "search_businesses": "{count, plural, one {# lead delivered} other {# leads delivered}}",
+        "search_people": "{count, plural, one {# person delivered} other {# people delivered}}",
+        "import_leads": "{count, plural, one {# lead loaded} other {# leads loaded}}"
+      },
+      "charged": "{count} credits charged",
+      "preview": "First leads in the batch",
+      "noContact": "No public contact",
+      "xlsx": "Download Excel",
+      "analyze": "Analyze pains",
+      "analyzing": "Analyzing…",
+      "analyzed": "Analyzed {analyzed, plural, one {# lead} other {# leads}}: {findings} with pains found.",
+      "analyzeError": "Couldn't analyze the batch. Try again in a while.",
+      "downloadError": "Couldn't download. Try again.",
+      "csv": "Download CSV",
+      "analyzeBatch": "Analyze the batch's pains",
+      "analyzeLead": "Analyze pains of {lead}",
+      "analyzedOne": "Analyzed",
+      "pains": "Pains found",
+      "noPains": "No pains with evidence.",
+      "viewMore": "See more",
+      "openInHistory": "Open the batch in history",
+      "filter": "Filter by name, category, area or contact",
+      "noMatch": "No lead matches the filter.",
+      "loading": "Loading leads…",
+      "close": "Close",
+      "viewProposal": "See proposal",
+      "proposalTitle": "Proposal for {lead}",
+      "proposals": "Proposals",
+      "sources": "Sources",
+      "viewSource": "View source"
+    },
+    "placeholderShort": "Ask Leadtita anything…",
+    "newChat": "New chat",
+    "untitled": "Untitled conversation",
+    "statusExpired": "Expired — ask for it again",
+    "history": {
+      "open": "Previous conversations",
+      "title": "Previous conversations",
+      "confirmDelete": "Delete this conversation?",
+      "delete": "Delete “{title}”",
+      "empty": "No saved conversations yet."
+    },
+    "attachMenu": {
+      "upload": "Upload file",
+      "uploadHint": "Image, PDF, Markdown or CSV",
+      "drive": "From Google Drive",
+      "driveHint": "Connected Sheets, Docs and files"
+    },
+    "drive": {
+      "useTitle": "Attach to the chat",
+      "read": "Read “{name}” from Google Drive",
+      "errors": {
+        "not_connected": "Connect Google Drive first.",
+        "not_found": "The file isn't connected or no longer exists.",
+        "forbidden": "No access to that file.",
+        "too_large": "The file is too large.",
+        "unsupported": "File type not supported.",
+        "failed": "Couldn't read from Google Drive."
+      }
+    },
+    "keywords": {
+      "label": "Search keywords",
+      "hint": "Finds businesses matching “{keyword}”. Amount and cost are totals, not per keyword.",
+      "remove": "Remove “{keyword}” from the search"
+    },
+    "emailCard": {
+      "to": "To",
+      "subject": "Subject",
+      "body": "Message",
+      "batchNote": "Sent one at a time, every {seconds} seconds, from your Gmail."
+    },
+    "meetingCard": {
+      "title": "Title",
+      "start": "Date and time",
+      "duration": "Duration",
+      "minutes": "{minutes} min",
+      "meet": "Add a Google Meet link",
+      "invite": "Invite {email}"
+    },
+    "googleNeeds": {
+      "gmail": "To send emails from your account, connect Gmail.",
+      "calendar": "To schedule meetings, connect Google Calendar."
+    },
+    "dropzone": {
+      "title": "Drop files to attach them",
+      "types": "Images, PDF, Markdown or CSV · up to 5, 10 MB each"
+    }
+  }
+}

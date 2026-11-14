@@ -11,11 +11,13 @@ export const smallButton = "min-h-9 px-2.5";
 export const controlClass = "min-h-10 w-full rounded-lg border border-(color:--ash-300) bg-(--paper) px-3 text-[13px] text-(color:--ink) focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-(color:--ash-800)";
 export const errorBox = "mb-3 rounded-lg border border-(color:--ash-400) bg-(--ash-50) px-3 py-2.5 text-xs leading-snug text-(color:--ash-900)";
 export const okBox = "mb-3 rounded-lg bg-(--lime) px-3 py-2.5 text-xs font-semibold text-(color:--ink)";
-export const stateBox = "flex items-center gap-2 p-4 text-[13px] text-(color:--muted)";
+export const stateBox = "flex items-center gap-2 p-5 text-[13px] text-(color:--muted)";
 export const mutedText = "text-xs text-(color:--muted)";
 export const sectionHead = "mb-3.5 flex flex-wrap items-center justify-between gap-3";
-export const sectionTitle = "m-0 flex items-center gap-2 text-xl font-semibold tracking-tight";
-export const countBadge = "rounded-full bg-(--ash-200) px-2 py-0.5 text-[11px] font-semibold text-(color:--ash-700)";
+export const sectionTitle = "m-0 flex items-center gap-2 text-2xl font-[680] leading-tight tracking-[-0.03em]";
+/** Punto final del título principal, como el logo "Leadta.". Decorativo. */
+export const titleDot = "-ml-2 text-(color:--lime-dark)";
+export const countBadge = "rounded-full bg-(--ash-950) px-2 py-0.5 text-[11px] font-bold tracking-normal text-(color:--lime)";
 export const cardClass = "rounded-[10px] border border-(color:--line) bg-(--paper) p-4";
 export const tableWrap = "overflow-x-auto rounded-[10px] border border-(color:--line) bg-(--paper)";
 export const tableClass = "w-full border-collapse text-[13px] max-md:block max-md:[&_tbody]:block [&_tr:last-child_td]:border-b-0";

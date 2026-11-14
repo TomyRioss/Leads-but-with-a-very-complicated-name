@@ -1,0 +1,57 @@
+/* Buscar Personas: solo lo que /buscar no cubre; el resto reusa clases de globals.css. */
+.people-panel { display: grid; gap: 14px; }
+.people-query-field textarea { width: 100%; min-height: 84px; resize: vertical; padding: 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--paper); color: var(--ink); font: inherit; font-size: 16px; line-height: 1.45; }
+.people-examples { display: flex; flex-wrap: wrap; gap: 8px; }
+.people-example { min-height: 36px; padding: 0 12px; border: 1px solid var(--line); border-radius: 999px; background: var(--ash-50); color: var(--ash-700); font: inherit; font-size: 13px; cursor: pointer; }
+.people-example:hover:not(:disabled) { border-color: var(--ash-400); color: var(--ink); }
+.people-row { display: grid; gap: 12px; grid-template-columns: minmax(0, 1fr); }
+.people-row input { width: 100%; min-height: 44px; padding: 0 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--paper); color: var(--ink); font: inherit; }
+.people-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+.people-actions .primary-button, .people-actions .export-button { width: auto; align-self: auto; }
+.people-preview { display: grid; gap: 6px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--ash-50); color: var(--ink); }
+.people-preview p { margin: 0; }
+.people-preview .export-button { justify-self: start; }
+.people-link-button { display: inline-flex; align-items: center; text-decoration: none; }
+.people-progress { display: flex; align-items: center; gap: 8px; margin: 0 0 10px; color: var(--muted); font-size: 14px; }
+.people-completeness { display: inline-flex; gap: 3px; }
+.people-completeness > span { width: 10px; height: 10px; border-radius: 3px; background: var(--ash-200); }
+.people-completeness > span.is-on { background: var(--lime-dark); }
+@media (min-width: 701px) {
+  .people-row { grid-template-columns: minmax(0, 1fr) 140px; }
+}
+/* Tabla de personas. Simplificada: 5 columnas con ancho fijo, nombre completo y redes como íconos. Completa: layout automático como /buscar. */
+.table-frame table.people-table:not(.is-full) { min-width: 980px; }
+.people-table:not(.is-full) th:nth-child(1) { width: 24%; }
+.people-table:not(.is-full) th:nth-child(2) { width: 18%; }
+.people-table:not(.is-full) th:nth-child(3) { width: 22%; }
+.people-table:not(.is-full) th:nth-child(4) { width: 140px; }
+.people-table:not(.is-full) th:nth-child(5) { width: auto; }
+.people-table td:first-child { height: auto; padding-top: 10px; padding-bottom: 10px; white-space: normal; }
+.people-table td:first-child .compact-business-name { overflow: visible; text-overflow: clip; overflow-wrap: anywhere; line-height: 1.3; }
+.people-table .people-pains-cell { height: auto; padding-top: 8px; padding-bottom: 8px; white-space: normal; }
+.people-table .compact-social-links { gap: 4px; }
+.people-table .social-pill { justify-content: center; width: 26px; min-height: 26px; padding: 0; }
+.people-table .social-pill span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.people-table.is-full td:first-child { min-width: 180px; }
+.people-table.is-full .people-pains-cell { min-width: 260px; max-width: 360px; }
+/* Historial propio de búsquedas de personas. */
+.people-history { margin: 16px 0; }
+.people-history h2 { margin: 0 0 8px; color: var(--ink); font-size: 15px; font-weight: 700; }
+.people-history ul { display: flex; gap: 8px; margin: 0; padding: 0 0 4px; overflow-x: auto; list-style: none; }
+.people-history-item { display: grid; gap: 3px; min-width: 180px; max-width: 260px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); color: var(--ink); font: inherit; text-align: left; cursor: pointer; }
+.people-history-item strong { overflow: hidden; font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
+.people-history-item span { color: var(--muted); font-size: 12px; }
+.people-history-item:hover:not(:disabled) { border-color: var(--ash-400); background: var(--ash-50); }
+.people-history-item.is-active { border-color: var(--lime-dark); background: var(--ash-50); }
+/* Identidad de marca (ORQ-1-0139): sugerencias con ícono, CTA lime, estado vacío y carga con ícono. */
+.people-example { display: inline-flex; align-items: center; gap: 6px; }
+.people-example svg { flex: none; color: var(--lime-dark); }
+.people-example:focus-visible, .people-history-item:focus-visible { outline: 3px solid var(--ash-950); outline-offset: 2px; }
+.people-history h2 { display: flex; align-items: center; gap: 6px; letter-spacing: -0.02em; }
+.people-history h2 svg { color: var(--ash-600); }
+.people-loading { display: flex; gap: 8px; min-height: 40vh; align-items: center; justify-content: center; }
+.people-empty-icon { display: inline-grid; width: 44px; height: 44px; place-items: center; border-radius: 999px; background: var(--lime); color: var(--ink); box-shadow: inset 0 0 0 1px var(--lime-dark); }
+.results-actions .export-button svg { flex: none; }
+/* Sin resultados: la tabla no fuerza ancho mínimo y el estado vacío ocupa el ancho visible. */
+.table-frame table.people-table:has(.empty-cell) { min-width: 0; width: 100%; }
+.people-table:has(.empty-cell) thead { display: none; }

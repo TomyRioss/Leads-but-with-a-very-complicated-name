@@ -26,28 +26,33 @@ migrate((app) => {
     type: "base",
     name: "referrals",
     fields: [
-      new RelationField({ name: "referrer", required: true, collectionId: users.id, cascadeDelete: true, maxSelect: 1 }),
-      new RelationField({ name: "referred", required: true, collectionId: users.id, cascadeDelete: true, maxSelect: 1 }),
-      new SelectField({ name: "status", required: true, values: ["pending", "rewarded", "rejected"], maxSelect: 1 }),
-      new NumberField({ name: "referrer_credits", min: 0 }),
-      new NumberField({ name: "referred_credits", min: 0 }),
-      new TextField({ name: "reject_reason", max: 60 }),
-      new DateField({ name: "rewarded_at" }),
-      new AutodateField({ name: "created", onCreate: true, onUpdate: false }),
-      new AutodateField({ name: "updated", onCreate: true, onUpdate: true }),
+      { name: "referrer", type: "relation", required: true, collectionId: users.id, cascadeDelete: true, maxSelect: 1 },
+      { name: "referred", type: "relation", required: true, collectionId: users.id, cascadeDelete: true, maxSelect: 1 },
+      { name: "status", type: "select", required: true, values: ["pending", "rewarded", "rejected"], maxSelect: 1 },
+      { name: "referrer_credits", type: "number", min: 0 },
+      { name: "referred_credits", type: "number", min: 0 },
+      { name: "reject_reason", type: "text", max: 60 },
+      { name: "rewarded_at", type: "date" },
+      { name: "created", type: "autodate", onCreate: true, onUpdate: false },
+      { name: "updated", type: "autodate", onCreate: true, onUpdate: true },
     ],
-    indexes: [
-      "CREATE UNIQUE INDEX idx_referrals_referred ON referrals (referred)",
-      "CREATE INDEX idx_referrals_referrer_status ON referrals (referrer, status)",
-    ],
-    // Referrers can list/view their own referrals; every write happens server-side with the superuser.
-    listRule: "referrer = @request.auth.id",
-    viewRule: "referrer = @request.auth.id",
+    listRule: null,
+    viewRule: null,
     createRule: null,
     updateRule: null,
     deleteRule: null,
   });
+  // Plain { name, type } fields (pattern of 1762471200). Save the columns first, then indexes and rules that reference them.
   app.save(referrals);
+  const saved = app.findCollectionByNameOrId("referrals");
+  saved.indexes = [
+    "CREATE UNIQUE INDEX idx_referrals_referred ON referrals (referred)",
+    "CREATE INDEX idx_referrals_referrer_status ON referrals (referrer, status)",
+  ];
+  // Referrers can list/view their own referrals; every write happens server-side with the superuser.
+  saved.listRule = "referrer = @request.auth.id";
+  saved.viewRule = "referrer = @request.auth.id";
+  app.save(saved);
 }, (app) => {
   const referrals = app.findAllCollections().find((collection) => collection.name === "referrals");
   if (referrals) app.delete(referrals);

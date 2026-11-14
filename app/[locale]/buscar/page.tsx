@@ -1,20 +1,46 @@
 "use client";
 
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, Fragment } from "react";
 import type { FormEvent, KeyboardEvent as ReactKeyboardEvent, MouseEvent } from "react";
 import { useLocale, useTranslations } from "next-intl";
-import { Bug, CircleAlert, CircleCheck, ExternalLink, LoaderCircle, Stars, X } from "lucide-react";
-import { isPainAnalysisCurrent, painView } from "@/lib/analysis-format";
+import { Bug, CircleAlert, CircleCheck, ExternalLink, LoaderCircle, Sparkles, Stars, Trash2, X } from "lucide-react";
+import type { IconType } from "react-icons";
+import { FaFacebook, FaInstagram, FaLinkedin, FaWhatsapp, FaYoutube } from "react-icons/fa";
+import { findingsForTag, painView } from "@/lib/analysis-format";
 import type { AnalysisDetail, Lead, LeadBatch, LeadColumnKey, LeadColumnLabeler } from "@/lib/types";
 import { getLeadColumnValue, getLeadColumns, getSocialProfileUrl } from "@/lib/types";
 import { AuthForm } from "@/app/auth-form";
 import { AppSidebar } from "@/app/app-sidebar";
+import { ErrorReportButton } from "@/app/feedback-dialog";
 import CellDetailsPopover from "@/app/cell-details-popover";
 import WhatsAppContact from "@/app/whatsapp-contact";
 import { Onboarding } from "@/app/onboarding/onboarding";
+import { getSession, invalidateSession, peekSessionUser, setSessionCredits } from "@/lib/client/session";
+import { defaultSearchFilters, SearchFiltersPanel, type SearchFilters } from "./search-filters";
 
 const productionBatchSizes = [5, 10, 25, 50, 75, 100, 125, 150];
-type TableAction = "pain_points" | "enrichment";
+const PAIN_FOCUS_STORAGE_KEY = "leadta:pain-focus";
+const PROFILE_SAVE_DELAY_MS = 800;
+// Source of truth: the user's service_offering (/api/account/profile). localStorage is only a local cache, and the
+// legacy value is migrated to the profile when the profile is empty. Memory fallback keeps typing working in private mode.
+let painFocusMemory = "";
+const painFocusListeners = new Set<() => void>();
+function readPainFocus() {
+  try { return localStorage.getItem(PAIN_FOCUS_STORAGE_KEY) ?? ""; } catch { return painFocusMemory; }
+}
+function setPainFocus(value: string) {
+  painFocusMemory = value;
+  try {
+    if (value) localStorage.setItem(PAIN_FOCUS_STORAGE_KEY, value);
+    else localStorage.removeItem(PAIN_FOCUS_STORAGE_KEY);
+  } catch {}
+  painFocusListeners.forEach((listener) => listener());
+}
+function subscribePainFocus(listener: () => void) {
+  painFocusListeners.add(listener);
+  return () => { painFocusListeners.delete(listener); };
+}
+type TableAction ="pain_points" | "enrichment";
 type AnalysisScope = "row" | "batch";
 type SocialNetwork = "facebook" | "instagram" | "youtube" | "linkedin";
 type AnalysisDiagnostic = {
@@ -30,32 +56,23 @@ type AnalysisDiagnostic = {
   mapsUrl: string;
   response: string;
 };
-const socialNetworkOptions: { id: SocialNetwork; label: string }[] = [
-  { id: "facebook", label: "Facebook" },
-  { id: "instagram", label: "Instagram" },
-  { id: "youtube", label: "YouTube" },
-  { id: "linkedin", label: "LinkedIn" },
+const socialNetworkOptions: { id: SocialNetwork; label: string; Icon: IconType }[] = [
+  { id: "facebook", label: "Facebook", Icon: FaFacebook },
+  { id: "instagram", label: "Instagram", Icon: FaInstagram },
+  { id: "youtube", label: "YouTube", Icon: FaYoutube },
+  { id: "linkedin", label: "LinkedIn", Icon: FaLinkedin },
 ];
 type TableColumn = { key: LeadColumnKey | "whatsapp" | "socials"; label: string };
 
 // Columnas de detalle de reseñas: ocultas en la tabla salvo con "Mostrar datos completos". El CSV las conserva siempre.
-type FilterChoice = "any" | "with" | "without";
 type GeographyOption = { code: string; name: string };
-type SearchFilters = {
-  minReviews: string;
-  minRating: string;
-  website: FilterChoice;
-  phone: FilterChoice;
-  email: FilterChoice;
-  skipClosed: boolean;
-};
 function csvCell(value: unknown) {
   const text = value == null ? "" : String(value);
   return `"${text.replaceAll('"', '""')}"`;
 }
 
-function downloadCsv(leads: Lead[], batch: LeadBatch | null, includeEnrichment: boolean, label: LeadColumnLabeler, ownerResponseLabel: string) {
-  const columns = getLeadColumns(leads, [], includeEnrichment, label);
+function downloadCsv(leads: Lead[], batch: LeadBatch | null, label: LeadColumnLabeler, ownerResponseLabel: string) {
+  const columns = getLeadColumns(leads, [], true, label);
   const header = columns.map((column) => csvCell(column.label)).join(",");
   const rows = leads.map((lead) => columns.map((column) => csvCell(getLeadColumnValue(lead, column.key, ownerResponseLabel))).join(","));
   const csv = `\uFEFF${[header, ...rows].join("\r\n")}`;
@@ -93,11 +110,14 @@ function parseKeywords(value: string) {
   return [...new Set(value.split(/[\n,;]+/).map((keyword) => keyword.trim()).filter(Boolean))];
 }
 
-const KeywordsField = memo(function KeywordsField() {
+const KeywordsField = memo(function KeywordsField({ onHasKeywordsChange }: { onHasKeywordsChange: (hasKeywords: boolean) => void }) {
   const t = useTranslations("UI");
   const s = useTranslations("Search");
   const [value, setValue] = useState("");
   const keywordCount = parseKeywords(value).length;
+  const hasKeywords = keywordCount > 0;
+  // Solo avisa al padre cuando cambia de vacío a con keywords (o al revés): no re-renderiza la página por cada tecla.
+  useEffect(() => onHasKeywordsChange(hasKeywords), [hasKeywords, onHasKeywordsChange]);
 
   return (
     <label className="field field-keywords" data-onboarding="keywords">
@@ -130,6 +150,7 @@ export default function Home() {
   }, [s]);
   const [country, setCountry] = useState("");
   const [randomLocation, setRandomLocation] = useState(false);
+  const [hasKeywords, setHasKeywords] = useState(false);
   const [province, setProvince] = useState("");
   const [district, setDistrict] = useState("");
   const [countryCode, setCountryCode] = useState("");
@@ -142,9 +163,7 @@ export default function Home() {
   const [guidedCount, setGuidedCount] = useState<number | null>(null);
   const [selectedCount, setCount] = useState(25);
   const count = guidedCount ?? selectedCount;
-  const [filters, setFilters] = useState<SearchFilters>({
-    minReviews: "", minRating: "", website: "any", phone: "any", email: "any", skipClosed: false,
-  });
+  const [filters, setFilters] = useState<SearchFilters>(defaultSearchFilters);
   const [leads, setLeads] = useState<Lead[]>([]);
   const [activeBatch, setActiveBatch] = useState<LeadBatch | null>(null);
   const [busy, setBusy] = useState(false);
@@ -154,8 +173,11 @@ export default function Home() {
   const [historyLoading, setHistoryLoading] = useState(true);
   const [apifyConfigured, setApifyConfigured] = useState(false);
   const [pocketBaseConfigured, setPocketBaseConfigured] = useState(false);
-  const [isDevelopmentEnvironment, setIsDevelopmentEnvironment] = useState(false);
-  const [currentUser, setCurrentUser] = useState<{ id: string; email: string; credits: number } | null>(null);
+  const [devOnly, setDevOnly] = useState(false);
+  const [currentUser, setCurrentUser] = useState<{ id: string; email: string; credits: number } | null>(() => {
+    const cached = peekSessionUser();
+    return cached && cached.role !== "owner" ? { id: String(cached.id), email: String(cached.email), credits: Number(cached.credits) || 0 } : null;
+  });
   const [authLoading, setAuthLoading] = useState(true);
   const [authProblem, setAuthProblem] = useState("");
   const [activeTableAction, setActiveTableAction] = useState<TableAction | null>(null);
@@ -166,26 +188,62 @@ export default function Home() {
   const [analysisScope, setAnalysisScope] = useState<AnalysisScope>("batch");
   const [analysisLeadId, setAnalysisLeadId] = useState("");
   const [selectedSocialNetworks, setSelectedSocialNetworks] = useState<SocialNetwork[]>(socialNetworkOptions.map(({ id }) => id));
-  const [painFocus, setPainFocus] = useState("");
-  const [analysisDialog, setAnalysisDialog] = useState<{ leadId: string; action: TableAction } | null>(null);
+  const painFocus = useSyncExternalStore(subscribePainFocus, readPainFocus, () => "");
+  // Last value known to be stored in the profile; saves start only once it loaded (profileLoaded).
+  const savedServiceRef = useRef("");
+  const [profileLoaded, setProfileLoaded] = useState(false);
+  const [analysisDialog, setAnalysisDialog] = useState<{ leadId: string; action: TableAction; view?: "proposals"; tag?: string } | null>(null);
+  const [copiedProposal, setCopiedProposal] = useState<string | null>(null);
+  // ponytail: edits live in page state (survive dialog close/open, not reload); sessionStorage if reload persistence needed
+  const [proposalEdits, setProposalEdits] = useState<Record<string, string>>({});
   const [cellDetail, setCellDetail] = useState<{ leadId: string; title: string; value: string } | null>(null);
   const cellDetailAnchorRef = useRef<HTMLTableCellElement>(null);
   const lastAnalysisTapRef = useRef<{ key: string; at: number } | null>(null);
   const analysisPopoverRef = useRef<HTMLElement>(null);
   const tableActionCardRef = useRef<HTMLDivElement>(null);
+  const tableFrameRef = useRef<HTMLDivElement>(null);
+  const [selectedLeadIds, setSelectedLeadIds] = useState<ReadonlySet<string>>(() => new Set());
+  const [pendingDelete, setPendingDelete] = useState<string[] | null>(null);
+  const [deletingLeads, setDeletingLeads] = useState(false);
   const painFocusInputRef = useRef<HTMLInputElement>(null);
-  const batchSizes = guidedCount ? [guidedCount] : isDevelopmentEnvironment ? [1, 2, ...productionBatchSizes] : productionBatchSizes;
-  const selectedPainLead = leads.find((lead) => lead.id === analysisLeadId) ?? leads[0];
-  // Mismo criterio que el servidor: solo se cobra por filas con reseñas guardadas o sitio web; en lote se omiten las ya analizadas con el mismo foco.
-  const hasPainSources = (lead?: Lead) => Boolean(lead && (lead.source_reviews?.some((review) => review.text?.trim()) || /^https?:\/\//i.test(lead.website || "")));
-  const painLeadCount = analysisScope === "row"
-    ? Number(hasPainSources(selectedPainLead))
-    : leads.filter((lead) => hasPainSources(lead) && !isPainAnalysisCurrent(analysisDetail(lead.pain_points_detail), painFocus)).length;
+
+  // Load the service offering into "Foco de dolor"; migrate the legacy local value when the profile is empty.
+  const currentUserId = currentUser?.id;
+  useEffect(() => {
+    if (!currentUserId) return;
+    const controller = new AbortController();
+    fetch("/api/account/profile", { signal: controller.signal })
+      .then((response) => (response.ok ? response.json() : null))
+      .then((data: { profile?: { serviceOffering?: string } } | null) => {
+        if (!data?.profile) return;
+        const stored = data.profile.serviceOffering ?? "";
+        savedServiceRef.current = stored;
+        // Empty profile keeps the local value, which the save effect below then migrates.
+        if (stored) setPainFocus(stored);
+        setProfileLoaded(true);
+      })
+      .catch(() => undefined);
+    return () => controller.abort();
+  }, [currentUserId]);
+
+  // Editing the field saves it to the profile (debounced); the first run after loading migrates the local value.
+  useEffect(() => {
+    if (!currentUserId || !profileLoaded) return;
+    const value = painFocus.trim();
+    if (value === savedServiceRef.current) return;
+    const timer = window.setTimeout(() => {
+      fetch("/api/account/profile", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ serviceOffering: value }) })
+        .then((response) => (response.ok ? response.json() : null))
+        .then((data: { profile?: { serviceOffering?: string } } | null) => { if (data?.profile) savedServiceRef.current = data.profile.serviceOffering ?? ""; })
+        .catch(() => undefined);
+    }, PROFILE_SAVE_DELAY_MS);
+    return () => window.clearTimeout(timer);
+  }, [painFocus, currentUserId, profileLoaded]);
+  const batchSizes = guidedCount ? [guidedCount] : devOnly ? [1, 2, ...productionBatchSizes] : productionBatchSizes;
   const numberLocale = locale === "es" ? "es-AR" : "en-US";
   const googleAuthError = typeof window !== "undefined" && new URLSearchParams(window.location.search).get("authError") === "google"
     ? s("googleAuthFailed")
     : "";
-  const painCreditCost = painLeadCount * 0.5;
 
   useEffect(() => {
     const controller = new AbortController();
@@ -241,12 +299,14 @@ export default function Home() {
     return () => controller.abort();
   }, [countryCode, provinceCode, s]);
   const tableColumns: TableColumn[] = useMemo(() => showFullData
-    ? getLeadColumns(
-      leads,
-      analysisBusy === "enrichment" ? selectedSocialNetworks : [],
-      isDevelopmentEnvironment,
-      columnLabel,
-    ).flatMap<TableColumn>((column) => column.key === "phone" ? [column, { key: "whatsapp", label: s("columns.whatsapp") }] : [column])
+    // Vista completa: una columna por red, siempre, después de Website.
+    ? getLeadColumns(leads, [], true, columnLabel)
+      .filter((column) => !column.key.startsWith("social_"))
+      .flatMap<TableColumn>((column) => column.key === "phone"
+        ? [column, { key: "whatsapp", label: s("columns.whatsapp") }]
+        : column.key === "website"
+          ? [column, ...socialNetworkOptions.map(({ id, label }) => ({ key: `social_${id}` as const, label }))]
+          : [column])
     : [
       { key: "name", label: s("compactColumns.business") },
       { key: "phone", label: s("columns.phone") },
@@ -256,9 +316,6 @@ export default function Home() {
     ], [
     showFullData,
     leads,
-    analysisBusy,
-    selectedSocialNetworks,
-    isDevelopmentEnvironment,
     columnLabel,
     s,
   ]);
@@ -280,6 +337,51 @@ export default function Home() {
     event.preventDefault();
     cellDetailAnchorRef.current = event.currentTarget.closest("td");
     setCellDetail({ leadId: lead.id, title: column.label, value: value || s("noData") });
+  }
+
+  // Selection only counts leads still visible (new search / batch switch drops stale ids without an effect).
+  const selectedVisibleIds = leads.filter((lead) => selectedLeadIds.has(lead.id)).map((lead) => lead.id);
+  const allVisibleSelected = leads.length > 0 && selectedVisibleIds.length === leads.length;
+
+  function toggleLeadSelection(leadId: string) {
+    setSelectedLeadIds((current) => {
+      const next = new Set(current);
+      if (!next.delete(leadId)) next.add(leadId);
+      return next;
+    });
+  }
+
+  async function deleteLeads(ids: string[]) {
+    if (!activeBatch || ids.length === 0) return;
+    const removed = new Set(ids);
+    const previous = leads;
+    setPendingDelete(null);
+    setDeletingLeads(true);
+    setProblem("");
+    // Optimistic: drop rows now, restore on failure. Export reads this same state.
+    setLeads((current) => current.filter((lead) => !removed.has(lead.id)));
+    setSelectedLeadIds(new Set());
+    try {
+      const response = await fetch("/api/leads", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ batchId: activeBatch.id, leadIds: ids }),
+      });
+      const payload = await response.json().catch(() => null) as { deleted?: number; failed?: string[]; error?: string } | null;
+      if (!response.ok) throw new Error(payload?.error || s("deleteLeadsFailed"));
+      const failed = new Set(Array.isArray(payload?.failed) ? payload.failed : []);
+      if (failed.size) {
+        setLeads((current) => [...current, ...previous.filter((lead) => failed.has(lead.id) && !current.some((item) => item.id === lead.id))]);
+        setProblem(s("deleteLeadsPartial", { count: failed.size }));
+      }
+      setNotice(s("deleteLeadsDone", { count: payload?.deleted ?? ids.length - failed.size }));
+    } catch (error) {
+      setLeads(previous);
+      setProblem(error instanceof Error ? error.message : s("deleteLeadsFailed"));
+    } finally {
+      setDeletingLeads(false);
+      tableFrameRef.current?.focus();
+    }
   }
 
   function cellDetailProps(lead: Lead, column: TableColumn, value: string) {
@@ -304,9 +406,13 @@ export default function Home() {
     let current = true;
     async function loadInitialData() {
       try {
-        const authResponse = await fetch("/api/auth/me", { cache: "no-store" });
-        const authPayload = await authResponse.json();
-        if (!authResponse.ok) throw new Error(authPayload.error || s("accountConnectionFailed"));
+        // Session, status and batches are independent: fetch in parallel instead of in series.
+        const statusRequest = fetch("/api/status", { cache: "no-store" }).then((result) => result.json());
+        const batchesRequest = fetch("/api/batches", { cache: "no-store" }).then(async (result) => ({ ok: result.ok, payload: await result.json() }));
+        statusRequest.catch(() => undefined);
+        batchesRequest.catch(() => undefined);
+        const authPayload = await getSession();
+        if (!authPayload.ok) throw new Error(authPayload.error || s("accountConnectionFailed"));
         if (!current) return;
         if (!authPayload.user) {
           setHistoryLoading(false);
@@ -325,17 +431,15 @@ export default function Home() {
         });
         setAuthLoading(false);
 
-        const statusResponse = await fetch("/api/status", { cache: "no-store" });
-        const status = await statusResponse.json();
+        const status = await statusRequest;
         if (current) {
           setApifyConfigured(Boolean(status.apifyConfigured));
           setPocketBaseConfigured(Boolean(status.pocketBaseConfigured));
-          setIsDevelopmentEnvironment(status.environment === "dev");
+          setDevOnly(status.devOnly === true);
         }
 
-        const response = await fetch("/api/batches", { cache: "no-store" });
-        const payload = await response.json();
-        if (!response.ok) throw new Error(payload.error || s("historyLoadFailed"));
+        const { ok: batchesOk, payload } = await batchesRequest;
+        if (!batchesOk) throw new Error(payload.error || s("historyLoadFailed"));
         if (!current) return;
 
         const loadedBatches = payload.batches as LeadBatch[];
@@ -393,6 +497,7 @@ export default function Home() {
 
   async function signOut() {
     await fetch("/api/auth/logout", { method: "POST" });
+    invalidateSession();
     setCurrentUser(null);
     setLeads([]);
     setActiveBatch(null);
@@ -434,6 +539,7 @@ export default function Home() {
       });
       const payload = await response.json();
       if (typeof payload.credits === "number") {
+        setSessionCredits(payload.credits);
         setCurrentUser((user) => user ? { ...user, credits: payload.credits } : user);
       }
       if (!response.ok) throw new Error(payload.error || s("searchFailed"));
@@ -485,6 +591,7 @@ export default function Home() {
       });
       const payload = await response.json();
       if (typeof payload.credits === "number") {
+        setSessionCredits(payload.credits);
         setCurrentUser((user) => user ? { ...user, credits: payload.credits } : user);
       }
       if (!response.ok) throw new Error(payload.error || s("analysisFailed"));
@@ -497,7 +604,7 @@ export default function Home() {
       } else {
         setNotice(s("enrichDone", { count: payload.analyzedCount }));
       }
-      if (payload.noEvidenceCount > 0 || payload.failedCount > 0 || payload.skippedCount > 0) {
+      if (payload.noEvidenceCount > 0 || payload.failedCount > 0 || payload.skippedCount > 0 || payload.limitedCount > 0) {
         const issues: string[] = [];
         if (payload.noEvidenceCount > 0) {
           issues.push(action === "pain_points"
@@ -508,6 +615,7 @@ export default function Home() {
           ? [...new Set(payload.failures.map((failure: { message?: unknown }) => typeof failure?.message === "string" ? failure.message : "" ).filter(Boolean))]
           : [];
         if (payload.skippedCount > 0) issues.push(s("issueSkipped", { count: payload.skippedCount }));
+        if (payload.limitedCount > 0) issues.push(s("issueEnrichLimit", { count: payload.limitedCount, limit: 250 }));
         if (payload.failedCount > 0) {
           issues.push(failureMessages.length ? s("issueFailedDetail", { count: payload.failedCount, details: failureMessages.join("; ") }) : s("issueFailed", { count: payload.failedCount }));
         }
@@ -546,7 +654,13 @@ export default function Home() {
     lastAnalysisTapRef.current = { key, at: now };
   }
 
-  if (authLoading) return <main className="app-shell auth-loading" aria-live="polite">{t("t_50aa6fdfd6")}</main>;
+  // Shell visible from the first paint: sidebar skeleton (or cached session) while auth resolves.
+  if (authLoading) return (
+    <main className="app-shell">
+      <AppSidebar active="search" user={currentUser} onSignOut={signOut} />
+      <div className="workspace"><p className="auth-loading" aria-live="polite">{t("t_50aa6fdfd6")}</p></div>
+    </main>
+  );
   if (!currentUser) return <AuthForm initialError={authProblem || googleAuthError} initialMode={typeof window !== "undefined" && new URLSearchParams(window.location.search).get("signup") === "1" || new URLSearchParams(window.location.search).has("ref") ? "register" : "login"} onAuthenticated={() => window.location.reload()} />;
 
   return (
@@ -557,8 +671,8 @@ export default function Home() {
         <form className="search-panel" onSubmit={submitSearch}>
           <div className="panel-heading" data-onboarding="intro">
             <div>
-              <h2>{t("t_23be92b60b")}</h2>
-              <p>{t("t_2882d7230e")}</p>
+              <h1 className="brand-title">{s("pageTitle")}<span className="brand-period" aria-hidden="true">.</span></h1>
+              <p>{s("pageSubtitle")}</p>
             </div>
             <div className="onboarding-aside">
               <Onboarding
@@ -575,7 +689,7 @@ export default function Home() {
           </div>
 
           <div className="form-grid">
-            <KeywordsField />
+            <KeywordsField onHasKeywordsChange={setHasKeywords} />
 
             <div className="field geography-field" data-onboarding="location">
               <span className="field-label">{t("t_ae0ddfcae9")} {!randomLocation && <span className="required-mark">*</span>}</span>
@@ -648,7 +762,7 @@ export default function Home() {
             </div>
 
             <fieldset className="field batch-field" data-onboarding="count">
-              <legend className="field-label">{t("t_cad2c8e692")}{isDevelopmentEnvironment && <span className="test-mode-label">{t("t_be14c472da")}</span>}</legend>
+              <legend className="field-label">{t("t_cad2c8e692")}{devOnly && <span className="test-mode-label">{t("t_be14c472da")}</span>}</legend>
               <div className="batch-options" role="radiogroup" aria-label={s("batchGroupAria")}>
                 {batchSizes.map((size) => (
                   <label className={`batch-option${count === size ? " is-selected" : ""}`} key={size}>
@@ -676,49 +790,10 @@ export default function Home() {
               <span className="field-help">{s("serviceFocusHelp")}</span>
             </label>
 
-            <details className="filter-panel">
-              <summary>{t("t_dc3b882450")}</summary>
-              <div className="filter-grid">
-                <label className="field">
-                  <span className="field-label">{t("t_44fdec749a")}</span>
-                  <span className="select-control"><select value={filters.minReviews} onChange={(event) => setFilters((current) => ({ ...current, minReviews: event.target.value }))}>
-                    <option value="">{t("t_1aa3b744db")}</option><option value="10">{t("t_3e9d0406a7")}</option><option value="50">{t("t_7f0504184b")}</option><option value="100">{t("t_39fad5c7a6")}</option><option value="500">{t("t_9c2c993477")}</option>
-                  </select><span className="select-chevron" aria-hidden="true" /></span>
-                </label>
-                <label className="field">
-                  <span className="field-label">{t("t_c323da7d69")}</span>
-                  <span className="select-control"><select value={filters.minRating} onChange={(event) => setFilters((current) => ({ ...current, minRating: event.target.value }))}>
-                    <option value="">{t("t_1aa3b744db")}</option><option value="3">{t("t_610341e9f3")}</option><option value="4">{t("t_aba4c147b4")}</option><option value="4.5">{t("t_d03277dee0")}</option>
-                  </select><span className="select-chevron" aria-hidden="true" /></span>
-                </label>
-                <label className="field">
-                  <span className="field-label">{t("t_e3fd0b8e08")}</span>
-                  <span className="select-control"><select value={filters.website} onChange={(event) => setFilters((current) => ({ ...current, website: event.target.value as FilterChoice }))}>
-                    <option value="any">{t("t_408317ffa3")}</option><option value="with">{t("t_139ef9d2c1")}</option><option value="without">{t("t_fcfe9b7823")}</option>
-                  </select><span className="select-chevron" aria-hidden="true" /></span>
-                </label>
-                <label className="field">
-                  <span className="field-label">{t("t_84add5b295")}</span>
-                  <span className="select-control"><select value={filters.email} onChange={(event) => setFilters((current) => ({ ...current, email: event.target.value as FilterChoice }))}>
-                    <option value="any">{t("t_268e9ea19f")}</option><option value="with">{t("t_3014233e51")}</option><option value="without">{t("t_b1f7ce3fe3")}</option>
-                  </select><span className="select-chevron" aria-hidden="true" /></span>
-                </label>
-                <label className="field">
-                  <span className="field-label">{t("t_99af3763e0")}</span>
-                  <span className="select-control"><select value={filters.phone} onChange={(event) => setFilters((current) => ({ ...current, phone: event.target.value as FilterChoice }))}>
-                    <option value="any">{t("t_9d7025a384")}</option><option value="with">{t("t_86fc9079fb")}</option><option value="without">{t("t_5a107669e1")}</option>
-                  </select><span className="select-chevron" aria-hidden="true" /></span>
-                </label>
-                <label className="filter-checkbox">
-                  <input type="checkbox" checked={filters.skipClosed} onChange={(event) => setFilters((current) => ({ ...current, skipClosed: event.target.checked }))} />
-                  <span>{t("t_d969b6207f")}</span>
-                </label>
-              </div>
-              {filters.email === "without" && <p className="field-help filter-note">{t("t_c7d6c48ff2")}</p>}
-            </details>
+            <SearchFiltersPanel filters={filters} setFilters={setFilters} disabled={busy} />
 
             <div className="search-action">
-              <button className="primary-button" type="submit" data-onboarding="submit" disabled={busy || !apifyConfigured || !pocketBaseConfigured || (!randomLocation && !country.trim())}>
+              <button className="primary-button" type="submit" data-onboarding="submit" disabled={busy || !hasKeywords || !apifyConfigured || !pocketBaseConfigured || (!randomLocation && !country.trim())}>
                 {busy ? <><span className="button-spinner" aria-hidden="true" /> {t("t_b6d453ae3d")}</> : s("searchButton")}
               </button>
               <span className="action-caption">{!apifyConfigured ? s("missingApify") : !pocketBaseConfigured ? s("missingPocketBase") : s("maxPerBatch", { count })}</span>
@@ -733,10 +808,11 @@ export default function Home() {
               ? <CircleAlert className="status-icon" size={19} strokeWidth={2} aria-hidden="true" />
               : <CircleCheck className="status-icon" size={19} strokeWidth={2} aria-hidden="true" />}
             <span>{problem || notice}</span>
-            {isDevelopmentEnvironment && analysisDiagnostics.length > 0 && (
+            {devOnly && analysisDiagnostics.length > 0 && (
               <button type="button" className="diagnostic-open-button" onClick={() => setAnalysisDiagnosticsOpen(true)}>
                 <Bug size={14} aria-hidden="true" /> {t("t_9c2aa37466")} </button>
             )}
+            {problem && <ErrorReportButton message={problem} action={analysisBusy ? `analysis:${analysisBusy}` : undefined} />}
             {problem && <button type="button" className="dismiss-button" onClick={() => setProblem("")}>{t("t_4b0816bbd5")}</button>}
           </div>
         )}
@@ -745,10 +821,16 @@ export default function Home() {
           <div className="results-heading">
             <div>
               <div className="results-title-row">
-                <h2 id="results-title">{t("t_ecfdbebecc")}</h2>
+                <h2 id="results-title">{s("resultsTitle")}</h2>
                 <span className="result-count">{leads.length}</span>
               </div>
-              {activeBatch && <p className="active-location">{placeLabel(activeBatch)} <span>·</span> {activeBatch.keywords.join(", ")}</p>}
+              {activeBatch && (() => {
+                // Same value on both sides (e.g. "Manual · Manual") is shown once.
+                const place = placeLabel(activeBatch);
+                const keywords = activeBatch.keywords.join(", ");
+                const parts = [...new Set([place, keywords].filter(Boolean))];
+                return <p className="active-location">{parts.map((part, index) => <Fragment key={part}>{index > 0 && <> <span>·</span> </>}{part}</Fragment>)}</p>;
+              })()}
             </div>
             <div className="results-actions">
           <label className="full-data-toggle">
@@ -756,7 +838,7 @@ export default function Home() {
                 <span className="full-data-track" aria-hidden="true" />
             <span>{s("showFullData")}</span>
               </label>
-              <button className="export-button" type="button" onClick={() => downloadCsv(leads, activeBatch, isDevelopmentEnvironment, columnLabel, s("ownerResponse"))} disabled={leads.length === 0}>
+              <button className="export-button" type="button" onClick={() => downloadCsv(leads, activeBatch, columnLabel, s("ownerResponse"))} disabled={leads.length === 0}>
                 {t("t_8b9c2038c4")} </button>
             </div>
           </div>
@@ -764,7 +846,7 @@ export default function Home() {
           {activeTableAction && (
             <div className="table-action-card" id="table-action-card" ref={tableActionCardRef} role="region" aria-labelledby="table-action-title">
               <div className="table-action-card-main">
-                <span className="ai-sparkle table-action-card-sparkle" aria-hidden="true" />
+                <Sparkles className="ai-sparkle table-action-card-sparkle" size={18} strokeWidth={1.8} aria-hidden="true" />
                 <div>
                   <h3 id="table-action-title">{s(`actions.${activeTableAction}.title`)}</h3>
                   <p>{s(`actions.${activeTableAction}.description`)}</p>
@@ -802,7 +884,7 @@ export default function Home() {
                     </select>
                   </label>
                 )}
-                {isDevelopmentEnvironment && activeTableAction === "enrichment" && (
+                {activeTableAction === "enrichment" && (
                   <fieldset className="social-network-picker">
                     <legend>{t("t_c9245609b2")}</legend>
                     <div className="social-network-options">
@@ -825,17 +907,43 @@ export default function Home() {
                 )}
               </div>
               <button className="primary-button table-action-start" type="button" disabled={!activeBatch || leads.length === 0 || Boolean(analysisBusy) || (analysisScope === "row" && !leads.length)} onClick={() => void startAnalysis(activeTableAction)}>
-                {analysisBusy === activeTableAction ? <><LoaderCircle className="button-spinner-icon" aria-hidden="true" /> {t("t_740ecf6aec")}</> : activeTableAction === "pain_points" ? s("analyzePains", { cost: painCreditCost }) : s(`actions.${activeTableAction}.cta`)}
+                {analysisBusy === activeTableAction ? <><LoaderCircle className="button-spinner-icon" aria-hidden="true" /> {t("t_740ecf6aec")}</> : activeTableAction === "pain_points" ? s("analyzePains") : s(`actions.${activeTableAction}.cta`)}
               </button>
               <button className="table-action-close" type="button" aria-label={s("closeCard")} onClick={() => setActiveTableAction(null)}><X size={18} aria-hidden="true" /></button>
             </div>
           )}
 
+          {(selectedVisibleIds.length > 0 || pendingDelete) && (
+            <div className="lead-selection-bar" role={pendingDelete ? "alertdialog" : "region"} aria-label={pendingDelete ? s("deleteLeadsConfirm", { count: pendingDelete.length }) : s("selectionBarAria")}
+              onKeyDown={(event) => { if (event.key === "Escape" && pendingDelete) setPendingDelete(null); }}>
+              {pendingDelete ? (
+                <>
+                  <span>{s("deleteLeadsConfirm", { count: pendingDelete.length })}</span>
+                  <div className="lead-selection-actions">
+                    <button className="export-button" type="button" autoFocus onClick={() => setPendingDelete(null)}>{s("cancelDelete")}</button>
+                    <button className="danger-button" type="button" disabled={deletingLeads} onClick={() => void deleteLeads(pendingDelete)}><Trash2 size={16} aria-hidden="true" /> {s("confirmDelete")}</button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <span>{s("selectedCount", { count: selectedVisibleIds.length })}</span>
+                  <div className="lead-selection-actions">
+                    <button className="export-button" type="button" onClick={() => setSelectedLeadIds(new Set())}>{s("clearSelection")}</button>
+                    <button className="danger-button" type="button" disabled={deletingLeads || busy} onClick={() => setPendingDelete(selectedVisibleIds)}><Trash2 size={16} aria-hidden="true" /> {s("deleteSelected", { count: selectedVisibleIds.length })}</button>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+
           <p className="table-scroll-hint">{t("t_00c94041d2")}</p>
-          <div className="table-frame" data-onboarding="results" tabIndex={0} aria-label={s("resultsTableAria")}>
+          <div className="table-frame" ref={tableFrameRef} data-onboarding="results" tabIndex={0} aria-label={s("resultsTableAria")}>
             <table className={showFullData ? undefined : "compact-lead-table"}>
               <thead>
-                <tr>{tableColumns.map((column) => {
+                <tr><th scope="col" className="lead-select-cell">
+                  <input type="checkbox" checked={allVisibleSelected} disabled={leads.length === 0 || deletingLeads} aria-label={s("selectAllLeads")}
+                    onChange={() => setSelectedLeadIds(allVisibleSelected ? new Set() : new Set(leads.map((lead) => lead.id)))} />
+                </th>{tableColumns.map((column) => {
                   const action: TableAction | null = column.key === "pain_points" ? "pain_points" : column.key === "enrichment" ? "enrichment" : null;
                   return (
                     <th key={column.key} scope="col">
@@ -854,7 +962,7 @@ export default function Home() {
                             return action;
                           })}
                         >
-                          <span className="ai-sparkle" aria-hidden="true" />
+                          <Sparkles className="ai-sparkle" size={16} strokeWidth={1.8} aria-hidden="true" />
                           <span>{column.label}</span>
                         </button>
                       ) : column.label}
@@ -863,22 +971,37 @@ export default function Home() {
                 })}</tr>
               </thead>
               <tbody>
-                {leads.map((lead) => (
-                  <tr key={lead.id}>
+                {leads.map((lead) => {
+                  const enrichmentAttempted = Boolean(lead.enrichment_detail?.status || lead.enrichment?.trim());
+                  // Enriquecer está disponible en todos los entornos.
+                  const enrichButton = !enrichmentAttempted
+                    ? <button className="analysis-cell-trigger is-enrich" type="button" disabled={Boolean(analysisBusy)} onClick={() => void startAnalysis("enrichment", lead.id)} aria-label={s("enrichMailAria", { name: lead.name })}>{analysisBusy === "enrichment" && (!analysisRowBusyId || analysisRowBusyId === lead.id) ? s("enriching") : s("enrich")}</button>
+                    : null;
+                  return (
+                  <tr key={lead.id} className={selectedLeadIds.has(lead.id) ? "is-selected" : undefined}>
+                    <td className="lead-select-cell">
+                      <input type="checkbox" checked={selectedLeadIds.has(lead.id)} disabled={deletingLeads} aria-label={s("selectLead", { name: lead.name })} onChange={() => toggleLeadSelection(lead.id)} />
+                      <button className="lead-delete-button" type="button" disabled={deletingLeads || busy} aria-label={s("deleteLead", { name: lead.name })} title={s("deleteLead", { name: lead.name })} onClick={() => setPendingDelete([lead.id])}><Trash2 size={15} aria-hidden="true" /></button>
+                    </td>
                     {tableColumns.map((column) => {
                       if (column.key === "whatsapp") {
                         return <td key={column.key} {...cellDetailProps(lead, column, lead.phone || s("noData"))}><WhatsAppContact phone={lead.phone} /></td>;
                       }
                       if (column.key === "socials") {
-                        const profiles = socialNetworkOptions.flatMap(({ id, label }) => {
+                        const profiles = socialNetworkOptions.flatMap(({ id, label, Icon }) => {
                           const url = getSocialProfileUrl(lead.social_profiles || "", id);
-                          return url ? [{ id, label, url }] : [];
+                          return url ? [{ id, label, Icon, url }] : [];
                         });
                         const value = profiles.map((profile) => profile.label).join(", ") || s("noData");
                         return <td key={column.key} className="compact-social-cell" {...cellDetailProps(lead, column, value)}>
                           {profiles.length
-                            ? <div className="compact-social-links">{profiles.map((profile) => <a className="table-link" key={profile.id} href={profile.url} target="_blank" rel="noreferrer">{profile.label}</a>)}</div>
-                            : <span className="compact-missing">{s("noData")}</span>}
+                            ? <div className="compact-social-links">{profiles.map(({ id, label, Icon, url }) => (
+                              <a className={`social-pill is-${id}`} key={id} href={url} target="_blank" rel="noreferrer" title={url}>
+                                <Icon aria-hidden="true" />
+                                <span>{label}</span>
+                              </a>
+                            ))}</div>
+                            : enrichButton ?? <span className="compact-missing">{s("noData")}</span>}
                         </td>;
                       }
                       if (column.key === "name" && !showFullData) {
@@ -910,8 +1033,22 @@ export default function Home() {
                         </td>;
                       }
                       const value = getLeadColumnValue(lead, column.key, s("ownerResponse"));
+                      if (column.key === "email" && !value && enrichButton) {
+                        return <td key={column.key} {...cellDetailProps(lead, column, s("mailNotEnriched"))}>{enrichButton}</td>;
+                      }
                       if (!showFullData && (column.key === "phone" || column.key === "email") && !value) {
                         return <td key={column.key} className="compact-missing-cell">{s("noData")}</td>;
+                      }
+                      if (!showFullData && column.key === "phone") {
+                        // Same WhatsApp trigger/popover as the full-data WhatsApp column.
+                        // Whole cell opens the WhatsApp popover; clicks on the trigger itself are handled by it (no double toggle).
+                        const openWhatsApp = (event: MouseEvent<HTMLTableCellElement> | ReactKeyboardEvent<HTMLTableCellElement>) => {
+                          if ("key" in event && event.key !== "Enter" && event.key !== " ") return;
+                          if (event.target instanceof Element && event.target.closest("a,button,input,textarea,select,[role='dialog']")) return;
+                          event.preventDefault();
+                          event.currentTarget.querySelector<HTMLButtonElement>(".whatsapp-contact-trigger")?.click();
+                        };
+                        return <td key={column.key} tabIndex={0} aria-label={`${column.label}: ${lead.phone}`} onClick={openWhatsApp} onKeyDown={openWhatsApp}><span className="compact-phone"><FaWhatsapp aria-hidden="true" /><WhatsAppContact phone={lead.phone} /></span></td>;
                       }
                       const socialNetworkMatch = /^social_(facebook|instagram|youtube|linkedin)$/.exec(column.key);
                       if (socialNetworkMatch) {
@@ -939,7 +1076,18 @@ export default function Home() {
                         const needsAnalysis = !content && !noData;
                         const cellText = content || (action === "pain_points" && detail?.status === "completed" ? s("noPains") : noData ? s("noData") : s("notAnalyzed"));
                         return (
-                          <td key={column.key} className="analysis-cell" {...cellDetailProps(lead, column, fullAnalysis || cellText)}>
+                          <td key={column.key} className="analysis-cell" {...cellDetailProps(lead, column, fullAnalysis || cellText)} {...(pain && pain.tags.length > 0 ? {
+                            // Pills/buttons keep their own handlers; the rest of the cell opens the pain dialog on the first tag.
+                            onClick: (event: MouseEvent<HTMLTableCellElement>) => {
+                              if (event.target instanceof Element && event.target.closest("a,button,input,textarea,select,[role='dialog']")) return;
+                              setAnalysisDialog({ leadId: lead.id, action: "pain_points", tag: pain.tags[0] });
+                            },
+                            onKeyDown: (event: ReactKeyboardEvent<HTMLTableCellElement>) => {
+                              if (event.target !== event.currentTarget || (event.key !== "Enter" && event.key !== " ")) return;
+                              event.preventDefault();
+                              setAnalysisDialog({ leadId: lead.id, action: "pain_points", tag: pain.tags[0] });
+                            },
+                          } : {})}>
                             {needsAnalysis && action === "pain_points"
                               ? <button
                                 className="analysis-cell-trigger is-enrich"
@@ -950,6 +1098,13 @@ export default function Home() {
                               >
                                 {analysisBusy === action && (!analysisRowBusyId || analysisRowBusyId === lead.id) ? s("analyzing") : s("analyzePain")}
                               </button>
+                              : pain && pain.tags.length > 0
+                              ? <span className="pain-tags">
+                                {pain.tags.map((tag) => (
+                                  <button className="pain-tag pain-tag-button" type="button" key={tag} title={s("openPainHint")} onKeyDown={(event) => event.stopPropagation()} onClick={(event) => { event.stopPropagation(); setAnalysisDialog({ leadId: lead.id, action: "pain_points", tag }); }}>{tag}</button>
+                                ))}
+                                {showFullData && pain.report && <span className="pain-report">{pain.report}</span>}
+                              </span>
                               : <button
                               className={`analysis-cell-trigger${noData ? " is-no-data" : ""}${pain?.hasContent ? " has-pain-tags" : ""}`}
                               type="button"
@@ -966,42 +1121,39 @@ export default function Home() {
                               {analysisBusy === action && needsAnalysis && (!analysisRowBusyId || analysisRowBusyId === lead.id)
                                 ? s("analyzing")
                                 : pain?.hasContent
-                                  ? <>
-                                    {pain.tags.length > 0
-                                      ? <span className="pain-tags">{pain.tags.map((tag) => <span className="pain-tag" key={tag}>{tag}</span>)}</span>
-                                      : <span className="pain-report-line">{pain.report}</span>}
-                                    {showFullData && pain.tags.length > 0 && pain.report && <span className="pain-report">{pain.report}</span>}
-                                  </>
+                                  ? <span className="pain-report-line">{pain.report}</span>
                                   : cellText}
                             </button>}
+                            {pain && (detail?.proposals?.length ?? 0) > 0 && (
+                              <button className="pain-tag proposal-pill" type="button" onKeyDown={(event) => event.stopPropagation()} onClick={(event) => { event.stopPropagation(); setAnalysisDialog({ leadId: lead.id, action: "pain_points", view: "proposals" }); }}>{s("viewProposal")}</button>
+                            )}
                             {detail && <span className="analysis-source-count">{detail.findings.length} {t("t_a1c92c8aa4")}</span>}
                           </td>
                         );
                       }
                       if (column.key === "email" && !value) {
-                        const enrichmentAttempted = Boolean(lead.enrichment_detail?.status || lead.enrichment?.trim());
-                        return <td key={column.key} {...cellDetailProps(lead, column, enrichmentAttempted ? s("noData") : s("mailNotEnriched"))}>{enrichmentAttempted
-                          ? <span className="analysis-cell-empty is-no-data">{t("t_29b2157143")}</span>
-                          : <button className="analysis-cell-trigger is-enrich" type="button" disabled={Boolean(analysisBusy)} onClick={() => void startAnalysis("enrichment", lead.id)} aria-label={s("enrichMailAria", { name: lead.name })}>{analysisBusy === "enrichment" && (!analysisRowBusyId || analysisRowBusyId === lead.id) ? s("enriching") : s("enrich")}</button>}</td>;
+                        return <td key={column.key} {...cellDetailProps(lead, column, s("noData"))}><span className="analysis-cell-empty is-no-data">{t("t_29b2157143")}</span></td>;
                       }
                       const isLink = (column.key === "maps_url" || column.key === "website") && Boolean(value);
                       const ratingColumn = /^rating_[1-5]$/.test(column.key);
                       return (
                         <td key={column.key} className={ratingColumn ? "rating-breakdown-cell" : undefined} {...cellDetailProps(lead, column, value == null || value === "" ? s("noData") : String(value))}>
-                          {isLink ? <a className="table-link" href={String(value)} target="_blank" rel="noreferrer" title={String(value)} onClick={(event) => openLinkedCellDetail(event, lead, column, String(value))}>{column.key === "maps_url" ? "Google Maps" : String(value)}</a> : value == null ? "" : String(value)}
+                          {isLink ? <a className="table-link" href={String(value)} target="_blank" rel="noreferrer" title={column.key === "maps_url" ? s("columns.maps_url") : String(value)} onClick={(event) => openLinkedCellDetail(event, lead, column, String(value))}>{column.key === "maps_url" ? s("columns.maps_url") : String(value)}</a> : value == null ? "" : String(value)}
                         </td>
                       );
                     })}
                   </tr>
-                ))}
+                  );
+                })}
                 {leads.length === 0 && !busy && (
-                  <tr><td className="empty-cell" colSpan={tableColumns.length}>
+                  <tr><td className="empty-cell" colSpan={tableColumns.length + 1}>
                     <strong>{historyLoading ? s("connectingHistory") : s("noLeadsYet")}</strong>
                     <span>{historyLoading ? "" : s("noLeadsHint")}</span>
                   </td></tr>
                 )}
                 {busy && Array.from({ length: Math.min(count, 5) }, (_, index) => (
                   <tr className="skeleton-row" key={`skeleton-${index}`} aria-hidden="true">
+                    <td className="lead-select-cell" />
                     {tableColumns.map((column) => <td key={column.key}><span /></td>)}
                   </tr>
                 ))}
@@ -1031,21 +1183,52 @@ export default function Home() {
               <section ref={analysisPopoverRef} className="analysis-popover" role="dialog" aria-modal="true" aria-labelledby="analysis-popover-title" onClick={(event) => event.stopPropagation()}>
                 <button className="analysis-popover-close" type="button" aria-label={s("closeAnalysis")} onClick={() => setAnalysisDialog(null)}><X size={18} aria-hidden="true" /></button>
                 <p className="analysis-popover-lead">{lead.name}</p>
-                <h2 id="analysis-popover-title">{s(`actions.${action}.title`)}</h2>
-                {detail ? (
+                <h2 id="analysis-popover-title">{analysisDialog.view === "proposals" ? s("proposalsTitle") : analysisDialog.tag || s(`actions.${action}.title`)}</h2>
+                {analysisDialog.view === "proposals" ? (
+                  <ol className="proposal-list">
+                    {(detail?.proposals ?? []).map((proposal) => {
+                      const key = `${lead.id}-${proposal.variant}`;
+                      const text = proposalEdits[key] ?? proposal.message;
+                      const edited = text !== proposal.message;
+                      return (
+                      <li key={proposal.variant} className="proposal-card">
+                        <span className="pain-tag">{s("proposalVariant", { variant: proposal.variant })}</span>
+                        <strong>{proposal.service}</strong>
+                        <textarea
+                          className="proposal-message"
+                          aria-label={s("proposalMessageLabel", { variant: proposal.variant })}
+                          value={text}
+                          rows={4}
+                          onChange={(event) => { const value = event.target.value; setProposalEdits((current) => ({ ...current, [key]: value })); if (copiedProposal === key) setCopiedProposal(null); }}
+                        />
+                        <span className="proposal-count" aria-live="off">{s("proposalChars", { count: text.length })}</span>
+                        <div className="proposal-actions">
+                          <button type="button" className="proposal-copy" onClick={() => {
+                            void navigator.clipboard?.writeText(text).then(() => setCopiedProposal(key)).catch(() => undefined);
+                          }}>{copiedProposal === key ? s("proposalCopied") : s("copyProposal")}</button>
+                          {edited && (
+                            <button type="button" className="proposal-copy proposal-restore" onClick={() => { setProposalEdits((current) => { const next = { ...current }; delete next[key]; return next; }); setCopiedProposal(null); }}>{s("restoreProposal")}</button>
+                          )}
+                        </div>
+                      </li>
+                      );
+                    })}
+                  </ol>
+                ) : detail ? (
                   <>
                     {action === "enrichment" && detail.summary && <p className="analysis-popover-summary">{detail.summary}</p>}
                     {action === "pain_points" && (() => {
                       const pain = painView(detail, lead.pain_points);
                       return pain.hasContent
                         ? <>
-                          {pain.tags.length > 0 && <span className="pain-tags">{pain.tags.map((tag) => <span className="pain-tag" key={tag}>{tag}</span>)}</span>}
-                          {pain.report && <p className="analysis-popover-summary">{pain.report}</p>}
+                          {pain.tags.length > 0 && <span className="pain-tags">{pain.tags.map((tag) => <button className="pain-tag pain-tag-button" type="button" key={tag} aria-pressed={analysisDialog.tag === tag} onClick={() => setAnalysisDialog({ leadId: lead.id, action, tag })}>{tag}</button>)}{(detail.proposals?.length ?? 0) > 0 && <button className="pain-tag proposal-pill" type="button" onClick={() => setAnalysisDialog({ leadId: lead.id, action, view: "proposals" })}>{s("viewProposal")}</button>}</span>}
+                          {!analysisDialog.tag && pain.report && <p className="analysis-popover-summary">{pain.report}</p>}
                         </>
                         : <p className="analysis-popover-empty">{t("t_63b75cd9df")}</p>;
                     })()}
+                    {analysisDialog.tag && findingsForTag(detail.findings, painView(detail, lead.pain_points).tags, analysisDialog.tag).length === 0 && <p className="analysis-popover-empty">{s("noPainSource")}</p>}
                     {detail.findings.length > 0 && <ol className="analysis-findings">
-                      {detail.findings.map((finding, index) => (
+                      {(analysisDialog.tag ? findingsForTag(detail.findings, painView(detail, lead.pain_points).tags, analysisDialog.tag) : detail.findings).map((finding, index) => (
                         <li key={`${finding.title}-${index}`}>
                           <strong>{finding.title}</strong>
                           <p>{finding.detail}</p>
@@ -1060,7 +1243,7 @@ export default function Home() {
                         </li>
                       ))}
                     </ol>}
-                    {detail.limitations && <p className="analysis-limitations">{detail.limitations}</p>}
+                    {devOnly && detail.limitations && <p className="analysis-limitations">{detail.limitations}</p>}
                   </>
                 ) : savedSummary ? (
                   <>
@@ -1075,7 +1258,7 @@ export default function Home() {
           );
         })()}
 
-        {isDevelopmentEnvironment && analysisDiagnosticsOpen && (
+        {devOnly && analysisDiagnosticsOpen && (
           <aside className="analysis-debug-panel" aria-label={s("debugPanel")}>
             <div className="analysis-debug-heading">
               <div>

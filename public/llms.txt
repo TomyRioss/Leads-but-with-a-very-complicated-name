@@ -1,0 +1,14 @@
+# Leadta
+
+> Leadta es una herramienta web para encontrar negocios locales para contactar. Buscás por rubro y zona y obtenés leads con teléfono, email, sitio web, redes sociales y dolores detectados en reseñas públicas. Cada lote se guarda en tu historial y se exporta a CSV o XLSX. Incluye Lead Suite para registrar contactos y medir respuestas. Disponible en español e inglés.
+
+## Páginas clave
+
+- [Inicio](https://leadta.app/): qué hace Leadta, cómo funciona y preguntas frecuentes.
+- [Planes y precios](https://leadta.app/pricing): desde 15 USD por mes, según el volumen de búsquedas.
+- [Blog](https://leadta.app/blog): guías de prospección y venta a negocios locales.
+- [English](https://leadta.app/en): versión en inglés.
+
+## Contacto
+
+- Ventas y soporte: support@leadta.app

@@ -9,7 +9,7 @@ function bridgeHeaders(): Record<string, string> {
 }
 
 export class PocketBaseRequestError extends Error {
-  constructor(message: string, readonly status: number, readonly detail = "") {
+  constructor(message: string, readonly status: number, readonly detail = "", readonly operation = "") {
     super(message);
     this.name = "PocketBaseRequestError";
   }
@@ -94,7 +94,9 @@ export async function pocketBaseFetch<T>(path: string, init: RequestInit = {}) {
 
   if (!response.ok) {
     const detail = await response.text();
-    throw new PocketBaseRequestError(`PocketBase responded ${response.status}: ${detail.slice(0, 240)}`, response.status, detail);
+    // Method + path without the query string (filters carry user ids) so logs name the failing collection/operation.
+    const operation = `${init.method || "GET"} ${path.split("?")[0]}`;
+    throw new PocketBaseRequestError(`PocketBase responded ${response.status} to ${operation}: ${detail.slice(0, 240)}`, response.status, detail, operation);
   }
 
   if (response.status === 204) return null as T;

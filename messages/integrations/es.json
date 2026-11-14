@@ -1,0 +1,53 @@
+{
+  "integrations": {
+    "metaTitle": "Integraciones | Leadta",
+    "title": "Integraciones",
+    "lede": "Conectá tus herramientas para que Leadtita trabaje con tus propios datos.",
+    "description": "Elegí planillas, documentos, CSV o PDF de tu Drive y Leadtita los lee cuando se lo pidas.",
+    "connectedAs": "Conectado como {email}",
+    "connected": "Conectado",
+    "loading": "Revisando tu conexión…",
+    "retry": "Reintentar",
+    "loadError": "No pudimos revisar tu conexión con Google.",
+    "notConfigured": "Integración no configurada. Avisanos y la activamos.",
+    "connect": "Conectar Google Drive",
+    "hintFiles": "Solo vas a compartir los archivos que elijas. Podés desconectar cuando quieras.",
+    "hintFull": "Leadtita va a poder buscar en todo tu Drive (solo lectura). Podés desconectar cuando quieras.",
+    "pickFiles": "Elegir archivos",
+    "pickerNotConfigured": "El selector de archivos todavía no está configurado.",
+    "pickerError": "No pudimos abrir el selector de Google. Probá de nuevo.",
+    "filesLabel": "Archivos conectados",
+    "noFiles": "Todavía no elegiste archivos. Sumá una planilla o un documento para empezar.",
+    "removeFile": "Quitar {name}",
+    "removeError": "No pudimos quitar el archivo.",
+    "addError": "No pudimos agregar esos archivos.",
+    "someRejected": "{count, plural, one {# archivo no se pudo agregar} other {# archivos no se pudieron agregar}}: revisá que tengas acceso y que sea planilla, documento, CSV o PDF.",
+    "disconnect": "Desconectar Google",
+    "disconnectTitle": "Desconectar Google",
+    "disconnectBody": "Se desconectan Drive, Gmail y Calendar juntos: Leadtita deja de usarlos y revocamos el acceso en Google. Podés volver a conectar cuando quieras.",
+    "disconnectConfirm": "Sí, desconectar",
+    "disconnecting": "Desconectando…",
+    "disconnectError": "No pudimos desconectar. Probá de nuevo.",
+    "cancel": "Cancelar",
+    "noticeConnected": "Listo: Google Drive quedó conectado.",
+    "noticeDenied": "Cancelaste el permiso en Google. Podés intentarlo de nuevo cuando quieras.",
+    "noticeError": "No pudimos completar la conexión con Google. Probá de nuevo.",
+    "features": {
+      "drive": {
+        "connect": "Conectar Google Drive"
+      },
+      "gmail": {
+        "title": "Gmail",
+        "connect": "Conectar Gmail",
+        "description": "Leadtita envía desde tu cuenta los mails que vos confirmás.",
+        "hint": "Permiso solo para enviar: nunca leemos tu casilla."
+      },
+      "calendar": {
+        "title": "Google Calendar",
+        "connect": "Conectar Calendar",
+        "description": "Leadtita agenda reuniones con tus leads en tu calendario principal.",
+        "hint": "Permiso para crear y editar eventos; no leemos el resto de tu calendario."
+      }
+    }
+  }
+}

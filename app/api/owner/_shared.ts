@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { errorTranslator } from "@/lib/server/locale";
+import { adjustCredits } from "@/lib/server/credits";
 import { isPocketBaseConfigured, pocketBaseFetch } from "@/lib/server/pocketbase";
 
 export const activeSubscriptionStatuses = ["authorized", "paused", "pending"] as const;
@@ -143,20 +144,18 @@ async function releaseCreditLock(lockId: string) {
 }
 
 /**
- * Computes the new balance under the shared `credit_locks` lock so an in-flight search is not overwritten.
+ * Computes the new balance under the shared `credit_locks` lock and applies it as a relative delta so an in-flight search is not overwritten.
  * `compute` returns the new balance, or null to abort (nothing is written).
  */
 export async function updateUserCredits(userId: string, compute: (current: number) => number | null) {
   const lock = await acquireCreditLock(userId);
   try {
     const user = await pocketBaseFetch<{ credits?: number }>(`/api/collections/users/records/${userId}?fields=credits`);
-    const next = compute(normalizeCredits(user.credits));
+    const current = normalizeCredits(user.credits);
+    const next = compute(current);
     if (next === null) return null;
-    await pocketBaseFetch(`/api/collections/users/records/${userId}`, {
-      method: "PATCH",
-      body: JSON.stringify({ credits: next }),
-    });
-    return next;
+    // Relative write (credits+/credits-) so concurrent referral rewards outside the lock are not lost.
+    return await adjustCredits(userId, next - current, next);
   } finally {
     await releaseCreditLock(lock.id);
   }

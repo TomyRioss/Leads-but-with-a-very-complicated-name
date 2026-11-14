@@ -1,0 +1,24 @@
+.feedback-dialog { position: fixed; inset: 0; margin: auto; height: fit-content; max-width: calc(100vw - 32px); max-height: calc(100dvh - 32px); overflow: auto; }
+.feedback-form { display: grid; gap: 12px; }
+.feedback-kind { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 0; padding: 0; border: 0; }
+.feedback-kind legend { margin-bottom: 6px; padding: 0; }
+.feedback-kind-option { display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--ash-50); font-size: 14px; font-weight: 560; cursor: pointer; }
+.feedback-kind-option:has(input:checked) { border-color: var(--lime-dark); background: var(--paper); box-shadow: inset 0 0 0 1px var(--lime-dark); }
+.feedback-kind-option input { margin: 0; accent-color: var(--ash-950); }
+.feedback-kind-option:has(input:focus-visible) { box-shadow: 0 0 0 3px color-mix(in srgb, var(--lime) 45%, transparent); }
+.feedback-message { display: grid; gap: 6px; }
+.feedback-message textarea { width: 100%; min-height: 120px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 7px; background: var(--ash-50); color: var(--ink); font: inherit; font-size: 14px; line-height: 1.45; resize: vertical; }
+.feedback-message textarea:focus-visible { outline: 0; box-shadow: 0 0 0 3px color-mix(in srgb, var(--lime) 45%, transparent); }
+.feedback-message textarea[aria-invalid="true"] { border-color: var(--ash-700); }
+.feedback-submit { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; }
+.feedback-sent { display: grid; justify-items: start; gap: 10px; }
+.feedback-sent svg { color: var(--lime-dark); }
+.feedback-sent p { margin: 0; font-size: 14px; line-height: 1.5; }
+.side-nav-feedback .menu-icon { color: var(--lime-dark); }
+.side-nav-bottom { display: grid; gap: 8px; margin-top: auto; }
+@media (max-width: 420px) { .feedback-kind { grid-template-columns: 1fr; } }
+
+.error-report-button { display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 0 12px; border: 1px solid var(--line); border-radius: 999px; background: var(--ash-50); color: var(--ink); font: inherit; font-size: 13px; font-weight: 500; cursor: pointer; white-space: nowrap; }
+.error-report-button:hover { background: var(--ash-150); }
+.error-report-button:focus-visible { outline: 2px solid var(--lime-dark); outline-offset: 2px; }
+.history-error { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }

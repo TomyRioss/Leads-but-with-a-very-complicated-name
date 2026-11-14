@@ -12,9 +12,16 @@
 a.primary-button.auth-submit { text-decoration: none; }
 .auth-verify-actions .primary-button, .auth-verify-actions .auth-secondary-button, .auth-switch button, .auth-switch-link { font-family: inherit; }
 .auth-verify-actions .primary-button { font-size: 14px; }
-.primary-button:focus-visible, .auth-secondary-button:focus-visible, .auth-switch button:focus-visible { outline: 0; box-shadow: 0 0 0 3px rgb(201 233 79 / 45%); }
+.primary-button:focus-visible, .auth-secondary-button:focus-visible, .auth-switch button:focus-visible { outline: 0; box-shadow: 0 0 0 3px color-mix(in srgb, var(--lime) 45%, transparent); }
 .auth-spin { animation: auth-spin 900ms linear infinite; }
 @keyframes auth-spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .auth-spin { animation: none; } }
 .auth-panel .google-auth-button { gap: 10px; }
 .auth-panel .google-auth-button svg { flex: none; }
+/* Identidad de marca: título con punto lime (como el logo "Leadta.") y voz de la landing. */
+.auth-panel h1 { font-weight: 650; letter-spacing: -0.035em; }
+.brand-dot { color: var(--lime-dark); }
+.auth-aside .brand-dot { color: var(--lime); }
+.requirement { display: inline-flex; align-items: center; gap: 6px; }
+.requirement svg { flex: none; color: var(--ash-400); }
+.requirement.met svg { color: var(--lime-dark); }

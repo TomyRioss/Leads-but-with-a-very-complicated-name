@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import { useLocale, useTranslations } from "next-intl";
-import { CircleCheck, LoaderCircle, Mail, TriangleAlert } from "lucide-react";
+import { Check, Circle, CircleCheck, LoaderCircle, Mail, TriangleAlert } from "lucide-react";
 import { FcGoogle } from "react-icons/fc";
 import { isValidPhoneNumber } from "libphonenumber-js/min";
 import PhoneInput from "react-phone-number-input";
@@ -13,6 +13,7 @@ import { BrandMark } from "./brand-logo";
 import { Link } from "@/i18n/navigation";
 import "./auth-steps.css";
 import "./auth-layout.css";
+import { invalidateSession } from "@/lib/client/session";
 
 type AuthFormProps = { onAuthenticated: () => void; initialError?: string; initialMode?: "login" | "register" };
 type VerifyStepState = { email: string; sent: boolean; fromLogin: boolean };
@@ -86,7 +87,7 @@ function VerifyStep({ state, onChangeEmail, onLogin }: { state: VerifyStepState;
   return (
     <>
       <span className="auth-verify-icon" aria-hidden="true"><Mail size={22} /></span>
-      <h1 id="auth-title" ref={headingRef} tabIndex={-1}>{t("verifyTitle")}</h1>
+      <h1 id="auth-title" ref={headingRef} tabIndex={-1}>{t("verifyTitle")}<span className="brand-dot" aria-hidden="true">.</span></h1>
       <p className="auth-intro">
         {t.rich(state.fromLogin ? "verifyIntroLogin" : state.sent ? "verifyIntro" : "verifyIntroNotSent", { email: state.email, strong: (chunks) => <strong className="auth-verify-email">{chunks}</strong> })}
       </p>
@@ -128,11 +129,13 @@ function PhoneStep({ onDone }: { onDone: (role?: string) => void }) {
     }
     setBusy(true);
     try {
+      invalidateSession();
       const response = await fetch("/api/auth/phone", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ phone, locale }),
       });
+      invalidateSession(); // new cookie: never reuse the previous session
       const payload = await response.json();
       if (response.status === 401) throw new Error(t("googlePhoneExpired"));
       if (response.status === 409) throw new Error(t("phoneTaken"));
@@ -147,7 +150,7 @@ function PhoneStep({ onDone }: { onDone: (role?: string) => void }) {
 
   return (
     <>
-      <h1 id="auth-title" ref={headingRef} tabIndex={-1}>{t("googlePhoneTitle")}</h1>
+      <h1 id="auth-title" ref={headingRef} tabIndex={-1}>{t("googlePhoneTitle")}<span className="brand-dot" aria-hidden="true">.</span></h1>
       <p className="auth-intro">{t("googlePhoneIntro")}</p>
       <form className="auth-fields" onSubmit={save}>
         <div className="field">
@@ -189,11 +192,13 @@ export function VerifyEmailPanel({ token, locale, initialResult }: { token: stri
     event.preventDefault();
     setState("loading");
     try {
+      invalidateSession();
       const response = await fetch("/api/auth/verify-email", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ token, locale }),
       });
+      invalidateSession(); // new cookie: never reuse the previous session
       const payload = (await response.json()) as { result?: VerifyResult };
       setState(payload.result === "verified" || payload.result === "invalid" ? payload.result : "failed");
     } catch {
@@ -219,7 +224,7 @@ export function VerifyEmailPanel({ token, locale, initialResult }: { token: stri
     return (
       <div role="status" aria-live="polite">
         <span className="auth-verify-icon" aria-hidden="true"><CircleCheck size={22} /></span>
-        <h1 id="verify-email-title">{t("verifiedTitle")}</h1>
+        <h1 id="verify-email-title">{t("verifiedTitle")}<span className="brand-dot" aria-hidden="true">.</span></h1>
         <p className="auth-intro">{t("verifiedDescription")}</p>
         <div className="auth-verify-actions">
           <Link className="primary-button auth-submit" href="/buscar">{t("continue")}</Link>
@@ -265,7 +270,7 @@ export function VerifyEmailPanel({ token, locale, initialResult }: { token: stri
 
   return (
     <>
-      <h1 id="verify-email-title">{t("title")}</h1>
+      <h1 id="verify-email-title">{t("title")}<span className="brand-dot" aria-hidden="true">.</span></h1>
       <p className="auth-intro">{t("description")}</p>
       <form className="auth-fields" action="/api/auth/verify-email" method="post" onSubmit={confirm}>
         <input type="hidden" name="token" value={token} />
@@ -277,6 +282,21 @@ export function VerifyEmailPanel({ token, locale, initialResult }: { token: stri
   );
 }
 
+// Email que deja el popup de registro de la landing (app/landing/signup-popup.tsx). Se lee y borra una vez;
+// el valor queda en memoria para que el doble render de StrictMode reciba lo mismo.
+let signupEmail: string | null = null;
+function takeSignupEmail() {
+  if (signupEmail === null) {
+    try {
+      signupEmail = sessionStorage.getItem("leadta:signup-email") ?? "";
+      sessionStorage.removeItem("leadta:signup-email");
+    } catch {
+      signupEmail = "";
+    }
+  }
+  return signupEmail;
+}
+
 export function AuthForm({ onAuthenticated, initialError = "", initialMode = "login" }: AuthFormProps) {
   const t = useTranslations("Auth");
   const locale = useLocale();
@@ -284,7 +304,6 @@ export function AuthForm({ onAuthenticated, initialError = "", initialMode = "lo
     if (locale !== "en") return message;
     const messages: Record<string, string> = {
       "No se pudo conectar con el servicio de cuentas.": t("serviceUnavailable"),
-      "No se pudo completar el acceso con Google. Intenta nuevamente.": t("googleLoginFailed"),
       "Email o contraseña incorrectos.": t("invalidCredentials"),
       "Ingresá un email y una contraseña válidos.": t("validEmailPassword"),
       "Ingresá un email válido.": t("validEmail"),
@@ -299,7 +318,7 @@ export function AuthForm({ onAuthenticated, initialError = "", initialMode = "lo
     return messages[message] ?? message;
   };
   const [mode, setMode] = useState<"login" | "register">(initialMode);
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(() => (initialMode === "register" ? takeSignupEmail() : ""));
   const [phone, setPhone] = useState("");
   const [phoneTouched, setPhoneTouched] = useState(false);
   const [password, setPassword] = useState("");
@@ -336,11 +355,13 @@ export function AuthForm({ onAuthenticated, initialError = "", initialMode = "lo
 
     setBusy(true);
     try {
+      invalidateSession();
       const response = await fetch(`/api/auth/${mode === "register" ? "register" : "login"}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(mode === "register" ? { email, phone, password, passwordConfirm, locale } : { email, password }),
       });
+      invalidateSession(); // new cookie: never reuse the previous session
       const payload = await response.json();
       if (payload.code === "EMAIL_NOT_VERIFIED") {
         setVerifyStep({ email: email.trim().toLowerCase(), sent: false, fromLogin: true });
@@ -399,7 +420,7 @@ export function AuthForm({ onAuthenticated, initialError = "", initialMode = "lo
             <VerifyStep state={verifyStep} onChangeEmail={() => backToForm(mode)} onLogin={() => backToForm("login")} />
           ) : (
           <>
-          <h1 id="auth-title" tabIndex={-1}>{mode === "register" ? t("registerTitle") : t("loginTitle")}</h1>
+          <h1 id="auth-title" tabIndex={-1}>{mode === "register" ? t("registerTitle") : t("loginTitle")}<span className="brand-dot" aria-hidden="true">.</span></h1>
           <p className="auth-intro">{mode === "register" && t("registerIntro")}{t("privateIntro")}</p>
           <a className="google-auth-button" href={`/api/auth/google?locale=${locale}`}><FcGoogle size={18} aria-hidden="true" /><span>{t("continueWithGoogle")}</span></a>
           <div className="auth-divider" aria-hidden="true"><span>{t("orContinueWithEmail")}</span></div>
@@ -448,8 +469,8 @@ export function AuthForm({ onAuthenticated, initialError = "", initialMode = "lo
               </span>
               {mode === "register" && (
                 <span className="field-help password-requirements" id="password-help" aria-live="polite">
-                  <span className={password.length >= 6 ? "requirement met" : "requirement"}>{password.length >= 6 ? "✓" : "•"} {t("minimumPassword")}</span>
-                  <span className={passwordConfirm && password === passwordConfirm ? "requirement met" : "requirement"}>{passwordConfirm && password === passwordConfirm ? "✓" : "•"} {t("confirmMatch")}</span>
+                  <span className={password.length >= 6 ? "requirement met" : "requirement"}>{password.length >= 6 ? <Check size={14} aria-hidden="true" /> : <Circle size={14} aria-hidden="true" />}{t("minimumPassword")}</span>
+                  <span className={passwordConfirm && password === passwordConfirm ? "requirement met" : "requirement"}>{passwordConfirm && password === passwordConfirm ? <Check size={14} aria-hidden="true" /> : <Circle size={14} aria-hidden="true" />}{t("confirmMatch")}</span>
                 </span>
               )}
             </label>

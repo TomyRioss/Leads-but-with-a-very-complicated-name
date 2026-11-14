@@ -5,7 +5,7 @@ import { routing } from "./routing";
 type Messages = Record<string, Record<string, unknown>>;
 
 // Archivos por namespace: messages/<archivo>/<locale>.json se mergea encima de messages/<locale>.json.
-const extraFiles = ["landing", "onboarding", "pricing", "search", "account", "owner", "errors"] as const;
+const extraFiles = ["landing", "onboarding", "pricing", "search", "account", "owner", "errors", "lead-suite", "lead-suite-chat", "blog", "people", "integrations", "legal"] as const;
 
 // Merge profundo de 2 niveles (namespace → claves): un archivo puede agregar claves a un namespace del base sin pisar las existentes.
 function mergeMessages(base: Messages, extra: Messages) {

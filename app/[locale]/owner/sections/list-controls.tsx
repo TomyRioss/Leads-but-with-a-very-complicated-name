@@ -2,7 +2,7 @@
 
 import { ChevronLeft, ChevronRight, RefreshCw, Search } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { controlClass, countBadge, ghostButton, sectionHead, sectionTitle, useOwnerFormat } from "../ui";
+import { controlClass, countBadge, ghostButton, sectionHead, sectionTitle, titleDot, useOwnerFormat } from "../ui";
 
 export function ListToolbar({ title, total, query, onQuery, queryLabel, status, onStatus, statusLabel, allLabel, statusOptions, onRefresh }: {
   title: string;
@@ -22,7 +22,7 @@ export function ListToolbar({ title, total, query, onQuery, queryLabel, status, 
   const searchText = queryLabel ?? t("searchByEmail");
   return (
     <div className={sectionHead}>
-      <h1 className={sectionTitle}>{title}{total === undefined ? null : <span className={countBadge}>{formatNumber(total)}</span>}</h1>
+      <h1 className={sectionTitle}>{title}<span className={titleDot} aria-hidden="true">.</span>{total === undefined ? null : <span className={countBadge}>{formatNumber(total)}</span>}</h1>
       <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
         <label className="relative flex w-full items-center sm:w-auto">
           <Search className="pointer-events-none absolute left-3 text-(color:--ash-600)" size={15} aria-hidden="true" />

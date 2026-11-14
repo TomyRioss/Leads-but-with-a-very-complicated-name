@@ -2,7 +2,7 @@
   "Landing": {
     "meta": {
       "title": "Leadta | Find businesses to contact",
-      "description": "Find local businesses on Google Maps by industry and area, with phone, email, socials and pain points detected from reviews. Export each batch to CSV or XLSX."
+      "description": "Find local businesses by industry and area, with phone, email, socials and pain points detected from reviews. Export each batch to CSV or XLSX."
     },
     "whatsapp": {
       "hello": "Hi! 👋",
@@ -16,6 +16,7 @@
       "how": "Product",
       "plans": "Pricing",
       "faq": "FAQ",
+      "blog": "Blog",
       "login": "Sign in",
       "signup": "Create account"
     },
@@ -71,20 +72,11 @@
       "range": "3 km radius · Palermo",
       "feedLabel": "Leads detected",
       "serviceLabel": "Service:",
-      "metrics": [
-        {
-          "value": "25",
-          "label": "leads"
-        },
-        {
-          "value": "18",
-          "label": "phones"
-        },
-        {
-          "value": "12",
-          "label": "pain points"
-        }
-      ],
+      "metrics": {
+        "leads": "leads",
+        "pains": "pain points analyzed",
+        "categories": "categories"
+      },
       "leads": [
         {
           "name": "Huellitas del Sur Veterinary",
@@ -120,7 +112,7 @@
           "name": "Núñez Animal Center",
           "rating": "4.6",
           "pain": "Unclear opening hours",
-          "service": "Optimized Google profile"
+          "service": "Optimized business profile"
         }
       ]
     },
@@ -160,16 +152,16 @@
       "credits": [
         { "value": "240", "label": "welcome credits when you create your account" },
         { "value": "2", "label": "credits for every lead in your search" },
-        { "value": "0.5", "label": "extra credits per analyzed lead" }
+        { "value": "0", "label": "credits to analyze pain points: it is free" }
       ]
     },
     "faq": {
       "title": "Frequently asked questions",
       "items": [
-        { "q": "Where do the businesses come from?", "a": "From Google Maps. You search by industry and area and Leadta brings back businesses with the public details on their listing." },
-        { "q": "Do leads always have a phone and email?", "a": "No. If Google Maps or the business's website doesn't publish a detail, the cell stays empty. We never fill gaps with made-up data." },
+        { "q": "Where do the businesses come from?", "a": "From public sources of local businesses. You search by industry and area and Leadta brings back businesses with the public details on their listing." },
+        { "q": "Do leads always have a phone and email?", "a": "No. If the public listing or the business's website doesn't publish a detail, the cell stays empty. We never fill gaps with made-up data." },
         { "q": "How are pain points detected?", "a": "Leadta analyzes each business's saved reviews, and every finding quotes the review behind it. With no readable reviews, there are no findings." },
-        { "q": "How many leads does a plan give me?", "a": "Each lead uses 2 credits. With 500 credits you get up to 250 leads, and pain point analysis adds 0.5 credits per analyzed lead." },
+        { "q": "How many leads does a plan give me?", "a": "Each lead uses 2 credits. With 500 credits you get up to 250 leads Pain point analysis is free." },
         { "q": "Can I repeat a search in the same area?", "a": "Yes. Leadta remembers the businesses it already returned for that area so later searches bring you new results." },
         { "q": "Are my searches private?", "a": "Yes. Every account has its own history, and nobody else sees your batches or leads." }
       ]
@@ -184,8 +176,21 @@
       "aria": "Leadta links",
       "tagline": "Find. Organize. Move forward.",
       "plans": "Pricing",
+      "blog": "Blog",
       "login": "Sign in",
       "signup": "Create account"
+    },
+    "signupPopup": {
+      "close": "Close",
+      "title": "Find your first clients in 2 minutes",
+      "text": "Create your account and get <strong>{leads} free leads</strong>.",
+      "google": "Continue with Google",
+      "or": "or",
+      "emailLabel": "Your email",
+      "emailPlaceholder": "name@company.com",
+      "submit": "Claim my {leads} leads",
+      "noCard": "No credit card required.",
+      "legal": "By creating an account you accept Leadta’s Terms and Privacy Policy."
     }
   }
 }

@@ -1,0 +1,91 @@
+/* Pestaña Métricas de Lead Suite: tokens de marca (AGENTS.md), sin colores fijos. */
+.lsm { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+
+.lsm-kpis { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.lsm-kpi { display: flex; flex-direction: column; gap: 6px; min-width: 0; padding: 14px 16px; border: 1px solid var(--line); border-radius: 12px; background: var(--paper); }
+.lsm-kpi-label { display: flex; align-items: center; gap: 6px; color: var(--muted); font-size: 12px; }
+.lsm-kpi-label svg { flex: none; color: var(--ash-600); }
+.lsm-kpi-value { overflow: hidden; color: var(--ink); font-size: 26px; font-weight: 650; letter-spacing: -0.035em; line-height: 1.15; font-variant-numeric: tabular-nums; text-overflow: ellipsis; white-space: nowrap; text-decoration: underline; text-decoration-color: var(--lime-dark); text-decoration-thickness: 0.09em; text-decoration-skip-ink: none; text-underline-offset: 0.14em; }
+.lsm-kpi-note { color: var(--muted); font-size: 12px; line-height: 1.35; }
+.lsm-delta { display: inline-flex; align-self: flex-start; align-items: center; gap: 3px; padding: 2px 8px; border-radius: 999px; font-size: 12px; font-weight: 650; font-variant-numeric: tabular-nums; }
+.lsm-delta.is-good { background: var(--lime); color: var(--ash-950); box-shadow: inset 0 0 0 1px var(--lime-dark); }
+.lsm-delta.is-bad { background: var(--ash-800); color: var(--ash-50); }
+.lsm-delta.is-flat { background: var(--ash-150); color: var(--ash-700); font-weight: 560; }
+
+.lsm-card { min-width: 0; padding: 16px; border: 1px solid var(--line); border-radius: 12px; background: var(--paper); }
+.lsm-card-head { margin-bottom: 12px; }
+.lsm-card-head h3 { margin: 0; color: var(--ink); font-size: 15px; font-weight: 650; letter-spacing: -0.015em; }
+.lsm-card-head p { margin: 3px 0 0; color: var(--muted); font-size: 12.5px; line-height: 1.4; }
+
+.lsm-analysis { background: var(--ash-50); }
+.lsm-analysis-head { display: grid; grid-template-columns: auto 1fr auto; gap: 12px; align-items: start; }
+.lsm-analysis-head h3 { margin: 0; font-size: 16px; font-weight: 650; letter-spacing: -0.02em; }
+.lsm-analysis-head p { margin: 2px 0 0; color: var(--muted); font-size: 12.5px; }
+.lsm-analysis-icon { display: grid; width: 32px; height: 32px; place-items: center; border-radius: 8px; background: var(--lime); color: var(--ash-950); }
+.lsm-analysis-refresh { min-height: 36px; padding: 0 12px; font-size: 13px; }
+.lsm-observations { display: grid; gap: 8px; margin: 14px 0 0; padding: 0; list-style: none; counter-reset: lsm-obs; }
+.lsm-observations li { display: grid; grid-template-columns: 24px 1fr; gap: 10px; color: var(--ash-800); font-size: 14px; line-height: 1.5; counter-increment: lsm-obs; }
+.lsm-observations li::before { content: counter(lsm-obs); display: grid; width: 24px; height: 24px; place-items: center; border-radius: 999px; background: var(--ash-150); color: var(--ink); font-size: 12px; font-weight: 650; }
+.lsm-analysis-foot { margin: 12px 0 0; color: var(--muted); font-size: 12px; }
+
+.lsm-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.lsm-span-2 { grid-column: 1 / -1; }
+.lsm-chart { width: 100%; min-width: 0; overflow: hidden; }
+.lsm-legend { display: flex; flex-wrap: wrap; gap: 6px 16px; margin: 8px 0 0; padding: 0; list-style: none; color: var(--ash-700); font-size: 12px; }
+.lsm-legend li { display: inline-flex; align-items: center; gap: 6px; }
+.lsm-swatch { display: inline-block; flex: none; width: 10px; height: 10px; border-radius: 3px; background: var(--ash-300); }
+.lsm-swatch.is-main { background: var(--lime-dark); }
+.lsm-swatch.is-second { background: var(--ash-700); }
+
+.lsm-funnel-rates { display: grid; grid-template-columns: repeat(auto-fit, minmax(96px, 1fr)); gap: 8px; margin: 10px 0 0; padding: 0; list-style: none; }
+.lsm-funnel-rates li { display: flex; flex-direction: column; gap: 2px; padding: 8px 10px; border-radius: 8px; background: var(--ash-50); font-size: 12px; color: var(--muted); }
+.lsm-funnel-rates strong { color: var(--ink); font-size: 16px; font-variant-numeric: tabular-nums; }
+
+/* Dona arriba y leyenda debajo: la card es angosta en la grilla de 2 columnas. */
+.lsm-channel { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
+.lsm-donut { width: 100%; max-width: 180px; margin: 0 auto; }
+.lsm-channel-list { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; font-size: 13px; }
+.lsm-channel-list li { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 2px 8px; align-items: center; }
+.lsm-channel-name { overflow: hidden; color: var(--ink); font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+.lsm-channel-sent { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+.lsm-channel-rate { grid-column: 2 / -1; color: var(--ash-700); font-size: 12px; }
+
+.lsm-heat-toggle { margin-bottom: 12px; }
+.lsm-heat-scroll { position: relative; overflow-x: auto; overscroll-behavior-x: contain; }
+.lsm-heat { width: 100%; min-width: 520px; border-collapse: separate; border-spacing: 3px; table-layout: fixed; }
+/* Anula los estilos globales de th/td/thead (alto, min-width, bordes, sticky) pensados para la tabla de leads. */
+.lsm-heat thead { position: static; }
+.lsm-heat th, .lsm-heat td { min-width: 0; max-width: none; border: 0; overflow: visible; white-space: nowrap; }
+.lsm-heat th { height: auto; background: transparent; padding: 0; color: var(--ash-600); font-size: 10.5px; font-weight: 560; text-align: center; font-variant-numeric: tabular-nums; }
+.lsm-heat thead th:first-child, .lsm-heat tbody th { width: 40px; text-align: left; }
+.lsm-heat tbody th { padding-right: 4px; font-size: 11.5px; text-transform: capitalize; }
+.lsm-heat td { height: 22px; padding: 0; border-radius: 4px; background: color-mix(in srgb, var(--lime-dark) var(--lsm-heat, 0%), var(--ash-100)); }
+.lsm-heat td[data-empty] { background: var(--ash-100); }
+
+.lsm-ranking + .lsm-ranking { margin-top: 14px; }
+.lsm-ranking h4 { margin: 0 0 8px; color: var(--ash-700); font-size: 11px; font-weight: 650; letter-spacing: 0.06em; text-transform: uppercase; }
+.lsm-ranking ol { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.lsm-ranking li { display: grid; grid-template-columns: minmax(0, 1fr) 72px auto; gap: 10px; align-items: center; font-size: 13px; }
+.lsm-ranking-name { overflow: hidden; color: var(--ink); text-overflow: ellipsis; white-space: nowrap; }
+.lsm-ranking-bar { height: 8px; overflow: hidden; border-radius: 4px; background: var(--ash-150); }
+.lsm-ranking-bar span { display: block; height: 100%; border-radius: 4px; background: var(--lime-dark); }
+.lsm-ranking-rate { display: flex; flex-direction: column; align-items: flex-end; color: var(--ink); font-weight: 650; font-variant-numeric: tabular-nums; }
+.lsm-ranking-rate small { color: var(--muted); font-size: 11px; font-weight: 400; }
+
+.lsm-overdue { display: grid; margin: 0; padding: 0; list-style: none; }
+.lsm-overdue li { display: flex; justify-content: space-between; gap: 12px; align-items: center; padding: 9px 0; border-top: 1px solid var(--line); font-size: 13px; }
+.lsm-overdue li:first-child { border-top: 0; padding-top: 0; }
+.lsm-overdue-name { display: flex; min-width: 0; flex-direction: column; color: var(--ink); font-weight: 600; }
+.lsm-overdue-name small { color: var(--muted); font-size: 12px; font-weight: 400; }
+.lsm-overdue-days { flex: none; padding: 2px 8px; border-radius: 999px; background: var(--ash-150); color: var(--ash-800); font-size: 12px; font-weight: 600; }
+
+@media (max-width: 1280px) { .lsm-kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 900px) {
+  .lsm-grid { grid-template-columns: minmax(0, 1fr); }
+  .lsm-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 480px) {
+  .lsm-kpi-value { font-size: 22px; }
+  .lsm-analysis-head { grid-template-columns: auto 1fr; }
+  .lsm-analysis-refresh { grid-column: 1 / -1; justify-self: start; }
+}

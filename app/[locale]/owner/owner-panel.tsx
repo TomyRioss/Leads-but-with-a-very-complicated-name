@@ -5,19 +5,23 @@ import dynamic from "next/dynamic";
 import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
-import { CreditCard, LayoutDashboard, LoaderCircle, LogOut, Menu, Receipt, RefreshCw, ScrollText, Search, Users, X } from "lucide-react";
+import { ChartLine, CreditCard, LayoutDashboard, Newspaper, LoaderCircle, LogOut, Menu, MessageSquare, Receipt, RefreshCw, ScrollText, Search, Users, X } from "lucide-react";
 import { BrandLogo } from "@/app/brand-logo";
 import { LanguageSwitcher } from "@/app/language-switcher";
 import { ghostButton, iconButton, isUnauthorized, ownerFetch, stateBox, useFocusTrap, type OnAction } from "./ui";
+import { getSession, invalidateSession } from "@/lib/client/session";
 
-export type OwnerSectionKey = "resumen" | "usuarios" | "suscripciones" | "pagos" | "busquedas" | "auditoria";
+export type OwnerSectionKey = "resumen" | "analiticas" | "usuarios" | "suscripciones" | "pagos" | "busquedas" | "comentarios" | "blog" | "auditoria";
 
 const navItems: { key: OwnerSectionKey; label: string; icon: ComponentType<{ size?: number; className?: string; "aria-hidden"?: boolean }> }[] = [
   { key: "resumen", label: "navSummary", icon: LayoutDashboard },
+  { key: "analiticas", label: "navAnalytics", icon: ChartLine },
   { key: "usuarios", label: "navUsers", icon: Users },
   { key: "suscripciones", label: "navSubscriptions", icon: CreditCard },
   { key: "pagos", label: "navPayments", icon: Receipt },
   { key: "busquedas", label: "navSearches", icon: Search },
+  { key: "comentarios", label: "navFeedback", icon: MessageSquare },
+  { key: "blog", label: "navBlog", icon: Newspaper },
   { key: "auditoria", label: "navAudit", icon: ScrollText },
 ];
 
@@ -27,10 +31,13 @@ const Loading = () => {
 };
 // Each section is only loaded (and only requests its data) while it is the active one.
 const Overview = dynamic(() => import("./sections/overview-section"), { loading: Loading });
+const AnalyticsSection = dynamic(() => import("./sections/analytics-section"), { loading: Loading });
 const UsersSection = dynamic(() => import("./sections/users-section"), { loading: Loading });
 const SubscriptionsSection = dynamic(() => import("./sections/subscriptions-section"), { loading: Loading });
 const PaymentsSection = dynamic(() => import("./sections/payments-section"), { loading: Loading });
 const SearchesSection = dynamic(() => import("./sections/searches-section"), { loading: Loading });
+const FeedbackSection = dynamic(() => import("./sections/feedback-section"), { loading: Loading });
+const BlogSection = dynamic(() => import("./sections/blog-section"), { loading: Loading });
 const AuditSection = dynamic(() => import("./sections/audit-section"), { loading: Loading });
 
 const sectionKeys = navItems.map((item) => item.key);
@@ -67,9 +74,9 @@ export default function OwnerPanel() {
   useEffect(() => {
     if (auth !== "owner") return;
     let active = true;
-    ownerFetch<{ user?: { email?: string } | null }>("/api/auth/me").then((result) => {
-      if (active && result.ok) setEmail(result.data.user?.email ?? "");
-    });
+    getSession().then((result) => {
+      if (active && result.ok) setEmail(result.user?.email ?? "");
+    }, () => undefined);
     return () => { active = false; };
   }, [auth]);
 
@@ -105,25 +112,12 @@ export default function OwnerPanel() {
 
   async function logout() {
     await ownerFetch("/api/auth/logout", { method: "POST" });
+    invalidateSession();
     leavePanel();
   }
 
   const sidebarOpen = menuOpen ? "max-md:visible max-md:translate-x-0" : "max-md:invisible max-md:-translate-x-full";
   const current = navItems.find((item) => item.key === section) ?? navItems[0];
-
-  if (auth !== "owner") {
-    return (
-      <main className="grid min-h-dvh place-items-center bg-(--ash-100) text-(color:--ink)">
-        {auth === "loading" && <p className={stateBox} role="status"><LoaderCircle className="animate-spin" size={16} aria-hidden="true" /> {t("common.loading")}</p>}
-        {auth === "error" && (
-          <div className={`${stateBox} flex-wrap justify-center`} role="alert">
-            <span>{t("shell.sessionError")}</span>
-            <button className={ghostButton} type="button" onClick={retry}><RefreshCw size={15} aria-hidden="true" /> {t("shell.retry")}</button>
-          </div>
-        )}
-      </main>
-    );
-  }
 
   return (
     <div className="min-h-dvh bg-(--ash-100) text-(color:--ink) md:grid md:grid-cols-[224px_minmax(0,1fr)]">
@@ -160,7 +154,7 @@ export default function OwnerPanel() {
                 type="button"
                 aria-current={active ? "page" : undefined}
                 onClick={() => go(key)}
-                className={`flex min-h-11 w-full cursor-pointer items-center gap-3 rounded-lg border-0 px-3 text-left text-[13px]! font-semibold! focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(color:--ash-950) ${active ? "bg-(--ash-950) text-(color:--paper)! hover:bg-(--ash-900)" : "bg-transparent text-(color:--ash-800)! hover:bg-(--ash-100)"}`}
+                className={`flex min-h-11 w-full cursor-pointer items-center gap-3 rounded-lg border-0 px-3 text-left text-[13px]! font-semibold! focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(color:--ash-950) ${active ? "bg-(--lime) text-(color:--ash-950)! hover:bg-(--lime-dark)" : "bg-transparent text-(color:--ash-800)! hover:bg-(--ash-100)"}`}
               >
                 <Icon className="shrink-0" size={16} aria-hidden={true} />
                 <span className="truncate">{t(`shell.${label}`)}</span>
@@ -177,12 +171,25 @@ export default function OwnerPanel() {
 
       <main ref={mainRef} tabIndex={-1} className="min-w-0 outline-none">
         <div className="mx-auto w-[calc(100%-32px)] max-w-[1680px] pb-20 pt-5 md:pt-8">
+          {/* Shell visible from the first paint; sections mount only once owner access is confirmed. */}
+          {auth === "loading" && <p className={stateBox} role="status"><LoaderCircle className="animate-spin" size={16} aria-hidden="true" /> {t("common.loading")}</p>}
+          {auth === "error" && (
+            <div className={`${stateBox} flex-wrap justify-center`} role="alert">
+              <span>{t("shell.sessionError")}</span>
+              <button className={ghostButton} type="button" onClick={retry}><RefreshCw size={15} aria-hidden="true" /> {t("shell.retry")}</button>
+            </div>
+          )}
+          {auth === "owner" && <>
           {section === "resumen" && <Overview onUnauthorized={leavePanel} onOpenAudit={() => go("auditoria")} />}
+          {section === "analiticas" && <AnalyticsSection onUnauthorized={leavePanel} />}
           {section === "usuarios" && <UsersSection onUnauthorized={leavePanel} onAction={onAction} />}
           {section === "suscripciones" && <SubscriptionsSection onUnauthorized={leavePanel} onAction={onAction} />}
           {section === "pagos" && <PaymentsSection onUnauthorized={leavePanel} />}
           {section === "busquedas" && <SearchesSection onUnauthorized={leavePanel} onAction={onAction} />}
+          {section === "comentarios" && <FeedbackSection onUnauthorized={leavePanel} onAction={onAction} />}
+          {section === "blog" && <BlogSection onUnauthorized={leavePanel} onAction={onAction} />}
           {section === "auditoria" && <AuditSection onUnauthorized={leavePanel} />}
+          </>}
         </div>
       </main>
 

@@ -4,6 +4,41 @@ import { isPocketBaseConfigured, pocketBaseFetch } from "@/lib/server/pocketbase
 import { uiError } from "@/lib/server/public-error";
 import type { Lead } from "@/lib/types";
 import { errorTranslator } from "@/lib/server/locale";
+import { deleteBatchLeads, MAX_DELETE_LEADS, RECORD_ID } from "@/lib/server/leads";
+
+export async function DELETE(request: Request) {
+  const t = errorTranslator(request);
+  let session: Awaited<ReturnType<typeof getCurrentUser>>;
+  try {
+    session = await getCurrentUser(request);
+  } catch {
+    return NextResponse.json({ error: t("accountService") }, { status: 503 });
+  }
+  if (!session) return NextResponse.json({ error: t("signInToViewLeads") }, { status: 401 });
+  if (!isPocketBaseConfigured()) {
+    return NextResponse.json({ error: uiError(t("pocketbaseNotConfigured"), t("generic")) }, { status: 503 });
+  }
+
+  const body = await request.json().catch(() => null) as { batchId?: unknown; leadIds?: unknown } | null;
+  const batchId = body?.batchId;
+  const leadIds = Array.isArray(body?.leadIds) ? [...new Set(body.leadIds)] : null;
+  if (
+    typeof batchId !== "string" || !RECORD_ID.test(batchId) ||
+    !leadIds || leadIds.length < 1 || leadIds.length > MAX_DELETE_LEADS ||
+    !leadIds.every((id): id is string => typeof id === "string" && RECORD_ID.test(id))
+  ) {
+    return NextResponse.json({ error: t("invalidRequestBody") }, { status: 400 });
+  }
+
+  try {
+    const result = await deleteBatchLeads(session.user.id, batchId, leadIds);
+    if ("error" in result) return NextResponse.json({ error: t("batchNotFound") }, { status: 404 });
+    return withRefreshedSession(NextResponse.json(result), session.token);
+  } catch (error) {
+    console.error("PocketBase lead delete failed:", error);
+    return NextResponse.json({ error: t("leadsLoadFailed") }, { status: 503 });
+  }
+}
 
 export async function GET(request: Request) {
   const t = errorTranslator(request);

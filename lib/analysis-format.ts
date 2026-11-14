@@ -1,4 +1,4 @@
-import type { AnalysisDetail, AnalysisEvidence, AnalysisFinding } from "./types";
+import type { AnalysisDetail, AnalysisEvidence, AnalysisFinding, PainProposal } from "./types";
 
 export const MAX_PAIN_TAGS = 4;
 export const MAX_PAIN_TAG_LENGTH = 48;
@@ -32,9 +32,24 @@ export function normalizeTags(value: unknown): string[] {
 export type PainModelOutput = {
   tags: string[];
   report: string;
-  findings: { title: string; detail: string; source_ids: string[] }[];
+  findings: { title: string; detail: string; source_ids: string[]; tag: string }[];
   limitations: string;
+  proposals: PainProposal[];
 };
+
+/** Normaliza propuestas A/B: máximo una por variante, con servicio y mensaje no vacíos. */
+export function normalizeProposals(value: unknown): PainProposal[] {
+  if (!Array.isArray(value)) return [];
+  const proposals: PainProposal[] = [];
+  for (const [index, item] of value.slice(0, 2).entries()) {
+    if (!item || typeof item !== "object") continue;
+    const input = item as Record<string, unknown>;
+    const service = clean(input.service, 120);
+    const message = typeof input.message === "string" ? input.message.trim().slice(0, 1200) : "";
+    if (service && message) proposals.push({ variant: index === 0 ? "A" : "B", service, message });
+  }
+  return proposals;
+}
 
 /**
  * Valida y normaliza el objeto devuelto por el modelo para dolores.
@@ -50,11 +65,11 @@ export function normalizePainOutput(value: unknown): PainModelOutput | null {
     if (!item || typeof item !== "object") return [];
     const finding = item as Record<string, unknown>;
     const ids = Array.isArray(finding.source_ids) ? finding.source_ids.filter((id): id is string => typeof id === "string").slice(0, 6) : [];
-    return [{ title: clean(finding.title, 100), detail: clean(finding.detail, 500), source_ids: ids }];
+    return [{ title: clean(finding.title, 100), detail: clean(finding.detail, 500), source_ids: ids, tag: clean(finding.tag, MAX_PAIN_TAG_LENGTH) }];
   });
   const report = clean(input.report, MAX_PAIN_REPORT_LENGTH) || clean(input.summary, MAX_PAIN_REPORT_LENGTH);
   const tags = normalizeTags(input.tags).length ? normalizeTags(input.tags) : normalizeTags(findings.map((finding) => finding.title));
-  return { tags, report, findings, limitations: clean(input.limitations, 400) };
+  return { tags, report, findings, limitations: clean(input.limitations, 400), proposals: normalizeProposals(input.proposals) };
 }
 
 /** Extrae el primer objeto JSON válido de un texto (con o sin Markdown) y lo normaliza para dolores. */
@@ -103,8 +118,24 @@ export function resolveFindings(findings: PainModelOutput["findings"], sourcesBy
       const source = sourcesById.get(id);
       return source ? [{ ...source, text: source.text.slice(0, 360) }] : [];
     });
-    return citations.length ? [{ title: finding.title, detail: finding.detail, sources: citations }] : [];
+    return citations.length ? [{ title: finding.title, detail: finding.detail, sources: citations, ...(finding.tag ? { tag: finding.tag } : {}) }] : [];
   });
+}
+
+const stems = (value: string) => new Set((value.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").match(/[a-z0-9]{4,}/g) ?? []).map((word) => word.slice(0, 5)));
+
+/**
+ * Hallazgos que respaldan una etiqueta de dolor.
+ * Usa `finding.tag` si el análisis lo trae; en análisis anteriores cae a coincidencia de palabras y luego a la misma posición.
+ */
+export function findingsForTag(findings: AnalysisFinding[], tags: string[], tag: string): AnalysisFinding[] {
+  const key = tag.trim().toLowerCase();
+  if (findings.some((finding) => finding.tag)) return findings.filter((finding) => finding.tag?.trim().toLowerCase() === key);
+  const tagStems = stems(tag);
+  const matched = findings.filter((finding) => [...stems(`${finding.title} ${finding.detail}`)].some((stem) => tagStems.has(stem)));
+  if (matched.length) return matched;
+  const index = tags.findIndex((item) => item.trim().toLowerCase() === key);
+  return index >= 0 && findings[index] ? [findings[index]] : [];
 }
 
 /** Una respuesta de dolores es útil si trae al menos una etiqueta o un reporte con evidencia citada. */

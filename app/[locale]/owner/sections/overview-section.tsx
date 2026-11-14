@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { RefreshCw } from "lucide-react";
 import { useTranslations } from "next-intl";
 import {
-  cardClass, errorBox, ghostButton, isUnauthorized, mutedText, ownerFetch, sectionHead, stateBox, useOwnerFormat,
+  cardClass, errorBox, ghostButton, isUnauthorized, mutedText, ownerFetch, sectionHead, sectionTitle, stateBox, titleDot, useOwnerFormat,
 } from "../ui";
 import { DetailDialog } from "./overview-detail-dialog";
 
@@ -84,7 +84,7 @@ export default function OverviewSection({ onUnauthorized, onOpenAudit }: { onUna
   return (
     <section aria-label={t("title")}>
       <div className={sectionHead}>
-        <h1 className="m-0 text-xl font-semibold tracking-tight">{t("title")}</h1>
+        <h1 className={sectionTitle}>{t("title")}<span className={titleDot} aria-hidden="true">.</span></h1>
         <button className={ghostButton} type="button" onClick={() => void load()}><RefreshCw size={15} aria-hidden="true" /> {common("refresh")}</button>
       </div>
       {error && <p className={errorBox} role="alert">{error}</p>}
@@ -93,7 +93,7 @@ export default function OverviewSection({ onUnauthorized, onOpenAudit }: { onUna
         <>
           <dl className="m-0 grid grid-cols-[repeat(auto-fill,minmax(190px,1fr))] gap-3">
             {cards.map(([label, value]) => (
-              <div className={cardClass} key={label}><dt className="text-[11px] font-semibold text-(color:--muted)">{label}</dt><dd className="m-0 mt-1.5 text-[26px] font-semibold tracking-tight tabular-nums">{value}</dd></div>
+              <div className={cardClass} key={label}><dt className="text-[11px] font-semibold text-(color:--muted)">{label}</dt><dd className="m-0 mt-1.5 text-[28px] font-[680] tracking-[-0.03em] tabular-nums">{value}</dd></div>
             ))}
           </dl>
           <div className={`${cardClass} mt-3.5`}>

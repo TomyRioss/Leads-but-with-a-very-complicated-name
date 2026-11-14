@@ -1,0 +1,196 @@
+.ls-shell { display: grid; grid-template-columns: minmax(0, 1fr) minmax(320px, 400px); min-height: 100dvh; background: var(--ash-100); color: var(--ink); }
+.ls-main { padding: 28px clamp(16px, 3vw, 36px); display: flex; flex-direction: column; gap: 20px; min-width: 0; }
+.ls-chat-slot { border-left: 1px solid var(--line); background: var(--ash-50); position: sticky; top: 0; height: 100dvh; min-width: 0; }
+.ls-chat-body { height: 100%; min-height: 0; }
+.ls-chat-body > .ls-chat { height: 100%; max-height: none; border: 0; border-radius: 0; }
+.ls-header { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 12px; }
+.ls-header h1 { margin: 0; color: var(--ink); font-size: clamp(1.75rem, 1.35rem + 1.3vw, 2.375rem); font-weight: 650; letter-spacing: -0.035em; line-height: 1.04; }
+.ls-dot { color: var(--lime-dark); }
+.ls-header .ls-muted { margin-top: 6px; font-size: 14px; }
+.ls-muted { color: var(--muted); font-size: 13px; margin: 0; font-weight: 400; }
+.ls-controls { display: flex; gap: 8px; align-items: center; }
+.ls-shell .ls-icon-button, .ls-shell .ls-button { width: auto; gap: 6px; }
+.ls-shell .ls-icon-button { width: 44px; padding: 0; }
+.ls-icon-button:focus-visible, .ls-button:focus-visible { outline: 3px solid var(--ash-950); outline-offset: 1px; }
+.ls-state { display: flex; align-items: center; gap: 10px; padding: 24px; color: var(--muted); font-size: 14px; }
+.ls-state-error { color: var(--ink); background: var(--paper); border: 1px solid var(--line); border-radius: 12px; flex-wrap: wrap; }
+.ls-spin { animation: ls-spin 1s linear infinite; }
+@keyframes ls-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .ls-spin { animation: none; } }
+.ls-empty { background: var(--paper); border: 1px solid var(--line); border-radius: 14px; padding: 28px; max-width: 560px; display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
+.ls-empty > svg:first-child { box-sizing: content-box; padding: 9px; border-radius: 10px; background: var(--lime); color: var(--ash-950); }
+.ls-empty h2 { margin: 6px 0 0; color: var(--ink); font-size: 19px; font-weight: 650; letter-spacing: -0.02em; }
+.ls-empty p { margin: 0; color: var(--ash-700); font-size: 14px; line-height: 1.55; }
+.ls-kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.ls-kpi { background: var(--paper); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; display: grid; grid-template-columns: auto 1fr; gap: 4px 8px; align-items: center; }
+.ls-kpi-icon { color: var(--ash-600); }
+.ls-kpi-label { font-size: 12px; color: var(--muted); }
+.ls-kpi-value { grid-column: 1 / -1; justify-self: start; margin-top: 4px; color: var(--ink); font-size: 30px; font-weight: 650; letter-spacing: -0.035em; line-height: 1; font-variant-numeric: tabular-nums; text-decoration: underline; text-decoration-color: var(--lime-dark); text-decoration-thickness: 0.09em; text-decoration-skip-ink: none; text-underline-offset: 0.14em; }
+.ls-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px; }
+.ls-card { background: var(--paper); border: 1px solid var(--line); border-radius: 12px; padding: 16px; min-width: 0; }
+.ls-card-title { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin: 0 0 14px; color: var(--ink); font-size: 15px; font-weight: 650; letter-spacing: -0.015em; }
+.ls-bars { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.ls-bar-row { display: grid; grid-template-columns: minmax(70px, 110px) 1fr 32px; gap: 8px; align-items: center; font-size: 12px; }
+.ls-bar-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ash-700); }
+.ls-bar-track { height: 8px; background: var(--ash-150); border-radius: 4px; overflow: hidden; }
+.ls-bar-fill { display: block; height: 100%; background: var(--lime-dark); border-radius: 4px; }
+.ls-bar-value, .ls-column-label { font-variant-numeric: tabular-nums; color: var(--ash-700); }
+.ls-bar-value { text-align: right; }
+.ls-columns { list-style: none; margin: 0; padding: 0; display: flex; gap: 6px; height: 140px; align-items: stretch; }
+.ls-columns-compact { gap: 2px; }
+.ls-column { flex: 1; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.ls-column-track { flex: 1; display: flex; align-items: flex-end; background: var(--ash-150); border-radius: 4px; overflow: hidden; }
+.ls-column-fill { display: block; width: 100%; background: var(--lime-dark); }
+.ls-column-label { min-height: 14px; font-size: 10px; line-height: 14px; text-align: center; white-space: nowrap; }
+.ls-columns-compact .ls-column-label { display: flex; justify-content: center; width: 100%; overflow: visible; }
+.ls-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.ls-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.ls-list li { padding: 10px 0; border-top: 1px solid var(--line); display: flex; flex-direction: column; gap: 3px; font-size: 13px; }
+.ls-list li:first-child { border-top: 0; padding-top: 0; }
+.ls-list-head { display: flex; justify-content: space-between; gap: 8px; align-items: center; }
+.ls-chip { font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 999px; background: var(--ash-150); color: var(--ash-700); white-space: nowrap; }
+/* Estado con intención: el lime marca avance (respondió → reunión → ganado); perdido baja a ash oscuro. */
+.ls-chip[data-status="contacted"] { background: var(--paper); color: var(--ash-800); box-shadow: inset 0 0 0 1px var(--line); }
+.ls-chip[data-status="replied"], .ls-chip[data-status="meeting"] { background: color-mix(in srgb, var(--lime) 38%, var(--paper)); color: var(--ash-950); box-shadow: inset 0 0 0 1px var(--lime-dark); }
+.ls-chip[data-status="won"] { background: var(--lime); color: var(--ash-950); box-shadow: inset 0 0 0 1px var(--lime-dark); }
+.ls-chip[data-status="lost"] { background: var(--ash-800); color: var(--ash-50); }
+.ls-state .brand-mark-loading { font-size: 22px; color: var(--ink); }
+.ls-loading-mark { font-size: 16px; color: var(--ink); }
+.ls-message { margin: 2px 0 0; color: var(--ash-700); display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.ls-leads-toolbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 12px; }
+.ls-leads-search { display: flex; align-items: center; gap: 8px; flex: 1 1 200px; min-height: 40px; padding: 0 12px; border: 1px solid var(--ash-300); border-radius: 999px; background: var(--paper); color: var(--ash-600); }
+.ls-leads-search input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; color: var(--ink); font: inherit; font-size: 13px; }
+.ls-leads-search:focus-within { border-color: var(--ash-700); }
+.ls-leads-filters { flex-wrap: wrap; }
+.ls-leads-loading { display: flex; align-items: center; gap: 8px; }
+.ls-leads { list-style: none; margin: 0; padding: 0; }
+.ls-leads > li { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 10px; align-items: center; padding: 10px 0; border-top: 1px solid var(--line); font-size: 13px; }
+.ls-leads > li { padding: 7px 0; }
+.ls-leads > li:first-child { border-top: 0; padding-top: 0; }
+.ls-leads-actions .ls-button { min-height: 34px; padding: 0 12px; font-size: 13px; }
+.ls-leads-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.ls-leads-info strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ls-leads-pager { display: flex; align-items: center; justify-content: center; gap: 12px; margin-top: 12px; }
+@media (max-width: 640px) { .ls-leads > li { grid-template-columns: minmax(0, 1fr) auto; } }
+.ls-report p, .ls-report li { font-size: 14px; line-height: 1.55; color: var(--ash-800); }
+.ls-report h3 { font-size: 13px; margin: 12px 0 4px; }
+.ls-report ul { margin: 0; padding-left: 18px; }
+@media (max-width: 1024px) {
+  .ls-shell { grid-template-columns: 1fr; }
+  .ls-chat-slot { position: static; height: auto; min-height: 480px; border-left: 0; border-top: 1px solid var(--line); }
+  /* En móvil/tablet el chat es una pestaña propia: no se apila debajo del contenido. */
+  .ls-shell:not(.is-chat-tab) .ls-chat-slot { display: none; }
+  .ls-shell.is-chat-tab .ls-panels { display: none; }
+  .ls-shell.is-chat-tab .ls-main { padding-bottom: 0; }
+  .ls-shell.is-chat-tab .ls-chat-slot { height: calc(100dvh - 160px); min-height: 480px; border-top: 0; }
+}
+@media (max-width: 640px) { .ls-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+/* Formulario "Cargar contacto" (diálogo sobre .referral-dialog). */
+.ls-contact-dialog { width: min(520px, calc(100vw - 32px)); }
+.ls-contact-lead { color: var(--ink); font-weight: 650; }
+.ls-contact-channels { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; padding: 0; border: 0; }
+.ls-contact-channels legend { margin-bottom: 6px; padding: 0; }
+.ls-contact-channel { position: relative; display: inline-flex; min-height: 40px; align-items: center; gap: 6px; padding: 0 12px; border: 1px solid var(--line); border-radius: 999px; background: var(--ash-50); color: var(--ash-800); font-size: 13px; font-weight: 600; cursor: pointer; transition: background-color 140ms ease, border-color 140ms ease; }
+.ls-contact-channel input { position: absolute; inset: 0; margin: 0; opacity: 0; cursor: pointer; }
+.ls-contact-channel:hover { border-color: var(--ash-400); }
+.ls-contact-channel.is-selected { border-color: var(--lime-dark); background: var(--lime); color: var(--ash-950); }
+.ls-contact-channel:has(input:focus-visible) { box-shadow: 0 0 0 3px color-mix(in srgb, var(--lime) 45%, transparent); border-color: var(--ink); }
+.ls-contact-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.ls-contact-field { display: grid; gap: 6px; }
+.ls-contact-field input, .ls-contact-field select, .ls-contact-field textarea { width: 100%; min-height: 44px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 7px; background: var(--ash-50); color: var(--ink); font: inherit; font-size: 14px; }
+.ls-contact-field textarea { line-height: 1.45; resize: vertical; }
+.ls-contact-field input:focus-visible, .ls-contact-field select:focus-visible, .ls-contact-field textarea:focus-visible { outline: 0; box-shadow: 0 0 0 3px color-mix(in srgb, var(--lime) 45%, transparent); }
+.ls-contact-actions { display: flex; justify-content: flex-end; gap: 8px; }
+.ls-contact-submit { display: inline-flex; min-height: 44px; align-items: center; gap: 6px; }
+@media (max-width: 560px) {
+  .ls-contact-dialog { width: 100vw; max-width: 100vw; height: 100dvh; max-height: 100dvh; border: 0; border-radius: 0; }
+  .ls-contact-row { grid-template-columns: 1fr; }
+  .ls-contact-actions { position: sticky; bottom: -20px; margin: 0 -20px -20px; padding: 12px 20px; border-top: 1px solid var(--line); background: var(--paper); }
+  .ls-contact-actions > * { flex: 1; }
+}
+@media (prefers-reduced-motion: reduce) { .ls-contact-channel { transition: none; } }
+
+/* Pestañas (tablist) con el estilo segmentado de marca, como el selector 7/30/90 días. */
+.ls-tabs { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
+.ls-tabs::-webkit-scrollbar { display: none; }
+.ls-tab { display: grid; flex: none; place-items: center; min-height: 40px; padding: 0 14px; border: 0; border-radius: 6px; background: transparent; color: var(--ash-700); font: inherit; font-size: 13px; font-weight: 560; white-space: nowrap; cursor: pointer; transition: background-color 120ms ease, color 120ms ease; }
+.ls-tab:hover { background: var(--ash-100); color: var(--ink); }
+.ls-tab.is-selected { background: var(--lime); color: var(--ink); font-weight: 700; box-shadow: inset 0 0 0 1px var(--lime-dark); }
+.ls-tab:focus-visible { outline: 3px solid var(--ash-950); outline-offset: 1px; }
+.ls-tab-mobile { display: none; }
+@media (max-width: 1024px) { .ls-tab-mobile { display: grid; } }
+@media (prefers-reduced-motion: reduce) { .ls-tab { transition: none; } }
+.ls-panel { display: flex; flex-direction: column; gap: 20px; min-width: 0; }
+.ls-panel[hidden] { display: none; }
+.ls-empty-action { align-self: flex-start; margin-top: 4px; }
+@media (max-width: 640px) { .ls-tabs { width: 100%; } }
+/* Si el estado inicial del chat no entra en alto, que no se recorte arriba al centrarlo. */
+.ls-chat-slot .ls-chat__log--empty { justify-content: safe center; }
+
+/* Contactos registrados: todos los datos, acciones compactas y selección múltiple. */
+.ls-contacts { display: flex; flex-direction: column; gap: 8px; }
+.ls-contacts-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; min-height: 44px; padding: 4px 4px 4px 2px; border-radius: 10px; font-size: 13px; }
+.ls-contacts-bar.has-selection, .ls-contacts-bar[role="alertdialog"] { padding: 6px 8px 6px 10px; border: 1px solid var(--line); background: var(--ash-50); }
+.ls-contacts-bar-text { color: var(--ink); font-weight: 600; }
+.ls-contacts-bar-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.ls-contacts-bar-actions .ls-button, .ls-contacts-delete { min-height: 36px; padding: 0 12px; font-size: 13px; }
+.ls-contacts-all { display: inline-flex; align-items: center; gap: 8px; min-height: 36px; color: var(--ash-700); font-weight: 600; cursor: pointer; }
+.ls-contacts-all input, .ls-contact-item-check { width: 16px; height: 16px; margin: 0; accent-color: var(--ash-800); cursor: pointer; }
+.ls-contact-items { display: flex; flex-direction: column; margin: 0; padding: 0; list-style: none; }
+.ls-contact-item { display: grid; grid-template-columns: 16px minmax(0, 1fr); gap: 10px; padding: 10px 0; border-top: 1px solid var(--line); font-size: 13px; }
+.ls-contact-item:first-child { border-top: 0; }
+.ls-contact-item.is-selected { margin: 0 -8px; padding-inline: 8px; border-radius: 8px; background: var(--ash-50); }
+.ls-contact-item-check { margin-top: 4px; }
+.ls-contact-item-body { display: flex; min-width: 0; flex-direction: column; gap: 3px; }
+.ls-contact-item-head { display: flex; align-items: center; gap: 8px; }
+.ls-contact-item-channel { display: inline-flex; min-width: 0; flex: 1; align-items: center; gap: 6px; overflow: hidden; color: var(--ink); font-weight: 650; text-overflow: ellipsis; white-space: nowrap; }
+.ls-contact-item-icons { display: inline-flex; flex: none; gap: 2px; }
+.ls-icon-action { position: relative; display: grid; width: 32px; height: 32px; place-items: center; padding: 0; border: 0; border-radius: 8px; background: transparent; color: var(--ash-600); cursor: pointer; }
+.ls-icon-action::after { content: ""; position: absolute; inset: -6px -2px; }
+.ls-icon-action:hover { background: var(--ash-150); color: var(--ink); }
+.ls-icon-action:focus-visible, .ls-text-action:focus-visible { outline: 3px solid var(--ash-950); outline-offset: 1px; }
+.ls-contact-item-text { margin: 2px 0 0; color: var(--ash-800); line-height: 1.5; white-space: pre-wrap; overflow-wrap: anywhere; }
+.ls-contact-item-notes { margin: 0; padding: 6px 10px; border-radius: 8px; background: var(--ash-100); color: var(--ash-700); line-height: 1.45; white-space: pre-wrap; overflow-wrap: anywhere; }
+.ls-contact-item-notes span { color: var(--ink); font-weight: 600; }
+.ls-contact-item-confirm { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; margin-top: 4px; padding: 6px 10px; border-radius: 8px; background: var(--ash-150); color: var(--ink); font-weight: 600; }
+.ls-text-action { display: inline-flex; min-height: 32px; align-items: center; gap: 4px; padding: 0 4px; border: 0; background: none; color: var(--ash-800); font: inherit; font-weight: 650; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+.ls-text-action.is-danger { color: var(--ink); }
+.ls-contact-item-error { margin: 0; color: var(--ink); font-size: 12px; }
+
+/* Historial por lead en "Mis leads". */
+.ls-leads-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; }
+.ls-history-chevron { transition: transform 140ms ease; }
+.ls-history-toggle.is-open .ls-history-chevron { transform: rotate(180deg); }
+.ls-leads > li > .ls-history { grid-column: 1 / -1; margin-top: 4px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--paper); }
+@media (max-width: 640px) { .ls-leads-actions { grid-column: 1 / -1; justify-content: stretch; } .ls-leads-actions > * { flex: 1; justify-content: center; } }
+@media (prefers-reduced-motion: reduce) { .ls-history-chevron { transition: none; } }
+
+/* "Modificar con IA": la IA solo rellena; los campos que cambió quedan resaltados hasta guardar. */
+.ls-ai-fill { display: grid; gap: 6px; padding: 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--ash-50); }
+.ls-ai-fill .referral-label { display: inline-flex; align-items: center; gap: 6px; }
+.ls-ai-fill-row { display: flex; gap: 8px; }
+.ls-ai-fill-row input { flex: 1; min-width: 0; min-height: 44px; padding: 0 12px; border: 1px solid var(--line); border-radius: 7px; background: var(--paper); color: var(--ink); font: inherit; font-size: 14px; }
+.ls-ai-fill-row input:focus-visible { outline: 0; box-shadow: 0 0 0 3px color-mix(in srgb, var(--lime) 45%, transparent); }
+.ls-ai-fill-button { flex: none; gap: 6px; min-height: 44px; }
+.ls-ai-fill-status { margin: 0; color: var(--muted); font-size: 12px; }
+.ls-contact-field.is-ai-changed input, .ls-contact-field.is-ai-changed select, .ls-contact-field.is-ai-changed textarea { border-color: var(--lime-dark); background: color-mix(in srgb, var(--lime) 22%, var(--paper)); }
+.ls-contact-channels.is-ai-changed .ls-contact-channel.is-selected { box-shadow: 0 0 0 3px color-mix(in srgb, var(--lime) 55%, transparent); }
+@media (max-width: 480px) { .ls-ai-fill-row { flex-direction: column; } }
+
+/* Panel de Leadtita colapsable (solo desktop; en móvil es una pestaña). */
+/* Solo el ícono: sin caja; fondo sutil únicamente en hover/foco. Área táctil de 44px. */
+.ls-chat-toggle { position: absolute; z-index: 2; top: 12px; right: 12px; display: grid; width: 44px; height: 44px; place-items: center; border: 0; border-radius: 10px; background: transparent; color: var(--muted); cursor: pointer; transition: background-color 160ms ease, color 160ms ease; }
+.ls-chat-toggle:hover, .ls-chat-toggle:focus-visible { background: var(--ash-150); color: var(--ink); }
+.ls-chat-toggle:focus-visible { outline: 3px solid var(--ash-950); outline-offset: 1px; }
+@media (prefers-reduced-motion: reduce) { .ls-chat-toggle { transition: none; } }
+.ls-chat-slot .ls-chat__header { padding-right: 64px; }
+.ls-chat-rail-mark { font-size: 20px; }
+.ls-chat-rail-label { color: var(--ash-700); font-size: 12px; font-weight: 650; letter-spacing: 0.02em; writing-mode: vertical-rl; }
+@media (min-width: 1025px) {
+  .ls-shell.is-chat-collapsed { grid-template-columns: minmax(0, 1fr) 64px; }
+  .ls-shell.is-chat-collapsed .ls-chat-body { display: none; }
+  .ls-shell.is-chat-collapsed .ls-chat-toggle { position: static; display: flex; width: 100%; height: 100%; flex-direction: column; align-items: center; justify-content: flex-start; gap: 16px; padding: 18px 0; border: 0; border-radius: 0; background: var(--ash-50); }
+  .ls-shell.is-chat-collapsed .ls-chat-toggle:hover { background: var(--ash-100); }
+}
+@media (max-width: 1024px) { .ls-chat-toggle { display: none; } .ls-chat-slot .ls-chat__header { padding-right: 20px; } }

@@ -18,7 +18,14 @@ export async function generateMetadata({ params }: { params: Promise<{ locale: s
   const { locale } = await params;
   if (!hasLocale(routing.locales, locale)) return {};
   const t = await getTranslations({ locale, namespace: "Meta" });
-  return { title: t("title"), description: t("description") };
+  return {
+    metadataBase: new URL(process.env.APP_URL?.trim() || "https://leadta.app"),
+    title: t("title"),
+    description: t("description"),
+    applicationName: "Leadta",
+    openGraph: { type: "website", siteName: "Leadta", locale: locale === "es" ? "es_AR" : "en_US", title: t("title"), description: t("description") },
+    twitter: { card: "summary", title: t("title"), description: t("description") },
+  };
 }
 
 export function generateStaticParams() {

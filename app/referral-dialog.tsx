@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Check, Copy, Gift, LoaderCircle, Mail, MessageCircle, X } from "lucide-react";
+import "./auth-steps.css";
 import "./referral-dialog.css";
 
 type Summary = { code: string; link: string; invited: number; rewarded: number; creditsEarned: number };
@@ -60,7 +61,7 @@ export function ReferralDialog({ open, onClose }: { open: boolean; onClose: () =
       <div className="referral-body">
         <header className="referral-head">
           <span className="referral-icon" aria-hidden="true"><Gift size={20} /></span>
-          <h2 id="referral-title">{t("title")}</h2>
+          <h2 id="referral-title">{t("title")}<span className="brand-dot" aria-hidden="true">.</span></h2>
           <button type="button" className="referral-close" onClick={onClose} aria-label={t("close")}><X size={18} aria-hidden="true" /></button>
         </header>
         <p className="referral-intro">{t("intro", { referrer: 50, referred: 25 })}</p>

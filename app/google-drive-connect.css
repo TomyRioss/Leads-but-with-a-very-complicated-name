@@ -1,0 +1,51 @@
+/* Tarjeta de Google Drive (página /integraciones y "+" de Leadtita). Tokens de AGENTS.md. */
+.gdrive-card { display: grid; gap: 16px; max-width: 640px; padding: 20px; border: 1px solid var(--line); border-radius: 14px; background: var(--paper); color: var(--ink); }
+.gdrive-card-compact { gap: 12px; padding: 14px; border-radius: 12px; }
+.gdrive-head { display: flex; align-items: center; gap: 12px; }
+.gdrive-logo { display: inline-grid; width: 40px; height: 40px; flex: none; place-items: center; border-radius: 10px; background: var(--ash-950); color: var(--lime); }
+.gdrive-head-text { min-width: 0; flex: 1; }
+.gdrive-head h2 { margin: 0; font-size: 17px; font-weight: 680; letter-spacing: -0.02em; }
+.gdrive-head p { margin: 2px 0 0; overflow-wrap: anywhere; color: var(--muted); font-size: 13px; line-height: 1.45; }
+.gdrive-badge { flex: none; padding: 3px 9px; border-radius: 999px; background: var(--lime); color: var(--ash-950); font-size: 11px; font-weight: 700; }
+
+.gdrive-actions { display: grid; justify-items: start; gap: 8px; }
+.gdrive-primary { display: inline-flex; min-height: 44px; align-items: center; gap: 8px; padding: 0 16px; border: 0; border-radius: 10px; background: var(--lime); color: var(--ash-950); font: inherit; font-size: 14px; font-weight: 650; text-decoration: none; cursor: pointer; transition: background-color 150ms ease; }
+.gdrive-primary:hover:not(:disabled) { background: var(--lime-dark); }
+.gdrive-primary:disabled { cursor: not-allowed; opacity: 0.55; }
+.gdrive-secondary, .gdrive-danger { display: inline-flex; min-height: 40px; align-items: center; padding: 0 14px; border: 1px solid var(--ash-300); border-radius: 10px; background: var(--paper); color: var(--ink); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
+.gdrive-danger { border-color: var(--ash-950); background: var(--ash-950); color: var(--paper); }
+.gdrive-danger:hover:not(:disabled) { background: var(--ash-800); }
+.gdrive-secondary:hover:not(:disabled) { background: var(--ash-50); }
+.gdrive-hint { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.45; }
+
+.gdrive-files { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.gdrive-files li { display: flex; min-height: 44px; align-items: center; gap: 10px; padding: 0 6px 0 12px; border: 1px solid var(--ash-150); border-radius: 10px; background: var(--ash-50); font-size: 13px; }
+.gdrive-files li svg { flex: none; color: var(--ash-700); }
+.gdrive-files a, .gdrive-files span { min-width: 0; flex: 1; overflow: hidden; color: var(--ink); text-overflow: ellipsis; white-space: nowrap; }
+.gdrive-files a:hover { text-decoration: underline; text-decoration-color: var(--lime-dark); text-underline-offset: 3px; }
+.gdrive-icon-button { display: inline-grid; width: 32px; height: 32px; flex: none; place-items: center; border: 0; border-radius: 8px; background: transparent; color: var(--ash-700); cursor: pointer; }
+.gdrive-icon-button:hover:not(:disabled) { background: var(--ash-150); color: var(--ink); }
+
+.gdrive-link { display: inline-flex; align-items: center; gap: 6px; padding: 4px 0; border: 0; background: transparent; color: var(--ash-700); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
+.gdrive-link:hover { color: var(--ink); text-decoration: underline; text-underline-offset: 3px; }
+.gdrive-disconnect { justify-self: start; }
+.gdrive-confirm { display: grid; gap: 10px; padding: 12px 14px; border: 1px solid var(--ash-950); border-radius: 10px; }
+.gdrive-confirm p { margin: 0; font-size: 13px; line-height: 1.45; }
+.gdrive-confirm div { display: flex; flex-wrap: wrap; gap: 8px; }
+
+.gdrive-state { display: flex; align-items: center; gap: 8px; margin: 0; color: var(--muted); font-size: 13px; line-height: 1.45; }
+.gdrive-error { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 0; padding: 10px 12px; border: 1px solid var(--ash-400); border-radius: 10px; background: var(--ash-50); color: var(--ash-900); font-size: 13px; }
+.gdrive-spin { animation: gdrive-spin 0.9s linear infinite; }
+@keyframes gdrive-spin { to { transform: rotate(360deg); } }
+
+.gdrive-card :is(a, button):focus-visible { outline: 2px solid var(--ash-950); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { .gdrive-spin { animation: none; } }
+
+/* Página /integraciones */
+.integrations-main { min-width: 0; flex: 1; padding: clamp(24px, 4vw, 48px) clamp(16px, 4vw, 48px); }
+.integrations-main h1 { margin: 0; font-size: clamp(26px, 3.4vw, 36px); font-weight: 680; letter-spacing: -0.03em; line-height: 1.1; }
+.integrations-main h1 .integrations-dot { color: var(--lime-dark); }
+.integrations-lede { max-width: 56ch; margin: 8px 0 24px; color: var(--muted); font-size: 15px; line-height: 1.5; }
+.integrations-notice { max-width: 640px; margin: 0 0 16px; padding: 10px 12px; border-radius: 10px; background: var(--lime); color: var(--ash-950); font-size: 13px; font-weight: 600; }
+.integrations-notice[data-tone="error"] { border: 1px solid var(--ash-400); background: var(--ash-50); color: var(--ash-900); font-weight: 500; }
+.integrations-grid { display: grid; max-width: 640px; gap: 16px; }

@@ -2,11 +2,10 @@ import { connection, NextResponse } from "next/server";
 import writeExcelFile from "write-excel-file/node";
 import type { SheetData } from "write-excel-file/node";
 import { getCurrentUser, withRefreshedSession } from "@/lib/server/auth";
-import { isPocketBaseConfigured, pocketBaseFetch } from "@/lib/server/pocketbase";
+import { isPocketBaseConfigured } from "@/lib/server/pocketbase";
 import { uiError } from "@/lib/server/public-error";
-import type { Lead } from "@/lib/types";
-import { getLeadColumnValue, getLeadColumns } from "@/lib/types";
-import { errorTranslator, getTranslator, resolveLocale } from "@/lib/server/locale";
+import { errorTranslator } from "@/lib/server/locale";
+import { loadExportTable } from "@/lib/server/export-rows";
 
 export async function GET(request: Request) {
   const t = errorTranslator(request);
@@ -28,28 +27,12 @@ export async function GET(request: Request) {
   }
 
   try {
-    const ownedFilter = encodeURIComponent(`id = "${batchId}" && user = "${session.user.id}"`);
-    const ownedBatch = await pocketBaseFetch<{ items: { id: string }[] }>(
-      `/api/collections/lead_batches/records?perPage=1&filter=${ownedFilter}`,
-    );
-    if (!ownedBatch.items.length) return NextResponse.json({ error: t("batchNotFound") }, { status: 404 });
-
-    const leadsFilter = encodeURIComponent(`batch = "${batchId}"`);
-    const result = await pocketBaseFetch<{ items: Lead[] }>(
-      `/api/collections/leads/records?perPage=100&sort=created_at&filter=${leadsFilter}`,
-    );
-    const columnT = getTranslator(resolveLocale(request), "Search");
-    const columnLabel = (key: string, fallback: string) => {
-      const match = /^(review|rating)_([1-5])$/.exec(key);
-      if (match) return columnT(`columns.${match[1]}`, { number: match[2] });
-      return /^(name|maps_url|address|phone|email|review_count|average_rating|website|category|pain_points|enrichment)$/.test(key) ? columnT(`columns.${key}`) : fallback;
-    };
-    const columns = getLeadColumns(result.items, [], process.env.ENVIROMENT?.trim().toLowerCase() === "dev", columnLabel);
+    const table = await loadExportTable(request, session.user.id, batchId);
+    if (!table) return NextResponse.json({ error: t("batchNotFound") }, { status: 404 });
+    const { columns, rows } = table;
     const sheetData: SheetData = [
       columns.map((column) => ({ value: column.label, fontWeight: "bold" as const })),
-      ...result.items.map((lead) => columns.map((column) => {
-        return getLeadColumnValue(lead, column.key, columnT("ownerResponse"));
-      })),
+      ...rows,
     ];
     const workbook = await writeExcelFile(sheetData, {
       sheet: "Leads",

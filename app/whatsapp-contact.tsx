@@ -1,8 +1,8 @@
 "use client";
 
 import { ExternalLink, MessageCircle, X } from "lucide-react";
-import { useEffect, useId, useRef, useState } from "react";
-import { createPortal } from "react-dom";
+import { useId, useRef, useState } from "react";
+import { Popover, usePopover } from "@/app/ui/popover";
 import { useTranslations } from "next-intl";
 
 function getWhatsAppNumber(phone: string) {
@@ -20,61 +20,13 @@ type WhatsAppContactProps = { phone: string };
 
 export default function WhatsAppContact({ phone }: WhatsAppContactProps) {
   const t = useTranslations("WhatsApp");
-  const [open, setOpen] = useState(false);
   const [message, setMessage] = useState(() => t("defaultMessage"));
-  const [position, setPosition] = useState<{ left: number; top: number } | null>(null);
-  const triggerRef = useRef<HTMLButtonElement>(null);
-  const popoverRef = useRef<HTMLDivElement>(null);
+  const dialog = usePopover();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const popoverId = useId();
   const number = getWhatsAppNumber(phone);
 
-  useEffect(() => {
-    if (!open) return;
-
-    const updatePosition = () => {
-      const trigger = triggerRef.current;
-      if (!trigger) return;
-      const rect = trigger.getBoundingClientRect();
-      const width = Math.min(336, window.innerWidth - 24);
-      const left = Math.max(12, Math.min(rect.left, window.innerWidth - width - 12));
-      const popoverHeight = popoverRef.current?.offsetHeight ?? 320;
-      const top = rect.bottom + popoverHeight + 10 <= window.innerHeight
-        ? rect.bottom + 8
-        : Math.max(12, rect.top - popoverHeight - 8);
-      setPosition((current) => current?.left === left && current.top === top ? current : { left, top });
-    };
-
-    const closeOnOutsidePointer = (event: PointerEvent) => {
-      const target = event.target;
-      if (!(target instanceof Node)) return;
-      if (triggerRef.current?.contains(target) || popoverRef.current?.contains(target)) return;
-      setOpen(false);
-    };
-
-    const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key !== "Escape") return;
-      setOpen(false);
-      triggerRef.current?.focus();
-    };
-
-    updatePosition();
-    const focusFrame = window.requestAnimationFrame(() => textareaRef.current?.focus());
-    document.addEventListener("pointerdown", closeOnOutsidePointer);
-    document.addEventListener("keydown", closeOnEscape);
-    window.addEventListener("resize", updatePosition);
-    window.addEventListener("scroll", updatePosition, true);
-
-    return () => {
-      window.cancelAnimationFrame(focusFrame);
-      document.removeEventListener("pointerdown", closeOnOutsidePointer);
-      document.removeEventListener("keydown", closeOnEscape);
-      window.removeEventListener("resize", updatePosition);
-      window.removeEventListener("scroll", updatePosition, true);
-    };
-  }, [open]);
-
-  const close = () => setOpen(false);
+  const close = dialog.close;
   const encodedMessage = message.trim();
   const directUrl = number ? `https://wa.me/${number}` : undefined;
   const messageUrl = number && encodedMessage
@@ -85,29 +37,17 @@ export default function WhatsAppContact({ phone }: WhatsAppContactProps) {
 
   return (
     <>
-      <button
-        ref={triggerRef}
-        className="whatsapp-contact-trigger"
-        type="button"
-        aria-haspopup="dialog"
-        aria-expanded={open}
-        aria-controls={popoverId}
-        onClick={() => {
-          setPosition(null);
-          setOpen((current) => !current);
-        }}
-      >
+      <button {...dialog.triggerProps} className="whatsapp-contact-trigger" type="button" aria-haspopup="dialog">
         {phone}
       </button>
-      {open && typeof document !== "undefined" && createPortal(
-        <div
-          ref={popoverRef}
-          className="whatsapp-contact-popover"
-          id={popoverId}
-          role="dialog"
-          aria-labelledby={`${popoverId}-title`}
-          style={{ left: position?.left ?? 8, top: position?.top ?? 8, visibility: position ? "visible" : "hidden" }}
-        >
+      <Popover
+        {...dialog.popoverProps}
+        role="dialog"
+        placement="bottom-start"
+        initialFocus={textareaRef}
+        className="whatsapp-contact-popover"
+        aria-labelledby={`${popoverId}-title`}
+      >
           <div className="whatsapp-contact-heading">
             <div>
               <h2 id={`${popoverId}-title`}>{t("title")}</h2>
@@ -155,9 +95,7 @@ export default function WhatsAppContact({ phone }: WhatsAppContactProps) {
             )}
           </div>
           {!number && <p className="whatsapp-contact-hint" role="status">{t("invalidNumber")}</p>}
-        </div>,
-        document.body,
-      )}
+      </Popover>
     </>
   );
 }

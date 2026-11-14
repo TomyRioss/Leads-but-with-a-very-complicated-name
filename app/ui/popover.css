@@ -1,0 +1,28 @@
+/* Structural only: each consumer class keeps its brand surface (border, radius, background, shadow, padding). */
+.ui-popover {
+  position: fixed;
+  inset: auto;
+  z-index: 1000;
+  box-sizing: border-box;
+  max-width: calc(100vw - 16px);
+  max-height: calc(100dvh - 16px);
+  margin: 0;
+  overflow: auto;
+  color: var(--ink);
+}
+.ui-popover:focus { outline: none; }
+.ui-popover:has(> .ui-popover-arrow) { overflow: visible; }
+
+.ui-popover-arrow {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  border: inherit;
+  background: inherit;
+  transform: translate(-50%, -50%) rotate(45deg);
+  pointer-events: none;
+}
+.ui-popover[data-side="bottom"] > .ui-popover-arrow { top: 0; left: var(--popover-arrow); border-right: 0; border-bottom: 0; }
+.ui-popover[data-side="top"] > .ui-popover-arrow { top: 100%; left: var(--popover-arrow); border-top: 0; border-left: 0; }
+.ui-popover[data-side="right"] > .ui-popover-arrow { top: var(--popover-arrow); left: 0; border-top: 0; border-right: 0; }
+.ui-popover[data-side="left"] > .ui-popover-arrow { top: var(--popover-arrow); left: 100%; border-bottom: 0; border-left: 0; }

@@ -1,3 +1,6 @@
+import type { PeopleSearchPlan } from "@/lib/people";
+import { cleanWebsiteUrl } from "@/lib/url-display";
+
 export type AnalysisEvidence = {
   id: string;
   label: string;
@@ -9,6 +12,8 @@ export type AnalysisFinding = {
   title: string;
   detail: string;
   sources: AnalysisEvidence[];
+  /** Dolores: etiqueta de `tags` que respalda este hallazgo. Ausente en análisis anteriores. */
+  tag?: string;
 };
 
 export type AnalysisDetail = {
@@ -19,11 +24,17 @@ export type AnalysisDetail = {
   tags?: string[];
   /** Dolores: reporte breve con evidencia y ángulo comercial. Ausente en análisis con el formato anterior. */
   report?: string;
+  /** Dolores: propuestas comerciales A/B según el enfoque, cada una con mensaje recomendado. */
+  proposals?: PainProposal[];
   /** Foco de dolor usado en el análisis (para no repetirlo con el mismo foco). */
   focus?: string;
   status?: "completed" | "no_data";
   social_networks?: SocialNetwork[];
+  /** Enriquecimiento: datos de contacto encontrados, con su fuente. `filled` = se guardó en el lead; `conflict` = difiere del valor guardado; `extra` = el campo ya tenía valor (ej. WhatsApp con teléfono cargado). */
+  contacts?: { field: "email" | "phone" | "website" | "whatsapp" | SocialNetwork; value: string; source_url: string; origin: "website" | "search"; status: "filled" | "conflict" | "same" | "extra" }[];
 };
+
+export type PainProposal = { variant: "A" | "B"; service: string; message: string };
 
 export type SocialNetwork = "facebook" | "instagram" | "youtube" | "linkedin";
 
@@ -60,6 +71,15 @@ export type Lead = {
   enrichment_detail: AnalysisDetail | null;
   created_at: string;
   created: string;
+  /** Buscar Personas: vacío/ausente = negocio. */
+  kind?: "" | "business" | "person";
+  role?: string;
+  location?: string;
+  whatsapp?: string;
+  source?: "" | "serper" | "github" | "instagram" | "facebook" | "web";
+  source_url?: string;
+  /** 0..4 (WhatsApp, email, redes, dolores). */
+  completeness?: number;
 };
 
 export type LeadBatch = {
@@ -74,6 +94,10 @@ export type LeadBatch = {
   status: "running" | "completed" | "partial" | "failed";
   created_at: string;
   created: string;
+  /** Buscar Personas: vacío/ausente = negocio. */
+  kind?: "" | "business" | "person";
+  query?: string;
+  plan?: PeopleSearchPlan | null;
 };
 
 export type LeadColumnKey = keyof Lead | `review_${1 | 2 | 3 | 4 | 5}` | `rating_${1 | 2 | 3 | 4 | 5}` | `social_${SocialNetwork}`;
@@ -155,6 +179,9 @@ export function getLeadColumnValue(lead: Lead, key: LeadColumnKey, ownerResponse
     const count = lead.source_context?.rating_breakdown?.[ratingMatch[1]];
     return typeof count === "number" ? String(count) : "";
   }
+
+  // Provider URLs carry tracking (utm_source=...): every consumer gets the clean URL.
+  if (key === "website") return cleanWebsiteUrl(lead.website);
 
   const value = lead[key as keyof Lead];
   if (value == null) return "";

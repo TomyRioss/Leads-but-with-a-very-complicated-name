@@ -1,0 +1,50 @@
+{
+  "Legal": {
+    "updated": "Last updated: {date}",
+    "updatedDate": "2026-11-14",
+    "breadcrumb": "Legal",
+    "related": "See also",
+    "terms": "Terms of Service",
+    "privacy": "Privacy Policy",
+    "popup": "By creating an account you agree to Leadta's <terms>Terms</terms> and <privacy>Privacy Policy</privacy>.",
+    "termsPage": {
+      "title": "Terms of Service",
+      "description": "Leadta terms of use: account, credits, plans, acceptable use, Google integrations and liability.",
+      "intro": "These terms govern your use of Leadta (leadta.app), a tool to find local businesses, organize leads and manage sales outreach. By creating an account or using the service you agree to them.",
+      "sections": [
+        { "h": "1. Who provides the service", "p": ["Leadta is a service operated from Argentina. For any question about these terms, write to support@leadta.app."] },
+        { "h": "2. Account", "p": ["You need an account with a verified email, or Google sign-in, to use Leadta. You are responsible for keeping your access confidential and for all activity under your account.", "You must be over 18 and use the service for legitimate professional or business purposes."] },
+        { "h": "3. Credits, plans and payments", "p": ["Some features use credits. Welcome or promotional credits have no cash value and are non-refundable. Paid plans are billed per period and renew until you cancel; current prices are listed on the pricing page.", "We may change prices or plans with reasonable prior notice; changes do not affect a period already paid."] },
+        { "h": "4. Acceptable use", "p": ["Business data shown in Leadta comes from public sources. You agree to use it in compliance with applicable data protection, commercial communication and anti-spam laws (including Argentina's Law 25,326), to offer an opt-out in your messages, and not to use the service to harass, deceive or send unsolicited bulk messages.", "You may not resell access, scrape the service, attempt to breach its security or use it for unlawful activities."] },
+        { "h": "5. Google integrations", "p": ["If you connect your Google account, Leadta acts on your behalf and only with the permissions you grant: Drive files you pick, sending emails from your Gmail when you confirm them, and creating events in your Google Calendar. Every email or event requires your prior confirmation. You can disconnect at any time from the app or from your Google account settings.", "How that data is handled is described in the Privacy Policy and complies with the Google API Services User Data Policy, including the Limited Use requirements."] },
+        { "h": "6. AI-generated content", "p": ["Leadta uses AI models to summarize reviews, detect pain points, draft messages and assist you. Outputs may contain errors: review them before use. You are responsible for the messages you send."] },
+        { "h": "7. Availability and changes", "p": ["We work to keep the service available but do not guarantee it will be uninterrupted or error-free. We may improve, change or discontinue features. If we make material changes to these terms we will notify you by email or in the app."] },
+        { "h": "8. Liability", "p": ["To the extent permitted by law, Leadta is not liable for indirect damages, lost profits, or your use of the data or the messages you send. Our total liability is limited to the amount you paid in the last 12 months."] },
+        { "h": "9. Closing your account", "p": ["You can stop using Leadta and request account deletion at any time by writing to support@leadta.app. We may suspend accounts that breach these terms."] },
+        { "h": "10. Governing law", "p": ["These terms are governed by the laws of Argentina. Disputes will be submitted to the competent ordinary courts of Argentina, without prejudice to your consumer protection rights."] }
+      ]
+    },
+    "privacyPage": {
+      "title": "Privacy Policy",
+      "description": "What data Leadta processes, why, who it is shared with, how we use Google data (Drive, Gmail, Calendar) and how to exercise your rights.",
+      "intro": "This policy explains what personal data Leadta (leadta.app) processes, why we use it and what rights you have. The data controller is Leadta, operating from Argentina. For privacy questions, write to support@leadta.app.",
+      "sections": [
+        { "h": "1. Data we process", "p": ["Account data: email, name, phone if you add it, language and Google sign-in data (email and account identifier).", "Usage data: searches, saved leads, contacts logged in Lead Suite, assistant conversations, credits and payments.", "Technical and analytics data: IP address, browser, pages visited and usage events, for security and product improvement.", "Business data: business information shown in Leadta comes from public sources and concerns companies and shops."] },
+        { "h": "2. Why we use it", "p": ["To provide the service (find, enrich and export leads, log contacts, generate reports), manage your account, credits and payments, send transactional emails (verification, notices and reports you enabled), provide support, prevent fraud and abuse, and improve the product with aggregated metrics."] },
+        { "h": "3. Google user data", "limitedUse": true, "p": ["If you connect Google, we access it only with the permissions you grant and only for the features you use:", "Google Drive (drive.file): only the files you explicitly pick in Google's picker, so the assistant can read them when you ask. We do not access the rest of your Drive.", "Gmail (gmail.send): only to send emails you review and confirm in the app. We do not read, search or store your inbox.", "Google Calendar (calendar.events): to create or update events you confirm (for example, meetings with leads) in your primary calendar.", "We do not sell Google data, use it for advertising, or use it to train general-purpose AI models, and we do not allow humans to read it except with your explicit consent, for security purposes, or to comply with the law.", "Access tokens are stored encrypted. When you disconnect Google we delete the tokens and the list of connected files; you can also revoke access from your Google account security settings."] },
+        { "h": "4. Who we share it with", "p": ["We use processors acting on our behalf: hosting and infrastructure (Vercel and our database server), email delivery (Resend), analytics (PostHog and Vercel Analytics), AI model providers through OpenRouter to generate analyses and replies, and payment providers. We only send them what each feature needs.", "We do not sell your personal data. We may disclose it when legally required by a competent authority."] },
+        { "h": "5. Retention", "p": ["We keep data while your account is active. If you close your account, we delete or anonymize your data within 30 days, except what we must keep for legal or accounting obligations."] },
+        { "h": "6. Security", "p": ["We apply reasonable technical and organizational measures: encrypted connections (HTTPS), encrypted tokens, restricted access and per-user permission checks. No system is infallible; if we detect an incident affecting you, we will notify you."] },
+        { "h": "7. Your rights", "p": ["You can access, correct, update and delete your data, and object to its processing, by writing to support@leadta.app. We reply within the deadlines set by Argentina's Law 25,326.", "Argentina's Agency for Access to Public Information, the supervisory authority under Law 25,326, handles complaints from anyone whose data protection rights are affected."] },
+        { "h": "8. International transfers", "p": ["Some processors handle data outside Argentina (for example, in the United States). In those cases we require adequate safeguards."] },
+        { "h": "9. Changes", "p": ["If we make material changes to this policy, we will notify you by email or in the app before they take effect."] }
+      ]
+    },
+    "limitedUse": {
+      "lead": "Limited Use disclosure:",
+      "statement": "Leadta's use and transfer to any other app of information received from Google APIs will adhere to the Google API Services User Data Policy, including the Limited Use requirements.",
+      "translation": "",
+      "link": "Read the Google API Services User Data Policy"
+    }
+  }
+}

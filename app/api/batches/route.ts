@@ -6,6 +6,7 @@ import type { LeadBatch } from "@/lib/types";
 import { errorTranslator } from "@/lib/server/locale";
 
 const defaultPerPage = 20;
+const pocketBaseString = (value: string) => value.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
 
 export async function GET(request: Request) {
   const t = errorTranslator(request);
@@ -24,12 +25,18 @@ export async function GET(request: Request) {
   const query = new URL(request.url).searchParams;
   const page = Number(query.get("page") || 1);
   const perPage = Number(query.get("perPage") || defaultPerPage);
+  const kind = query.get("kind") || "business";
+  if (kind !== "business" && kind !== "person" && kind !== "all") {
+    return NextResponse.json({ error: t("invalidRequestBody") }, { status: 400 });
+  }
   if (!Number.isInteger(page) || page < 1 || page > 100_000 || !Number.isInteger(perPage) || perPage < 1 || perPage > 100) {
     return NextResponse.json({ error: t("invalidPage") }, { status: 400 });
   }
 
   try {
-    const filter = encodeURIComponent(`user = "${session.user.id}"`);
+    // kind: business (default; legacy batches have kind ""), person, or all. Fixed literals only; user id escaped.
+    const kindFilter = kind === "all" ? "" : kind === "person" ? ` && kind = "person"` : ` && (kind = "" || kind = "business")`;
+    const filter = encodeURIComponent(`user = "${pocketBaseString(session.user.id)}"${kindFilter}`);
     const response = await pocketBaseFetch<{
       items: LeadBatch[];
       page: number;

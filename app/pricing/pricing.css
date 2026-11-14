@@ -1,0 +1,21 @@
+/* Identidad de marca de /pricing (sobre la base de app/globals.css). Tokens de AGENTS.md. */
+
+/* CTA primario lime en el hero oscuro, como la landing. */
+.price-hero .price-button-light { background: var(--lime); color: var(--ash-950); }
+.price-hero .price-button-light:hover { background: var(--lime-dark); }
+
+/* Punto final lime en los títulos, como el logo "Leadta.". */
+.price-dot { color: var(--lime-dark); }
+.price-final .price-dot { color: var(--ash-950); }
+
+/* Títulos con el peso de la landing. */
+.price-head h2, .price-final h2 { font-weight: 680; }
+
+/* Íconos de "Incluido" en chip oscuro con acento lime. */
+.price-included svg { box-sizing: content-box; padding: 10px; border-radius: 10px; background: var(--ash-950); color: var(--lime); }
+
+/* Números de pasos y créditos destacados. */
+.price-steps span { display: inline-grid; min-width: 34px; height: 26px; place-items: center; border-radius: 999px; background: var(--lime); color: var(--ash-950); letter-spacing: 0; }
+.price-band .price-examples dt strong { font-weight: 680; letter-spacing: -0.04em; }
+
+.price-faq details[open] summary svg { color: var(--ink); }

@@ -154,8 +154,8 @@
 .lp-feed-track { margin: 0; padding: 0; list-style: none; }
 .lp-feed-row { display: flex; align-items: center; gap: 10px; height: 48px; min-width: 0; border-bottom: 1px solid var(--ash-150); }
 .lp-feed-avatar { display: grid; flex: none; width: 28px; height: 28px; place-items: center; border-radius: 50%; background: var(--ash-900); color: var(--lime); font-size: 11px; font-weight: 700; }
-.lp-feed-name { min-width: 0; flex: 1 1 0; overflow: hidden; font-size: 13px; font-weight: 650; text-overflow: ellipsis; white-space: nowrap; }
-.lp-feed-pain { max-width: 42%; flex: 0 1 auto; padding: 2px 7px; overflow: hidden; border-radius: 5px; background: var(--lime); color: var(--ash-950); font-size: 11.5px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+.lp-feed-name { display: -webkit-box; min-width: 0; flex: 1 1 0; overflow: hidden; font-size: 13px; font-weight: 650; line-height: 1.3; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
+.lp-feed-pain { display: -webkit-box; max-width: 42%; flex: 0 1 auto; padding: 2px 7px; overflow: hidden; border-radius: 5px; background: var(--lime); color: var(--ash-950); font-size: 11.5px; font-weight: 600; line-height: 1.3; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
 .lp-feed-rating { display: inline-flex; flex: none; align-items: center; gap: 3px; color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
 .lp-feed-rating svg { fill: var(--lime-dark); color: var(--lime-dark); }
 .lp-feed-service { min-height: 1.4em; margin: 0; overflow: hidden; color: var(--muted); font-size: 12.5px; text-overflow: ellipsis; white-space: nowrap; }
@@ -259,4 +259,10 @@
   .lp-hero-copy > :nth-child(4) { animation-delay: 220ms; }
   .lp-sheet { animation: lp-rise 700ms var(--lp-ease) 200ms backwards; }
   .lp-table tbody tr { animation: lp-rise 520ms var(--lp-ease) backwards; animation-delay: calc(420ms + var(--i, 0) * 80ms); }
+}
+
+/* Área táctil ≥44px en pantallas táctiles sin agrandar el botón. */
+@media (pointer: coarse) {
+  .lp-pain-btn { position: relative; }
+  .lp-pain-btn::after { content: ""; position: absolute; inset: -6px 0; }
 }

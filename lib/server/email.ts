@@ -1,5 +1,6 @@
 import { createHash, createHmac, timingSafeEqual } from "node:crypto";
-import { renderVerificationEmail, renderWelcomeEmail } from "@/lib/server/email-templates";
+import { renderFeedbackHtml, renderFeedbackThanksEmail, renderLeadSuiteWeeklyReportEmail, renderVerificationEmail, renderWelcomeEmail } from "@/lib/server/email-templates";
+import type { WeeklyReport } from "@/lib/lead-suite";
 import type { Locale } from "@/lib/server/locale";
 import { pocketBaseFetch } from "@/lib/server/pocketbase";
 
@@ -67,7 +68,7 @@ export function readEmailVerificationToken(token: string): { id: string; email: 
   }
 }
 
-async function sendEmail(input: { from: string; to: string; subject: string; text: string; html: string; idempotencyKey: string }) {
+async function sendEmail(input: { from: string; to: string; subject: string; text: string; html: string; idempotencyKey: string; replyTo?: string }) {
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) throw new Error("RESEND_API_KEY is not configured.");
 
@@ -84,6 +85,7 @@ async function sendEmail(input: { from: string; to: string; subject: string; tex
       subject: input.subject,
       text: input.text,
       html: input.html,
+      ...(input.replyTo ? { reply_to: input.replyTo } : {}),
     }),
     cache: "no-store",
     signal: AbortSignal.timeout(10000),
@@ -108,6 +110,19 @@ export async function sendWelcomeEmail(user: Pick<UserEmailRecord, "id" | "email
   await sendEmail({ from: welcomeSender, to: user.email, ...renderWelcomeEmail(locale), idempotencyKey: `leadta-welcome-${user.id}` });
 }
 
+const supportSender = "Leadta Soporte <support@leadta.app>";
+const feedbackInbox = "tomyrios2006@gmail.com";
+
+/** Aviso interno de un comentario nuevo; el texto ya viene armado (con metadata) desde la ruta. */
+export async function sendFeedbackNotification(input: { subject: string; text: string; idempotencyKey: string; replyTo: string }) {
+  const html = `<pre style="font:13px/1.5 ui-monospace,Menlo,monospace;white-space:pre-wrap">${renderFeedbackHtml(input.text)}</pre>`;
+  await sendEmail({ from: supportSender, to: feedbackInbox, subject: input.subject, text: input.text, html, idempotencyKey: input.idempotencyKey, replyTo: input.replyTo });
+}
+
+export async function sendFeedbackThanksEmail(input: { to: string; locale: Locale; credits: number; issueId: string }) {
+  await sendEmail({ from: supportSender, to: input.to, ...renderFeedbackThanksEmail(input.locale, input.credits), idempotencyKey: `leadta-feedback-thanks-${input.issueId}` });
+}
+
 export async function getEmailUser(id: string) {
   return pocketBaseFetch<UserEmailRecord>(`/api/collections/users/records/${encodeURIComponent(id)}?fields=id,email,name,verified,verification_sent_at,welcome_email_sent_at`);
 }
@@ -127,4 +142,23 @@ export async function findEmailUser(email: string) {
   });
   const response = await pocketBaseFetch<{ items: UserEmailRecord[] }>(`/api/collections/users/records?${filter.toString()}`);
   return response.items[0] || null;
+}
+
+const reportSender = "Leadta <noreply@leadta.app>";
+
+export async function sendLeadSuiteWeeklyReport(input: { userId: string; to: string; name?: string; locale: Locale; report: WeeklyReport }) {
+  const { report } = input;
+  const email = renderLeadSuiteWeeklyReportEmail({
+    locale: input.locale,
+    origin: appOrigin(),
+    name: input.name,
+    weekStart: report.weekStart,
+    summary: report.summary,
+    suggestions: report.suggestions,
+    contacts: report.metrics.contactsInRange,
+    leads: report.metrics.leadsContactedInRange,
+    replyRate: report.metrics.replyRate,
+    pendingFollowUps: report.metrics.pendingFollowUps.length,
+  });
+  await sendEmail({ from: reportSender, to: input.to, ...email, idempotencyKey: `leadta-lead-suite-weekly-${input.userId}-${report.weekStart.slice(0, 10)}` });
 }

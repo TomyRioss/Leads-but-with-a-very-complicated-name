@@ -21,3 +21,6 @@
   .wa-button { transition: none; }
   .wa-button:hover { transform: none; }
 }
+
+/* Área táctil de 44px alrededor del botón de 28px. */
+.wa-close::before { content: ""; position: absolute; inset: -8px; }

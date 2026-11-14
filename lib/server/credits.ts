@@ -1,15 +1,21 @@
 import { pocketBaseFetch } from "@/lib/server/pocketbase";
 
 export const CREDITS_PER_LEAD = 2;
-export const CREDITS_PER_PAIN_ANALYSIS = 0.5;
+// El análisis de dolores es gratis: no se reservan ni cobran créditos.
+export const CREDITS_PER_PAIN_ANALYSIS = 0;
 const staleLockMilliseconds = 15 * 60 * 1000;
 
 type CreditUserRecord = { id: string; credits?: number };
 type CreditLockRecord = { id: string; created?: string };
 
 export class InsufficientCreditsError extends Error {
-  constructor(readonly available: number, readonly required: number) {
+  // Plain fields (no parameter properties) so the file runs under node --experimental-strip-types.
+  readonly available: number;
+  readonly required: number;
+  constructor(available: number, required: number) {
     super(`Insufficient credits: ${required} required, ${available} available.`);
+    this.available = available;
+    this.required = required;
     this.name = "InsufficientCreditsError";
   }
 }
@@ -54,6 +60,16 @@ async function acquireLock(userId: string) {
   }
 }
 
+/** Atomic relative PATCH; returns the stored balance (falls back to `expected` if the response omits it). */
+export async function adjustCredits(userId: string, delta: number, expected: number) {
+  if (delta === 0) return expected;
+  const record = await pocketBaseFetch<CreditUserRecord>(`/api/collections/users/records/${userId}`, {
+    method: "PATCH",
+    body: JSON.stringify(delta > 0 ? { "credits+": delta } : { "credits-": -delta }),
+  });
+  return typeof record?.credits === "number" && Number.isFinite(record.credits) ? record.credits : expected;
+}
+
 export async function reserveCreditAmount(userId: string, requestedCredits: number) {
   if (!Number.isFinite(requestedCredits) || requestedCredits < 0) throw new Error("Invalid credit amount.");
   const lock = await acquireLock(userId);
@@ -67,40 +83,42 @@ export async function reserveCreditAmount(userId: string, requestedCredits: numb
       : 0;
     if (credits < requestedCredits) throw new InsufficientCreditsError(credits, requestedCredits);
 
-    credits -= requestedCredits;
-    await pocketBaseFetch(`/api/collections/users/records/${userId}`, {
-      method: "PATCH",
-      body: JSON.stringify({ credits }),
-    });
+    // Relative writes ("credits-"/"credits+"): lock-free increments (e.g. referral rewards) landing mid-operation are not overwritten.
+    credits = await adjustCredits(userId, -requestedCredits, credits - requestedCredits);
   } catch (error) {
     await pocketBaseFetch(`/api/collections/credit_locks/records/${lock.id}`, { method: "DELETE" }).catch(() => undefined);
     throw error;
   }
 
-  return {
+  const reservation = {
     get balance() {
       return credits;
     },
     async settle(chargedAmount: number) {
       if (settled) return credits;
-      const chargedCredits = Math.min(requestedCredits, Math.max(0, Number.isFinite(chargedAmount) ? chargedAmount : 0));
-      const refund = requestedCredits - chargedCredits;
+      const { refund } = settleCredits(requestedCredits, chargedAmount);
       if (refund > 0) {
-        const refundedBalance = credits + refund;
-        await pocketBaseFetch(`/api/collections/users/records/${userId}`, {
-          method: "PATCH",
-          body: JSON.stringify({ credits: refundedBalance }),
-        });
-        credits = refundedBalance;
+        credits = await adjustCredits(userId, refund, credits + refund);
       }
       settled = true;
       return credits;
     },
+    // Unsettled at release = nothing delivered: full refund. The lock is always freed, even if the refund fails.
     async release() {
-      if (!settled) await this.settle(0);
-      await pocketBaseFetch(`/api/collections/credit_locks/records/${lock.id}`, { method: "DELETE" });
+      try {
+        if (!settled) await reservation.settle(0);
+      } finally {
+        await pocketBaseFetch(`/api/collections/credit_locks/records/${lock.id}`, { method: "DELETE" });
+      }
     },
   };
+  return reservation;
+}
+
+/** Pure split of a reservation: charge what was delivered (clamped to [0, reserved]), refund the rest. */
+export function settleCredits(reservedCredits: number, deliveredCredits: number) {
+  const charged = Math.min(reservedCredits, Math.max(0, Number.isFinite(deliveredCredits) ? deliveredCredits : 0));
+  return { charged, refund: reservedCredits - charged };
 }
 
 export async function reserveLeadCredits(userId: string, leadCount: number) {

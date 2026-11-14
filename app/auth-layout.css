@@ -9,8 +9,8 @@
   padding: 10px 16px;
   overflow: hidden;
   background:
-    radial-gradient(70% 60% at 100% 100%, rgb(201 233 79 / 30%) 0%, rgb(201 233 79 / 0%) 70%),
-    radial-gradient(45% 35% at 0% 0%, rgb(201 233 79 / 9%) 0%, rgb(201 233 79 / 0%) 75%),
+    radial-gradient(70% 60% at 100% 100%, color-mix(in srgb, var(--lime) 30%, transparent) 0%, transparent 70%),
+    radial-gradient(45% 35% at 0% 0%, color-mix(in srgb, var(--lime) 9%, transparent) 0%, transparent 75%),
     linear-gradient(160deg, var(--ash-800) 0%, var(--ash-900) 48%, var(--ash-950) 100%);
   color: var(--paper);
 }
@@ -21,7 +21,7 @@
 
 .auth-bare .auth-workspace { min-height: 0; padding: 32px 16px 40px; }
 .auth-bare .auth-panel { width: min(100%, 400px); padding: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; }
-.auth-bare .auth-panel h1 { font-size: 28px; line-height: 1.15; }
+.auth-bare .auth-panel h1 { font-size: 30px; font-weight: 650; line-height: 1.1; letter-spacing: -0.035em; text-wrap: balance; }
 .auth-bare .auth-intro { margin-top: 10px; font-size: 14px; }
 .auth-bare .primary-button.auth-submit { color: var(--ash-950); }
 .auth-bare .auth-panel input:focus-visible, .auth-bare .auth-panel button:focus-visible, .auth-bare .auth-panel a:focus-visible { outline: 3px solid var(--ash-950); outline-offset: 2px; }

@@ -3,6 +3,7 @@ import createNextIntlPlugin from "next-intl/plugin";
 
 const nextConfig: NextConfig = {
   output: "standalone",
+  poweredByHeader: false,
   serverExternalPackages: ["@countrystatecity/countries"],
   outputFileTracingIncludes: {
     "/api/geography": ["./node_modules/@countrystatecity/countries/dist/data/**/*"],

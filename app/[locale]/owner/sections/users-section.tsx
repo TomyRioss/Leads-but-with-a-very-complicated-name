@@ -6,7 +6,7 @@ import { Minus, Plus, Search, Settings2, Trash2, X } from "lucide-react";
 import {
   blockClass, confirmBox, controlClass, exclusivePill, countBadge, dangerButton, errorBox, ghostButton,
   hintText, iconButton, isUnauthorized, mutedText, okBox, ownerFetch, primaryButton, rightCell, sectionHead, smallButton,
-  sectionTitle, stateBox, statusPill, tableClass, tableWrap, tdClass, theadClass, thClass, trClass, useFocusTrap,
+  sectionTitle, stateBox, titleDot, statusPill, tableClass, tableWrap, tdClass, theadClass, thClass, trClass, useFocusTrap,
   useOwnerFormat, useOwnerList, type OnAction, type OwnerResult,
 } from "../ui";
 import { Pager } from "./list-controls";
@@ -54,7 +54,7 @@ export default function UsersSection({ onUnauthorized, onAction }: { onUnauthori
   return (
     <section aria-label={t("title")}>
       <div className={sectionHead}>
-        <h1 className={sectionTitle}>{t("title")}{data ? <span className={countBadge}>{formatNumber(data.totalItems)}</span> : null}</h1>
+        <h1 className={sectionTitle}>{t("title")}<span className={titleDot} aria-hidden="true">.</span>{data ? <span className={countBadge}>{formatNumber(data.totalItems)}</span> : null}</h1>
         <label className="relative flex w-full items-center sm:w-auto">
           <Search className="pointer-events-none absolute left-3 text-(color:--ash-600)" size={15} aria-hidden="true" />
           <span className="sr-only">{t("search")}</span>

@@ -1,0 +1,51 @@
+/* 404 "Este lead se nos escapó": radar de búsqueda con el punto lime del logo para atrapar. Prefijo nf-; solo tokens de marca. */
+.nf-page { display: grid; min-height: 100dvh; align-content: center; padding: 32px 16px; background: var(--ash-100); color: var(--ink); font-family: var(--font-geist-sans), Arial, sans-serif; }
+.nf-inner { display: grid; width: min(100%, 1100px); margin-inline: auto; gap: 40px; align-items: center; }
+@media (min-width: 900px) { .nf-inner { grid-template-columns: minmax(0, 1fr) minmax(0, 460px); gap: 64px; } }
+
+.nf-copy { display: grid; gap: 20px; justify-items: start; }
+.nf-badge { margin: 0; padding: 4px 10px; border-radius: 999px; background: var(--ash-950); color: var(--lime); font-size: 12px; font-weight: 700; letter-spacing: 0.06em; font-variant-numeric: tabular-nums; }
+.nf-title { margin: 0; font-size: clamp(2.25rem, 1.5rem + 3.4vw, 3.75rem); font-weight: 650; line-height: 1.02; letter-spacing: -0.045em; text-wrap: balance; }
+.nf-dot { color: var(--lime-dark); }
+.nf-text { max-width: 46ch; margin: 0; color: var(--ash-700); font-size: 17px; line-height: 1.55; text-wrap: pretty; }
+.nf-en { display: block; margin-top: 6px; color: var(--muted); font-size: 14px; }
+.nf-links { display: flex; flex-wrap: wrap; gap: 10px; margin: 4px 0 0; padding: 0; list-style: none; }
+.nf-link { display: inline-flex; min-height: 44px; align-items: center; gap: 8px; padding: 0 16px; border: 1px solid var(--ash-400); border-radius: 10px; color: var(--ink); font-size: 15px; font-weight: 650; text-decoration: none; transition: border-color 160ms ease, background-color 160ms ease; }
+.nf-link:hover { border-color: var(--ash-950); background: var(--ash-50); }
+.nf-link-primary { border-color: var(--lime); background: var(--lime); color: var(--ash-950); }
+.nf-link-primary:hover { border-color: var(--lime-dark); background: var(--lime-dark); }
+.nf-link:focus-visible, .nf-target:focus-visible, .nf-reset:focus-visible { outline: 3px solid var(--ash-950); outline-offset: 3px; }
+
+/* Radar */
+.nf-radar-card { display: grid; gap: 14px; padding: 16px; border: 1px solid var(--line); border-radius: 20px; background: var(--paper); box-shadow: 0 1px 0 color-mix(in srgb, var(--ash-950) 4%, transparent), 0 28px 56px -32px color-mix(in srgb, var(--ash-950) 30%, transparent); }
+.nf-radar-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 13px; }
+.nf-radar-query { min-width: 0; overflow: hidden; color: var(--ash-700); font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; text-overflow: ellipsis; white-space: nowrap; }
+.nf-radar-count { flex: none; padding: 3px 8px; border-radius: 6px; background: var(--ash-150); color: var(--ash-800); font-weight: 650; font-variant-numeric: tabular-nums; }
+.nf-radar-count[data-hit="true"] { background: var(--lime); color: var(--ash-950); }
+.nf-radar {
+  position: relative; aspect-ratio: 1; overflow: hidden; border-radius: 50%; touch-action: manipulation;
+  background:
+    linear-gradient(var(--ash-700), var(--ash-700)) center / 1px 100% no-repeat,
+    linear-gradient(var(--ash-700), var(--ash-700)) center / 100% 1px no-repeat,
+    repeating-radial-gradient(circle at center, transparent 0 calc(16.66% - 1px), color-mix(in srgb, var(--ash-500) 45%, transparent) calc(16.66% - 1px) 16.66%),
+    radial-gradient(circle at center, var(--ash-800), var(--ash-950));
+}
+.nf-sweep { position: absolute; inset: 0; border-radius: 50%; background: conic-gradient(from 0deg, color-mix(in srgb, var(--lime) 34%, transparent), transparent 70deg); animation: nf-sweep 3.2s linear infinite; pointer-events: none; }
+@keyframes nf-sweep { to { transform: rotate(360deg); } }
+.nf-target { position: absolute; top: 0; left: 0; display: grid; width: 44px; height: 44px; place-items: center; margin: -22px 0 0 -22px; padding: 0; border: 0; border-radius: 50%; background: transparent; cursor: crosshair; will-change: transform; }
+.nf-target span { width: 16px; height: 16px; border-radius: 4px; background: var(--lime); box-shadow: 0 0 0 6px color-mix(in srgb, var(--lime) 22%, transparent), 0 0 18px var(--lime); transition: transform 160ms ease; }
+.nf-target:hover span { transform: scale(1.15); }
+.nf-target[data-caught="true"] span { animation: nf-pop 420ms cubic-bezier(0.16, 1, 0.3, 1); }
+@keyframes nf-pop { 40% { transform: scale(1.9); } 100% { transform: scale(1); } }
+.nf-static-dot { position: absolute; top: 38%; left: 64%; width: 16px; height: 16px; border-radius: 4px; background: var(--lime); box-shadow: 0 0 18px var(--lime); }
+.nf-status { min-height: 2.9em; margin: 0; color: var(--ash-800); font-size: 14px; line-height: 1.45; }
+.nf-status strong { color: var(--ink); }
+.nf-reset { justify-self: start; min-height: 36px; padding: 0 12px; border: 1px solid var(--line); border-radius: 999px; background: var(--ash-50); color: var(--ink); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
+.nf-reset:hover { background: var(--ash-150); }
+
+@media (max-width: 420px) { .nf-radar-card { padding: 12px; border-radius: 16px; } }
+@media (prefers-reduced-motion: reduce) {
+  .nf-sweep { display: none; }
+  .nf-target span, .nf-link { transition: none; }
+  .nf-target[data-caught="true"] span { animation: none; }
+}

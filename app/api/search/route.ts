@@ -4,15 +4,17 @@ import { getCurrentUser, withRefreshedSession } from "@/lib/server/auth";
 import { createLeadRecords, isPocketBaseConfigured, pocketBaseFetch } from "@/lib/server/pocketbase";
 import { CREDITS_PER_LEAD, CreditOperationBusyError, InsufficientCreditsError, reserveLeadCredits } from "@/lib/server/credits";
 import { uiError } from "@/lib/server/public-error";
+import { isDevOnlyEnabled } from "@/lib/env-features";
 import { errorTranslator, resolveLocale } from "@/lib/server/locale";
 import { planRandomSearch, remainingCallTimeoutMs, splitEvenly, RANDOM_LOCATION_COUNTRIES, type RandomSearchSlot } from "@/lib/search-random-location";
+import { cleanWebsiteUrl } from "@/lib/url-display";
 
 export const maxDuration = 300;
 
 const actorId = "tBH60CegtoC2QNtaR";
 const allowedCounts = new Set([5, 10, 25, 50, 75, 100, 125, 150]);
 const randomConcurrency = 5;
-const isDevelopmentEnvironment = process.env.ENVIROMENT?.trim().toLowerCase() === "dev";
+const allowSmallBatches = isDevOnlyEnabled("small_batches");
 
 type ActorPlace = Record<string, unknown>;
 type SearchFilters = {
@@ -141,7 +143,7 @@ function mapPlace(place: ActorPlace) {
     average_rating: score === null ? "" : String(score),
     phone: asText(place.phoneInternational) || asText(place.phone),
     email: firstEmail(place),
-    website: asText(place.website),
+    website: cleanWebsiteUrl(asText(place.website)),
     social_profiles: socialProfilesText(place.socialProfiles),
     category: asText(place.category) || asText(place.categoryName) || categories,
     source_reviews: mapReviews(place.reviews ?? place.reviewSamples ?? place.recentReviews),
@@ -282,8 +284,8 @@ export async function POST(request: Request) {
   if (!country || country.length > 100 || province.length > 100 || district.length > 100) {
     return NextResponse.json({ error: t("searchCountryRequired") }, { status: 400 });
   }
-  if (!allowedCounts.has(count) && !(count === 1 || (isDevelopmentEnvironment && count === 2))) {
-    const sizes = [...(isDevelopmentEnvironment ? [1, 2] : []), ...allowedCounts].map(String);
+  if (!allowedCounts.has(count) && !(count === 1 || (allowSmallBatches && count === 2))) {
+    const sizes = [...(allowSmallBatches ? [1, 2] : []), ...allowedCounts].map(String);
     const allowed = new Intl.ListFormat(resolveLocale(request), { type: "disjunction" }).format(sizes);
     return NextResponse.json({ error: t("searchBatchSize", { allowed }) }, { status: 400 });
   }
@@ -307,7 +309,7 @@ export async function POST(request: Request) {
 
   try {
     // El lote de 1 lead es solo para la primera búsqueda guiada: cada corrida tiene costo fijo de Apify.
-    if (count === 1 && !isDevelopmentEnvironment) {
+    if (count === 1 && !allowSmallBatches) {
       const own = encodeURIComponent(`user = "${session.user.id}"`);
       const previous = await pocketBaseFetch<{ items: unknown[] }>(`/api/collections/lead_batches/records?page=1&perPage=1&skipTotal=1&filter=${own}`);
       if (previous.items.length > 0) {
@@ -423,7 +425,7 @@ export async function POST(request: Request) {
 
     const filter = encodeURIComponent(`batch = "${batch.id}"`);
     const saved = await pocketBaseFetch<{ items: Record<string, unknown>[] }>(
-      `/api/collections/leads/records?perPage=100&sort=created_at&filter=${filter}`,
+      `/api/collections/leads/records?perPage=${Math.max(1, persistedCount)}&skipTotal=1&sort=created_at&filter=${filter}`,
     );
     return withRefreshedSession(
       NextResponse.json({

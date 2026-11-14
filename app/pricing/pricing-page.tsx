@@ -5,6 +5,8 @@ import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { BrandLogo } from "@/app/brand-logo";
 import { LanguageSwitcher } from "@/app/language-switcher";
+import { getSession } from "@/lib/client/session";
+import "./pricing.css";
 
 export default function PricingPage({ hero, children }: { hero: ReactNode; children: ReactNode }) {
   const t = useTranslations("Pricing");
@@ -12,9 +14,8 @@ export default function PricingPage({ hero, children }: { hero: ReactNode; child
 
   useEffect(() => {
     let active = true;
-    fetch("/api/auth/me", { cache: "no-store" })
-      .then(async (response) => response.ok ? response.json() : null)
-      .then((payload) => { if (active) setMember(Boolean(payload?.user)); })
+    getSession()
+      .then((payload) => { if (active) setMember(Boolean(payload.user)); })
       .catch(() => undefined);
     return () => { active = false; };
   }, []);
