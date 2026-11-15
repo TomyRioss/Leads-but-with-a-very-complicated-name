@@ -1,4 +1,4 @@
-// Private, bounded account context. Only the server's superuser can access it.
+// Private account facts: separate rows prevent concurrent changes to different keys from overwriting each other.
 migrate((app) => {
   if (app.findAllCollections().some((collection) => collection.name === "leadtita_account_memory")) return;
   const users = app.findCollectionByNameOrId("users");
@@ -7,7 +7,9 @@ migrate((app) => {
     name: "leadtita_account_memory",
     fields: [
       { name: "user", type: "relation", required: true, collectionId: users.id, cascadeDelete: true, maxSelect: 1 },
-      { name: "facts", type: "json", maxSize: 20000 },
+      { name: "key", type: "text", required: true, max: 32, pattern: "^(serviceOffering|commercialSectors|preferredTone|businessContext)$" },
+      // Four allowlisted keys, each capped at 5 KB: at most 20 KB of fact JSON per account.
+      { name: "fact", type: "json", required: true, maxSize: 5000 },
       { name: "created", type: "autodate", onCreate: true, onUpdate: false },
       { name: "updated", type: "autodate", onCreate: true, onUpdate: true },
     ],
@@ -18,7 +20,7 @@ migrate((app) => {
     deleteRule: null,
   }));
   const memory = app.findCollectionByNameOrId("leadtita_account_memory");
-  memory.indexes = ["CREATE UNIQUE INDEX idx_leadtita_account_memory_user ON leadtita_account_memory (user)"];
+  memory.indexes = ["CREATE UNIQUE INDEX idx_leadtita_account_memory_user_key ON leadtita_account_memory (user, key)"];
   app.save(memory);
 }, (app) => {
   const memory = app.findAllCollections().find((collection) => collection.name === "leadtita_account_memory");
