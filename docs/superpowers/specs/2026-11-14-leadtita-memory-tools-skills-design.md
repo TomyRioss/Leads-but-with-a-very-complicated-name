@@ -14,6 +14,7 @@ La memoria es por cuenta de usuario: ayuda al modelo a entender quién le habla,
 - Las herramientas gratuitas de lectura y análisis se ejecutan sin pedir confirmación. Esto incluye el análisis de dolores, actualmente de costo cero.
 - Las acciones que modifican datos, envían mensajes o consumen créditos conservan la confirmación existente.
 - Durante cada ejecución, el chat presenta un estado accesible con el nombre de la acción y una indicación visual de actividad. Al finalizar, el estado pasa a una confirmación breve dentro del mismo turno. Los fallos muestran un estado de error y permiten continuar la conversación.
+- El estilo visual de mención se aplica solo a referencias de lead seleccionadas e insertadas como tales. Un `@` escrito como texto normal, incluido un correo electrónico o un nombre sin seleccionar, mantiene el formato del texto circundante.
 - El estado inicial puede cambiar a medida que se ejecutan varias herramientas. No se transmiten tokens del modelo en esta entrega.
 
 ## Memoria de cuenta

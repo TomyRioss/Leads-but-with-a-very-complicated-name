@@ -1,0 +1,24 @@
+/* Tarjeta de WhatsApp (página /integraciones y chat de Leadtita). Base: .gdrive-card; tokens de AGENTS.md. */
+.wa-pair { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 16px; }
+.wa-brand-logo { color: var(--ash-500); }
+.wa-brand-logo.is-connected { color: var(--whatsapp); }
+.wa-qr { display: grid; width: 224px; height: 224px; flex: none; place-items: center; border: 1px solid var(--line); border-radius: 12px; background: var(--paper); }
+.wa-qr img { display: block; width: 208px; height: 208px; image-rendering: pixelated; }
+.gdrive-card-compact .wa-qr { width: 188px; height: 188px; }
+.gdrive-card-compact .wa-qr img { width: 172px; height: 172px; }
+.wa-steps { display: grid; min-width: 180px; flex: 1; gap: 6px; margin: 0; padding-left: 20px; color: var(--ash-800); font-size: 13px; line-height: 1.45; }
+.wa-steps li::marker { color: var(--ash-600); font-weight: 650; }
+
+.wa-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 8px; margin: 0; }
+.wa-stats div { padding: 10px 12px; border: 1px solid var(--ash-150); border-radius: 10px; background: var(--ash-50); }
+.wa-stats dt { color: var(--muted); font-size: 12px; }
+.wa-stats dd { margin: 2px 0 0; color: var(--ink); font-size: 15px; font-weight: 650; font-variant-numeric: tabular-nums; }
+
+.wa-risk { display: flex; align-items: flex-start; gap: 8px; margin: 0; padding: 10px 12px; border: 1px solid var(--ash-200); border-radius: 10px; background: var(--ash-50); color: var(--ash-800); font-size: 12px; line-height: 1.5; }
+.wa-risk svg { flex: none; margin-top: 1px; color: var(--ash-700); }
+
+.wa-card .gdrive-link:disabled { cursor: not-allowed; opacity: 0.55; }
+
+@media (max-width: 480px) {
+  .wa-pair { flex-direction: column; }
+}

@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useRef, useState, useSyncExternalStore } from "react";
-import type { ClipboardEvent, DragEvent, FormEvent, KeyboardEvent } from "react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
+import type { ClipboardEvent, DragEvent, FormEvent, KeyboardEvent, ReactNode } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { ErrorReportButton } from "@/app/feedback-dialog";
 import { BrandMark } from "@/app/brand-logo";
-import { ArrowDown, ArrowUp, ArrowUpRight, Ban, BriefcaseBusiness, CalendarCheck, CalendarPlus, Check, ChevronRight, CircleAlert, CircleCheck, Coins, Copy, Download, FileText, FileUp, Globe, History, Image as ImageIcon, ListPlus, LoaderCircle, Mail, Mails, Maximize2, MessageCircle, MessageSquarePlus, PencilLine, Plus, RotateCcw, Search, Send, Sheet, Sparkles, SquarePen, StickyNote, Tag, Trash2, TrendingUp, Upload, UserPlus, UserSearch, X } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpRight, Ban, BriefcaseBusiness, CalendarCheck, CalendarPlus, Check, ChevronRight, CircleAlert, CircleCheck, Coins, Copy, Download, FileText, FileUp, Globe, History, Image as ImageIcon, ListPlus, LoaderCircle, Mail, Mails, MessagesSquare, Maximize2, MessageCircle, MessageSquarePlus, PencilLine, Plus, RotateCcw, Search, Send, Sheet, Sparkles, SquarePen, StickyNote, Tag, Trash2, TrendingUp, Upload, UserPlus, UserSearch, X } from "lucide-react";
 import type { ContactChannel, ContactStatus } from "@/lib/lead-suite";
 import { renderMarkdown } from "@/lib/markdown";
 import { findingsForTag } from "@/lib/analysis-format";
@@ -15,22 +15,69 @@ import WhatsAppContact from "@/app/whatsapp-contact";
 import type { IconType } from "react-icons";
 import { FaFacebook, FaInstagram, FaLinkedin, FaWhatsapp, FaYoutube } from "react-icons/fa";
 import { getSession } from "@/lib/client/session";
-import { deleteConversation, loadHistory, MAX_STORED_MESSAGES, newConversationId, saveConversation, setActiveConversation, type StoredConversation } from "@/lib/client/leadtita-history";
+import { deactivateConversations, fetchConversationList, loadConversation, loadHistory, MAX_STORED_MESSAGES, mergeHistory, newConversationId, saveConversation, scheduleServerSave, setActiveConversation, syncWithServer, type HistoryItem, type StoredConversation } from "@/lib/client/leadtita-history";
 import { GoogleDriveConnect, GoogleFeatureConnectButton, type ConnectedDriveFile } from "@/app/google-drive-connect";
+import { WhatsAppConnectCard } from "@/app/whatsapp-connect";
 import { Popover } from "@/app/ui/popover";
-import { SiGoogledrive } from "react-icons/si";
+
+import { ChatControls, type LeadtitaMode, type LeadtitaSalesChannel } from "./chat-controls";
+import { LeadMentionPopover, type MentionLeadOption } from "./lead-mention-popover";
+import { SiGmail, SiGoogledrive, SiWhatsapp } from "react-icons/si";
 import "./chat-panel.css";
+
+type LeadMentionSpan = { start: number; end: number; leadId: string; name: string };
+type ToolProgressItem = { id: string; label: string; status: "running" | "done" | "failed" };
+
+function renderUserMessage(content: string, mentions: LeadMentionSpan[] = []) {
+  const valid = mentions
+    .filter((mention) => Number.isInteger(mention.start) && Number.isInteger(mention.end) && mention.start >= 0 && mention.end <= content.length && mention.end > mention.start && content.slice(mention.start, mention.end) === `@${mention.name}`)
+    .sort((a, b) => a.start - b.start);
+  const parts: ReactNode[] = [];
+  let cursor = 0;
+  for (const mention of valid) {
+    if (mention.start < cursor) continue;
+    if (mention.start > cursor) parts.push(content.slice(cursor, mention.start));
+    parts.push(<span className="ls-chat__lead-mention" key={`${mention.start}:${mention.leadId}`}>{content.slice(mention.start, mention.end)}</span>);
+    cursor = mention.end;
+  }
+  if (cursor < content.length) parts.push(content.slice(cursor));
+  return parts;
+}
+
+type QuotaChannel = "whatsapp" | "gmail";
+type MessageQuotaState = Record<QuotaChannel, { used: number; limit: number }>;
+
+function MessageQuotaMeter({ channel, used, limit, label, today, description, compact = false }: {
+  channel: QuotaChannel; used: number; limit: number; label: string; today: string; description: string; compact?: boolean;
+}) {
+  const Icon = channel === "whatsapp" ? SiWhatsapp : SiGmail;
+  const progress = limit > 0 ? Math.min(100, Math.max(0, used / limit * 100)) : 0;
+  return (
+    <div className={`ls-chat__quota-meter is-${channel}${compact ? " is-compact" : ""}`}>
+      <div className="ls-chat__quota-label">
+        <Icon aria-hidden="true" size={compact ? 14 : 16} />
+        <span>{label}</span>
+        <strong>{today}</strong>
+      </div>
+      <div className="ls-chat__quota-track" role="progressbar" aria-label={description} aria-valuemin={0} aria-valuemax={limit} aria-valuenow={Math.min(used, limit)}>
+        <span style={{ width: `${progress}%` }} />
+      </div>
+    </div>
+  );
+}
 
 type ChatRole = "user" | "assistant";
 type ChangeData = { channel?: ContactChannel; message?: string; contactedAt?: string; status?: ContactStatus; notes?: string };
-type PendingKind = "record_contact" | "update_contact" | "delete_contact" | "update_status" | "add_note" | "add_lead" | "analyze_pains" | "search_businesses" | "search_people" | "import_leads" | "import_contacts" | "send_email" | "send_email_batch" | "create_meeting" | "update_commercial_profile";
+type MentionLead = MentionLeadOption;
+type PendingKind = "record_contact" | "update_contact" | "delete_contact" | "update_status" | "add_note" | "add_lead" | "analyze_pains" | "search_businesses" | "search_people" | "import_leads" | "import_contacts" | "send_email" | "send_email_batch" | "send_whatsapp_batch" | "create_meeting" | "update_commercial_profile";
 type ChangeExtra = Record<string, string | number>;
 type ChatAction =
   | { type: "pending_change"; token: string; change: { kind: PendingKind; leadName: string; data: ChangeData; before?: ChangeData; extra?: ChangeExtra } }
   | { type: "lead_candidates"; candidates: { name: string; category: string; city: string }[] }
-  | { type: "message_suggestions"; leadName: string; messages: { channel: "whatsapp" | "email"; subject: string; text: string }[] }
+  | { type: "message_suggestions"; leadId?: string; leadName: string; sendChannels?: { whatsapp: boolean; email: boolean }; hasRecipient?: { whatsapp: boolean; email: boolean }; messages: { channel: "whatsapp" | "email"; subject: string; text: string }[] }
   | { type: "google_connect" }
   | { type: "google_feature_connect"; feature: "gmail" | "calendar" }
+  | { type: "whatsapp_connect" }
   | { type: "drive_file"; name: string; kind: "csv" | "text"; rows: number }
   /** Client-only: shown after a confirmed search/import delivers a batch. */
   | { type: "batch_result"; kind: PendingKind; batchId: string; count: number; charged: number; tags: (Chip | string)[]; preview: LeadPreview[] };
@@ -106,13 +153,14 @@ const batchHref = (kind: PendingKind, batchId: string) => `${kind === "search_pe
 /** WhatsAppContact expects an international number; a wa.me link carries the digits. */
 const whatsappPhone = (lead: Pick<LeadPreview, "phone" | "whatsapp">) => lead.phone || (lead.whatsapp.match(/(\d{8,15})/)?.[1] ? `+${lead.whatsapp.match(/(\d{8,15})/)![1]}` : "");
 const RESULT_KINDS: PendingKind[] = ["search_businesses", "search_people", "import_leads"];
-type ConfirmedSummary = { batchId?: string; delivered?: number; charged?: number; tags?: string[]; created?: boolean | number; skipped?: number; failed?: number; preview?: LeadPreview[]; eventLink?: string; meetLink?: string; serviceOffering?: string; commercialSectors?: string };
+type ConfirmedSummary = { batchId?: string; delivered?: number; charged?: number; tags?: string[]; created?: boolean | number; skipped?: number; failed?: number; queued?: number; preview?: LeadPreview[]; eventLink?: string; meetLink?: string; serviceOffering?: string; commercialSectors?: string; limitReached?: boolean };
 const SPEND_KINDS: PendingKind[] = ["search_businesses", "search_people", "analyze_pains"];
 type AttachmentKind = "image" | "pdf" | "text" | "csv";
 /** Extracted by /api/lead-suite/chat/attachments; sent back with the conversation (the server re-validates it). */
 type AttachmentContext = { name: string; kind: AttachmentKind; size: number; text: string; truncated: boolean; csv?: { totalRows: number; rows: unknown[] } & Record<string, unknown>; preview?: { headers: string[]; rows: string[][] }; restored?: boolean };
 type AttachmentChip = { id: number; name: string; size: number; status: "uploading" | "ready" | "error"; error?: string; context?: AttachmentContext };
-type ChatMessage = { id: number; role: ChatRole; content: string; actions?: ChatAction[]; attachments?: AttachmentContext[]; at?: number };
+type ChatMessage = { id: number; role: ChatRole; content: string; actions?: ChatAction[]; attachments?: AttachmentContext[]; leadMentions?: LeadMentionSpan[]; progress?: ToolProgressItem[]; at?: number };
+type FailedRequest = { history: ChatMessage[]; turnId: string };
 
 const MAX_FILES = 5;
 const MAX_FILE_BYTES = 10 * 1024 * 1024;
@@ -133,6 +181,7 @@ const ACTION_ICON = {
   import_contacts: ListPlus,
   send_email: Send,
   send_email_batch: Mails,
+  send_whatsapp_batch: MessagesSquare,
   create_meeting: CalendarPlus,
   update_commercial_profile: BriefcaseBusiness,
 } as const;
@@ -147,7 +196,7 @@ const subscribeNarrow = (onChange: () => void) => {
   query.addEventListener("change", onChange);
   return () => query.removeEventListener("change", onChange);
 };
-type CardState = "busy" | "done" | "cancelled" | "error" | "expired" | "needs_gmail" | "needs_calendar";
+type CardState = "busy" | "done" | "cancelled" | "error" | "expired" | "needs_gmail" | "needs_calendar" | "needs_whatsapp";
 /** Cards whose content the user can edit before confirming (their own email draft / meeting). */
 const EDITABLE_KINDS: PendingKind[] = ["send_email", "create_meeting"];
 /** ISO → value for <input type="datetime-local"> in the viewer's zone. */
@@ -233,8 +282,25 @@ export function LeadSuiteChat({ onActivity, variant = "panel" }: { onActivity?: 
   const locale = useLocale();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [draft, setDraft] = useState("");
+  const [draftMentions, setDraftMentions] = useState<LeadMentionSpan[]>([]);
+  const [progress, setProgress] = useState<ToolProgressItem[]>([]);
+  const progressRef = useRef<ToolProgressItem[]>([]);
+  const progressCopy = (item: ToolProgressItem) => {
+    if (item.status === "running") return item.label;
+    if (item.status === "failed") return t("toolProgress.failed", { label: item.label.replace(/…$/, "") });
+    if (/dolores|pain points/i.test(item.label)) return t("toolProgress.analysisDone");
+    if (/contexto|context/i.test(item.label)) return t("toolProgress.memoryDone");
+    return t("toolProgress.done");
+  };
+  const [assistantMode, setAssistantMode] = useState<LeadtitaMode>("seller");
+  const [salesChannel, setSalesChannel] = useState<LeadtitaSalesChannel>(null);
+  const [messageQuota, setMessageQuota] = useState<MessageQuotaState | null>(null);
+  const [mention, setMention] = useState<{ query: string; start: number; end: number } | null>(null);
+  const [mentionLeads, setMentionLeads] = useState<MentionLead[]>([]);
+  const [mentionIndex, setMentionIndex] = useState(0);
+  const [mentionLoading, setMentionLoading] = useState(false);
   const [sending, setSending] = useState(false);
-  const [failed, setFailed] = useState<ChatMessage[] | null>(null);
+  const [failed, setFailed] = useState<FailedRequest | null>(null);
   // The model could not answer this conversation (too long / empty reply): offer a fresh chat instead of a retry loop.
   const [contextFull, setContextFull] = useState(false);
   const [cards, setCards] = useState<Record<string, CardState | "stale">>({});
@@ -248,6 +314,7 @@ export function LeadSuiteChat({ onActivity, variant = "panel" }: { onActivity?: 
   });
   const setEdit = (token: string, key: string, value: string | boolean) => setCardEdits((current) => ({ ...current, [token]: { ...current[token], [key]: value } }));
   const [copied, setCopied] = useState<string | null>(null);
+  const [draftSendState, setDraftSendState] = useState<Record<string, "busy" | "error">>({});
   const [chips, setChips] = useState<AttachmentChip[]>([]);
   const narrow = useSyncExternalStore(subscribeNarrow, () => window.matchMedia(NARROW_QUERY).matches, () => false);
   const [dragging, setDragging] = useState(false);
@@ -255,7 +322,88 @@ export function LeadSuiteChat({ onActivity, variant = "panel" }: { onActivity?: 
   const nextId = useRef(1);
   const listRef = useRef<HTMLOListElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const mentionMirrorRef = useRef<HTMLDivElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
+  const mentionRequest = useRef(0);
+  const refreshMessageQuota = useCallback(async () => {
+    try {
+      const response = await fetch("/api/lead-suite/chat/usage", { cache: "no-store" });
+      if (!response.ok) return;
+      setMessageQuota(await response.json() as MessageQuotaState);
+    } catch {
+      // Quota meters are informative; sending remains protected by the server-side quota.
+    }
+  }, []);
+  useEffect(() => {
+    void refreshMessageQuota();
+    const interval = window.setInterval(() => void refreshMessageQuota(), 60_000);
+    return () => window.clearInterval(interval);
+  }, [refreshMessageQuota]);
+
+  useEffect(() => {
+    const requestId = ++mentionRequest.current;
+    if (!mention || mention.query.trim().length < 1) return;
+    const timer = window.setTimeout(async () => {
+      try {
+        const response = await fetch(`/api/lead-suite/leads?q=${encodeURIComponent(mention.query.trim())}`, { cache: "no-store" });
+        const data = response.ok ? await response.json() as { items?: MentionLead[] } : null;
+        if (mentionRequest.current === requestId) setMentionLeads((data?.items ?? []).slice(0, 6));
+      } catch {
+        if (mentionRequest.current === requestId) setMentionLeads([]);
+      } finally {
+        if (mentionRequest.current === requestId) setMentionLoading(false);
+      }
+    }, 140);
+    return () => window.clearTimeout(timer);
+  }, [mention]);
+
+  const updateMention = (value: string, caret: number) => {
+    const beforeCaret = value.slice(0, caret);
+    const match = beforeCaret.match(/(?:^|\s)@([^\s@]*)$/);
+    if (!match) { setMention(null); setMentionLeads([]); setMentionLoading(false); return; }
+    const query = match[1];
+    const start = caret - query.length - 1;
+    if (query) setMentionLoading(true);
+    else { setMentionLeads([]); setMentionLoading(false); }
+    setMention({ query, start, end: caret });
+    setMentionIndex(0);
+  };
+
+  const updateDraft = (value: string, caret: number) => {
+    let prefix = 0;
+    while (prefix < draft.length && prefix < value.length && draft[prefix] === value[prefix]) prefix += 1;
+    let oldEnd = draft.length;
+    let newEnd = value.length;
+    while (oldEnd > prefix && newEnd > prefix && draft[oldEnd - 1] === value[newEnd - 1]) { oldEnd -= 1; newEnd -= 1; }
+    const delta = newEnd - oldEnd;
+    setDraftMentions((current) => current.flatMap((span) => {
+      if (oldEnd <= span.start) return [{ ...span, start: span.start + delta, end: span.end + delta }];
+      if (prefix >= span.end) return [span];
+      return [];
+    }));
+    setDraft(value);
+    updateMention(value, caret);
+  };
+
+  const chooseMention = (lead: MentionLead) => {
+    if (!mention) return;
+    const input = inputRef.current;
+    const next = `${draft.slice(0, mention.start)}@${lead.name}${draft.slice(mention.end)}`;
+    const end = mention.start + lead.name.length + 1;
+    const caret = end;
+    const delta = end - mention.end;
+    setDraftMentions((current) => [
+      ...current.flatMap((span) => {
+        if (mention.end <= span.start) return [{ ...span, start: span.start + delta, end: span.end + delta }];
+        if (mention.start >= span.end) return [span];
+        return [];
+      }),
+      { start: mention.start, end, leadId: lead.id, name: lead.name },
+    ].sort((a, b) => a.start - b.start));
+    setDraft(next);
+    setMention(null);
+    requestAnimationFrame(() => { input?.focus(); input?.setSelectionRange(caret, caret); });
+  };
 
   /**
    * Keep the composer ready to type without stealing focus: skipped while the user types in another field or selects
@@ -275,6 +423,7 @@ export function LeadSuiteChat({ onActivity, variant = "panel" }: { onActivity?: 
   const [fade, setFade] = useState(false);
   const updateFade = () => {
     const input = inputRef.current;
+    if (input && mentionMirrorRef.current) mentionMirrorRef.current.scrollTop = input.scrollTop;
     setFade(Boolean(input && input.scrollHeight - input.scrollTop - input.clientHeight > 2));
   };
   useEffect(() => {
@@ -395,14 +544,21 @@ export function LeadSuiteChat({ onActivity, variant = "panel" }: { onActivity?: 
       .catch(() => undefined);
     return () => controller.abort();
   }, []);
-  // ───────── Persistent history (this browser, per account) ─────────
+  // ───────── Persistent history (server = source of truth, this browser = per-account cache) ─────────
   const [userId, setUserId] = useState<string | null>(null);
   // Assigned on hydration (never during render: ids use the clock, which Next forbids while prerendering).
   const [conversationId, setConversationId] = useState("");
   const [historyOpen, setHistoryOpen] = useState(false);
-  const [historyList, setHistoryList] = useState<{ items: Conversation[]; now: number }>({ items: [], now: 0 });
+  const [historyList, setHistoryList] = useState<{ items: HistoryItem[]; now: number }>({ items: [], now: 0 });
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  const [selectedConversations, setSelectedConversations] = useState<string[]>([]);
+  const [confirmDeleteSelected, setConfirmDeleteSelected] = useState(false);
+  const [deletingConversations, setDeletingConversations] = useState(false);
+  const [historyDeleteError, setHistoryDeleteError] = useState(false);
   const historyButtonRef = useRef<HTMLButtonElement>(null);
+  // Current conversation id + length, so a late server answer never overwrites what the user did meanwhile.
+  const live = useRef({ id: "", length: 0 });
+  useEffect(() => { live.current = { id: conversationId, length: messages.length }; }, [conversationId, messages.length]);
 
   function hydrate(conversation: Conversation | null, now: number) {
     // Older sessions may hold empty assistant bubbles from failed turns: hide them.
@@ -418,33 +574,41 @@ export function LeadSuiteChat({ onActivity, variant = "panel" }: { onActivity?: 
     setUnseen(false);
     atBottom.current = true;
     nextId.current = restored.reduce((max, message) => Math.max(max, message.id), 0) + 1;
+    return restored.length;
   }
 
-  // Restore the active conversation once the account is known (accounts sharing a browser never mix).
+  // Restore the active conversation once the account is known (accounts sharing a browser never mix): the local cache
+  // first for an instant paint, then the server copy if it is newer (another browser/device kept chatting).
   useEffect(() => {
     let current = true;
-    getSession().then((session) => {
+    getSession().then(async (session) => {
       if (!current || !session.user) return;
       const id = String(session.user.id);
       const history = loadHistory<ChatMessage, ConversationExtra>(id);
+      const active = history.conversations.find((conversation) => conversation.id === history.activeId) ?? null;
       setUserId(id);
-      hydrate(history.conversations.find((conversation) => conversation.id === history.activeId) ?? null, timestamp());
+      const length = hydrate(active, timestamp());
+      const synced = await syncWithServer<ChatMessage, ConversationExtra>(id, active?.id ?? null, active?.updatedAt ?? 0);
+      if (current && synced.activeMissing && live.current.id === active?.id) hydrate(null, timestamp());
+      else if (current && synced.conversation && live.current.id === synced.conversation.id && live.current.length === length) hydrate(synced.conversation, timestamp());
     }).catch(() => undefined);
     return () => { current = false; };
   }, []);
 
-  // Save after each change (debounced); an empty conversation is never stored.
+  // Save after each change (debounced): local cache at once, server ~1.5 s later; an empty conversation is never stored.
   useEffect(() => {
     if (!userId || !conversationId || !messages.length) return;
     const timer = window.setTimeout(() => {
       const stored = toStored(messages, cards);
-      saveConversation<ChatMessage, ConversationExtra>(userId, {
+      const conversation: Conversation = {
         id: conversationId,
         title: titleOf(messages) || t("untitled"),
         updatedAt: timestamp(),
         messages: stored.messages,
         extra: { cards: stored.cards, results, leadPains },
-      });
+      };
+      saveConversation(userId, conversation);
+      scheduleServerSave(userId, conversation);
     }, 300);
     return () => window.clearTimeout(timer);
   }, [userId, conversationId, messages, cards, results, leadPains, t]);
@@ -463,25 +627,66 @@ export function LeadSuiteChat({ onActivity, variant = "panel" }: { onActivity?: 
       focusComposer();
       return;
     }
-    setHistoryList({ items: userId ? loadHistory<ChatMessage, ConversationExtra>(userId).conversations : [], now: timestamp() });
+    // Local cache paints at once; the server list (other browsers/devices) merges in when it answers.
+    setHistoryList({ items: userId ? mergeHistory(userId, null) : [], now: timestamp() });
     setConfirmDelete(null);
+    setSelectedConversations([]);
+    setConfirmDeleteSelected(false);
+    setHistoryDeleteError(false);
     setHistoryOpen(true);
+    if (!userId) return;
+    void fetchConversationList().then((server) => {
+      if (server) setHistoryList((list) => ({ ...list, items: mergeHistory(userId, server) }));
+    });
   }
 
-  function openConversation(conversation: Conversation) {
-    if (sending) return;
-    if (userId) setActiveConversation(userId, conversation.id);
+  async function openConversation(item: HistoryItem) {
+    if (sending || !userId) return;
+    if (item.serverUpdatedAt === undefined) {
+      const server = await fetchConversationList();
+      if (server) {
+        const activeItems = mergeHistory(userId, server);
+        setHistoryList({ items: activeItems, now: timestamp() });
+        if (!activeItems.some((entry) => entry.id === item.id)) return;
+      }
+    }
+    const conversation = await loadConversation<ChatMessage, ConversationExtra>(userId, item);
+    if (!conversation) return;
+    setActiveConversation(userId, conversation.id);
     hydrate(conversation, timestamp());
     setHistoryOpen(false);
     focusComposer();
   }
 
-  function removeConversation(id: string) {
-    if (!userId) return;
-    deleteConversation(userId, id);
-    setHistoryList((current) => ({ ...current, items: current.items.filter((item) => item.id !== id) }));
+  async function removeConversations(ids: string[]) {
+    if (!userId || deletingConversations || !ids.length) return;
+    setDeletingConversations(true);
+    setHistoryDeleteError(false);
+    const removed = await deactivateConversations(userId, ids);
+    if (!removed) {
+      const server = await fetchConversationList();
+      if (server) {
+        setHistoryList({ items: mergeHistory(userId, server), now: timestamp() });
+        const activeIds = new Set(server.map((item) => item.id));
+        setSelectedConversations((current) => current.filter((id) => activeIds.has(id)));
+      }
+      setHistoryDeleteError(true);
+      setDeletingConversations(false);
+      return;
+    }
+    const idsToRemove = new Set(ids);
+    setHistoryList((current) => ({ ...current, items: current.items.filter((item) => !idsToRemove.has(item.id)) }));
+    setSelectedConversations((current) => current.filter((id) => !idsToRemove.has(id)));
     setConfirmDelete(null);
-    if (id === conversationId) hydrate(null, timestamp());
+    setConfirmDeleteSelected(false);
+    if (idsToRemove.has(conversationId)) hydrate(null, timestamp());
+    setDeletingConversations(false);
+  }
+
+  function toggleConversationSelection(id: string) {
+    setSelectedConversations((current) => current.includes(id) ? current.filter((item) => item !== id) : [...current, id]);
+    setConfirmDeleteSelected(false);
+    setConfirmDelete(null);
   }
 
   const relativeTime = (at: number, now: number) => {
@@ -556,6 +761,7 @@ export function LeadSuiteChat({ onActivity, variant = "panel" }: { onActivity?: 
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           token,
+          conversationId,
           ...(removed.length ? { keywords: keywordsOf(pendingExtra(token)).filter((keyword) => !removed.includes(keyword)) } : {}),
           ...(EDITABLE_KINDS.includes(kind) ? { edits: (() => {
             const edit = editOf(token, pendingExtra(token));
@@ -567,19 +773,29 @@ export function LeadSuiteChat({ onActivity, variant = "panel" }: { onActivity?: 
       });
       if (response.status === 409) {
         const { code } = (await response.json().catch(() => ({}))) as { code?: string };
-        setCards((current) => ({ ...current, [token]: code === "needs_gmail" ? "needs_gmail" : code === "needs_calendar" ? "needs_calendar" : "stale" }));
+        setCards((current) => ({ ...current, [token]: code === "needs_gmail" ? "needs_gmail" : code === "needs_calendar" ? "needs_calendar" : code === "needs_whatsapp" ? "needs_whatsapp" : "stale" }));
         return;
+      }
+      if (response.status === 410) {
+        const { code } = (await response.json().catch(() => ({}))) as { code?: string };
+        if (code === "conversation_inactive") {
+          if (userId) await deactivateConversations(userId, [conversationId]);
+          setHistoryList((current) => ({ ...current, items: current.items.filter((item) => item.id !== conversationId) }));
+          hydrate(null, timestamp());
+          return;
+        }
       }
       if (!response.ok) throw new Error(String(response.status));
       const { result } = (await response.json()) as { result?: { leadName?: string; summary?: ConfirmedSummary } };
       const summary = result?.summary ?? {};
+      void refreshMessageQuota();
       setCards((current) => ({ ...current, [token]: "done" }));
       if (kind === "update_commercial_profile") setServiceOffering(summary.serviceOffering ?? "");
       const count = kind === "import_leads" ? Number(summary.created ?? 0) : summary.delivered ?? 0;
       const resultCard: ChatAction[] = RESULT_KINDS.includes(kind) && summary.batchId && count > 0
         ? [{ type: "batch_result", kind, batchId: summary.batchId, count, charged: summary.charged ?? 0, tags, preview: summary.preview ?? [] }]
         : [];
-      appendAssistant(t(`done.${kind}`, {
+      appendAssistant(kind === "send_email" && summary.limitReached ? t("gmailDailyLimitReached") : t(`done.${kind}`, {
         lead: result?.leadName || leadName,
         delivered: summary.delivered ?? 0,
         charged: summary.charged ?? 0,
@@ -589,8 +805,10 @@ export function LeadSuiteChat({ onActivity, variant = "panel" }: { onActivity?: 
         created: Number(summary.created ?? 0),
         skipped: summary.skipped ?? 0,
         failed: summary.failed ?? 0,
+        queued: summary.queued ?? 0,
         href: summary.batchId ? batchHref(kind, summary.batchId) : "/historial",
       }), resultCard);
+      if (kind === "send_email_batch" && summary.limitReached) appendAssistant(t("gmailDailyLimitReached"));
       onActivity?.();
       focusComposer();
     } catch {
@@ -604,37 +822,119 @@ export function LeadSuiteChat({ onActivity, variant = "panel" }: { onActivity?: 
     focusComposer();
   }
 
-  async function request(history: ChatMessage[]) {
+  async function prepareDraftSend(action: Extract<ChatAction, { type: "message_suggestions" }>, draftMessage: { channel: "whatsapp" | "email"; subject: string; text: string }, key: string) {
+    setDraftSendState((current) => ({ ...current, [key]: "busy" }));
+    try {
+      const response = await fetch("/api/lead-suite/chat/draft-send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ conversationId, leadId: action.leadId, channel: draftMessage.channel, subject: draftMessage.subject, text: draftMessage.text }),
+      });
+      const payload = await response.json().catch(() => ({})) as { action?: ChatAction };
+      if (!response.ok || payload.action?.type !== "pending_change") throw new Error("proposal_unavailable");
+      appendAssistant(t("draftSend.confirmPrompt", { lead: action.leadName, channel: t(`channels.${draftMessage.channel}`) }), [payload.action]);
+      setDraftSendState((current) => { const next = { ...current }; delete next[key]; return next; });
+    } catch {
+      setDraftSendState((current) => ({ ...current, [key]: "error" }));
+    }
+  }
+
+  async function request(history: ChatMessage[], turnId = newConversationId()) {
     setSending(true);
     setFailed(null);
     setContextFull(false);
+    progressRef.current = [];
+    setProgress([]);
     try {
       const response = await fetch("/api/lead-suite/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          conversationId,
+          turnId,
           messages: withRecentAttachments(history.slice(-MAX_HISTORY)),
           timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+          mode: assistantMode,
+          salesChannel,
         }),
       });
       if (!response.ok) {
         const payload = (await response.json().catch(() => ({}))) as { code?: string };
         if (payload.code === "context_full") setContextFull(true);
+        if (payload.code === "conversation_inactive") {
+          if (userId) await deactivateConversations(userId, [conversationId]);
+          setHistoryList((current) => ({ ...current, items: current.items.filter((item) => item.id !== conversationId) }));
+          hydrate(null, timestamp());
+          return;
+        }
         throw new Error(String(response.status));
       }
-      const data = (await response.json()) as { reply?: string; actions?: ChatAction[] };
-      const actions = Array.isArray(data.actions) ? data.actions : [];
+      const reader = response.body?.getReader();
+      if (!reader) throw new Error("chat_failed");
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let completed: { reply?: string; actions?: ChatAction[] } | null = null;
+      let streamFailure: string | null = null;
+      const consumeFrame = (rawFrame: string) => {
+        const lines = rawFrame.replace(/\r\n/g, "\n").split("\n");
+        const event = lines.find((line) => line.startsWith("event:"))?.slice(6).trim();
+        const payload = lines.filter((line) => line.startsWith("data:")).map((line) => line.slice(5).trim()).join("\n");
+        if (!event || !payload) return;
+        let data: unknown;
+        try { data = JSON.parse(payload); } catch { return; }
+        if (event === "progress" && data && typeof data === "object") {
+          const update = data as { type?: unknown; id?: unknown; label?: unknown };
+          if (typeof update.id !== "string" || typeof update.label !== "string") return;
+          const status = update.type === "tool_started" ? "running" : update.type === "tool_succeeded" ? "done" : update.type === "tool_failed" ? "failed" : null;
+          if (!status) return;
+          const current = progressRef.current;
+          const index = current.findIndex((item) => item.id === update.id);
+          const next = [...current];
+          if (index < 0) next.push({ id: update.id, label: update.label, status });
+          else next[index] = { ...next[index], label: update.label, status };
+          progressRef.current = next;
+          setProgress(next);
+        } else if (event === "complete" && data && typeof data === "object") {
+          completed = data as { reply?: string; actions?: ChatAction[] };
+        } else if (event === "failure" && data && typeof data === "object" && "code" in data && typeof data.code === "string") {
+          streamFailure = data.code;
+        }
+      };
+      while (true) {
+        const { value, done } = await reader.read();
+        buffer += decoder.decode(value, { stream: !done }).replace(/\r\n/g, "\n");
+        let separator = buffer.indexOf("\n\n");
+        while (separator >= 0) {
+          consumeFrame(buffer.slice(0, separator));
+          buffer = buffer.slice(separator + 2);
+          separator = buffer.indexOf("\n\n");
+        }
+        if (done) break;
+      }
+      if (buffer.trim()) consumeFrame(buffer);
+      if (streamFailure) {
+        if (streamFailure === "context_full") setContextFull(true);
+        throw new Error(streamFailure);
+      }
+      if (!completed) throw new Error("chat_failed");
+      const actions = Array.isArray(completed.actions) ? completed.actions : [];
       const hasCard = actions.some((action) => action.type === "pending_change");
       // An empty reply with a card still needs a line in the history so the model sees its own question next turn.
-      const content = data.reply?.trim() || (hasCard ? t("confirmPrompt") : "");
+      const content = completed.reply?.trim() || (hasCard ? t("confirmPrompt") : "");
       // Nothing to show: surface the retry state instead of an empty bubble.
       if (!content && !actions.length) {
         setContextFull(true);
         throw new Error("empty_reply");
       }
-      setMessages([...history, { id: nextId.current++, role: "assistant" as const, content, actions, at: timestamp() }].slice(-MAX_STORED_MESSAGES));
-    } catch {
-      setFailed(history);
+      setMessages([...history, { id: nextId.current++, role: "assistant" as const, content, actions, ...(progressRef.current.length ? { progress: progressRef.current } : {}), at: timestamp() }].slice(-MAX_STORED_MESSAGES));
+      progressRef.current = [];
+      setProgress([]);
+    } catch (error) {
+      const code = error instanceof Error ? error.message : "chat_failed";
+      if (code === "context_full") setContextFull(true);
+      progressRef.current = progressRef.current.map((item) => item.status === "running" ? { ...item, status: "failed" } : item);
+      setProgress(progressRef.current);
+      setFailed({ history, turnId });
       focusComposer();
     } finally {
       setSending(false);
@@ -645,9 +945,14 @@ export function LeadSuiteChat({ onActivity, variant = "panel" }: { onActivity?: 
     const attachments = chips.flatMap((chip) => (chip.status === "ready" && chip.context ? [chip.context] : []));
     const content = (text.trim() || (attachments.length ? t("attachmentDefaultPrompt") : "")).slice(0, MAX_CHARS);
     if (!content || sending || chips.some((chip) => chip.status === "uploading")) return;
-    const history = [...messages, { id: nextId.current++, role: "user" as const, content, at: timestamp(), ...(attachments.length ? { attachments } : {}) }].slice(-MAX_STORED_MESSAGES);
+    const leadingWhitespace = text === draft ? text.length - text.trimStart().length : 0;
+    const selectedMentions = text === draft ? draftMentions
+      .filter((span) => span.start >= leadingWhitespace && span.end <= leadingWhitespace + content.length)
+      .map((span) => ({ ...span, start: span.start - leadingWhitespace, end: span.end - leadingWhitespace })) : [];
+    const history = [...messages, { id: nextId.current++, role: "user" as const, content, at: timestamp(), ...(selectedMentions.length ? { leadMentions: selectedMentions } : {}), ...(attachments.length ? { attachments } : {}) }].slice(-MAX_STORED_MESSAGES);
     setMessages(history);
     setDraft("");
+    setDraftMentions([]);
     setChips([]);
     focusComposer(true);
     void request(history);
@@ -772,10 +1077,18 @@ export function LeadSuiteChat({ onActivity, variant = "panel" }: { onActivity?: 
 
   function onSubmit(event: FormEvent) {
     event.preventDefault();
+    setMention(null);
     send(draft);
   }
 
   function onKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
+    if (mention) {
+      if (event.key === "ArrowDown" && mentionLeads.length) { event.preventDefault(); setMentionIndex((index) => (index + 1) % mentionLeads.length); return; }
+      if (event.key === "ArrowUp" && mentionLeads.length) { event.preventDefault(); setMentionIndex((index) => (index - 1 + mentionLeads.length) % mentionLeads.length); return; }
+      if (event.key === "Escape") { event.preventDefault(); setMention(null); return; }
+      if (event.key === "Tab" && !event.shiftKey && mentionLeads.length) { event.preventDefault(); chooseMention(mentionLeads[mentionIndex]); return; }
+      if (event.key === "Enter" && !event.shiftKey && mentionLeads.length) { event.preventDefault(); chooseMention(mentionLeads[mentionIndex]); return; }
+    }
     if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {
       event.preventDefault();
       send(draft);
@@ -1002,7 +1315,16 @@ export function LeadSuiteChat({ onActivity, variant = "panel" }: { onActivity?: 
   }
 
   return (
-    <section className={`ls-chat ls-chat--${variant}${dragging ? " is-dragging" : ""}`} aria-labelledby="ls-chat-title" onDragEnter={onDragEnter} onDragOver={onDragOver} onDragLeave={onDragLeave} onDrop={onDrop}>
+    <section className={`ls-chat ls-chat--${variant}${messageQuota ? " has-quotas" : ""}${dragging ? " is-dragging" : ""}`} aria-labelledby="ls-chat-title" onDragEnter={onDragEnter} onDragOver={onDragOver} onDragLeave={onDragLeave} onDrop={onDrop}>
+      {messageQuota ? (
+        <div className="ls-chat__quotas" aria-label={`${t("quota.whatsapp")}, ${t("quota.gmail")}`}>
+          {(["whatsapp", "gmail"] as const).map((channel) => {
+            const usage = messageQuota[channel];
+            const label = t(`quota.${channel}`);
+            return <MessageQuotaMeter key={channel} channel={channel} {...usage} label={label} today={t("quota.today", usage)} description={t("quota.progress", { channel: label, ...usage })} compact />;
+          })}
+        </div>
+      ) : null}
       <div className="ls-chat__dropzone" aria-hidden="true">
         <div className="ls-chat__dropzone-inner">
           <FileUp size={28} />
@@ -1021,7 +1343,34 @@ export function LeadSuiteChat({ onActivity, variant = "panel" }: { onActivity?: 
         </button>
         {historyOpen ? (
           <Popover open onClose={() => setHistoryOpen(false)} anchorRef={historyButtonRef} id="ls-chat-history" role="dialog" placement="bottom-end" className="ls-chat__history" aria-label={t("history.title")}>
-            <p className="ls-chat__history-title">{t("history.title")}</p>
+            <div className="ls-chat__history-head">
+              <p className="ls-chat__history-title">{t("history.title")}</p>
+              {historyList.items.length > 0 ? (
+                <button type="button" className="ls-chat__history-select-all" disabled={deletingConversations || sending} onClick={() => {
+                  const allSelected = historyList.items.every((item) => selectedConversations.includes(item.id));
+                  setSelectedConversations(allSelected ? [] : historyList.items.map((item) => item.id));
+                  setConfirmDeleteSelected(false);
+                  setConfirmDelete(null);
+                }}>{historyList.items.every((item) => selectedConversations.includes(item.id)) ? t("history.deselectAll") : t("history.selectAll")}</button>
+              ) : null}
+            </div>
+            {historyDeleteError ? <p className="ls-chat__history-error" role="alert">{t("history.deleteError")}</p> : null}
+            {selectedConversations.length > 0 ? (
+              <div className="ls-chat__history-bulk" role="group" aria-label={t("history.deleteSelected")}>
+                {confirmDeleteSelected ? (
+                  <>
+                    <span>{t("history.confirmDeleteSelected", { count: selectedConversations.length })}</span>
+                    <button type="button" disabled={deletingConversations || sending} onClick={() => setConfirmDeleteSelected(false)}>{t("cancelAction")}</button>
+                    <button type="button" className="is-danger" disabled={deletingConversations || sending} onClick={() => void removeConversations(selectedConversations)}>{deletingConversations ? t("history.deleting") : t("deleteAction")}</button>
+                  </>
+                ) : (
+                  <>
+                    <span>{t("history.selected", { count: selectedConversations.length })}</span>
+                    <button type="button" className="is-danger" disabled={deletingConversations || sending} onClick={() => setConfirmDeleteSelected(true)}><Trash2 aria-hidden="true" size={14} />{t("history.deleteSelected")}</button>
+                  </>
+                )}
+              </div>
+            ) : null}
             {historyList.items.length ? (
               <ul>
                 {historyList.items.map((conversation) => (
@@ -1030,15 +1379,16 @@ export function LeadSuiteChat({ onActivity, variant = "panel" }: { onActivity?: 
                       <div className="ls-chat__history-confirm" role="group" aria-label={t("history.confirmDelete")}>
                         <span>{t("history.confirmDelete")}</span>
                         <button type="button" onClick={() => setConfirmDelete(null)}>{t("cancelAction")}</button>
-                        <button type="button" className="is-danger" onClick={() => removeConversation(conversation.id)}>{t("deleteAction")}</button>
+                        <button type="button" className="is-danger" disabled={deletingConversations || sending} onClick={() => void removeConversations([conversation.id])}>{deletingConversations ? t("history.deleting") : t("deleteAction")}</button>
                       </div>
                     ) : (
                       <>
-                        <button type="button" className="ls-chat__history-open" onClick={() => openConversation(conversation)} aria-current={conversation.id === conversationId ? "true" : undefined}>
+                        <input type="checkbox" className="ls-chat__history-check" checked={selectedConversations.includes(conversation.id)} disabled={deletingConversations || sending} aria-label={t("history.selectConversation", { title: conversation.title || t("untitled") })} onChange={() => toggleConversationSelection(conversation.id)} />
+                        <button type="button" className="ls-chat__history-open" disabled={deletingConversations} onClick={() => openConversation(conversation)} aria-current={conversation.id === conversationId ? "true" : undefined}>
                           <strong>{conversation.title || t("untitled")}</strong>
                           <small>{relativeTime(conversation.updatedAt, historyList.now)}</small>
                         </button>
-                        <button type="button" className="ls-chat__history-delete" onClick={() => setConfirmDelete(conversation.id)} aria-label={t("history.delete", { title: conversation.title || t("untitled") })}>
+                        <button type="button" className="ls-chat__history-delete" disabled={deletingConversations || sending} onClick={() => { setSelectedConversations([]); setConfirmDeleteSelected(false); setConfirmDelete(conversation.id); }} aria-label={t("history.delete", { title: conversation.title || t("untitled") })}>
                           <Trash2 aria-hidden="true" size={15} />
                         </button>
                       </>
@@ -1074,7 +1424,7 @@ export function LeadSuiteChat({ onActivity, variant = "panel" }: { onActivity?: 
           <ul className="ls-chat__examples" aria-labelledby="ls-chat-examples-label">
             {examples.map(({ text, channel, Icon }) => (
               <li key={text}>
-                <button type="button" onClick={() => { setDraft(text); inputRef.current?.focus(); }} aria-label={`${t("useExample")}: ${text}`}>
+                <button type="button" onClick={() => { setDraft(text); setDraftMentions([]); inputRef.current?.focus(); }} aria-label={`${t("useExample")}: ${text}`}>
                   <span className="ls-chat__example-icon" aria-hidden="true"><Icon size={16} /></span>
                   <span className="ls-chat__example-body">
                     <span className="ls-chat__example-channel">{channel}</span>
@@ -1099,8 +1449,13 @@ export function LeadSuiteChat({ onActivity, variant = "panel" }: { onActivity?: 
               {message.content
                 ? message.role === "assistant"
                   ? <div className="ls-chat__md">{renderMarkdown(message.content.replace(/!\[/g, "["))}</div>
-                  : <p className="ls-chat__bubble">{message.content}</p>
+                  : <p className="ls-chat__bubble">{renderUserMessage(message.content, message.leadMentions)}</p>
                 : null}
+              {message.progress?.length ? (
+                <ul className="ls-chat__tool-progress" aria-label={t("toolProgress.label")}>
+                  {message.progress.map((item) => <li key={item.id} role="status" aria-live="polite"><span className={`ls-chat__tool-progress-icon is-${item.status}`} aria-hidden="true">{item.status === "running" ? <LoaderCircle className="ls-chat__spin" size={14} /> : item.status === "done" ? <CircleCheck size={14} /> : <CircleAlert size={14} />}</span><span>{progressCopy(item)}</span></li>)}
+                </ul>
+              ) : null}
               {message.attachments?.length ? (
                 <ul className="ls-chat__msg-files" aria-label={t("attachedFiles")}>
                   {message.attachments.map((attachment) => {
@@ -1130,6 +1485,7 @@ export function LeadSuiteChat({ onActivity, variant = "panel" }: { onActivity?: 
                   const longFields = fields.filter((key) => key === "message" || key === "notes");
                   const lines = (key: string) => (typeof extra[key] === "string" ? String(extra[key]).split("\n").filter(Boolean) : []);
                   const tags = actionTags(kind, extra);
+                  const quotaChannel: QuotaChannel | null = kind === "send_whatsapp_batch" ? "whatsapp" : kind === "send_email" || kind === "send_email_batch" ? "gmail" : null;
                   const settled = state === "done" || state === "cancelled" || state === "stale" || state === "expired";
                   const editable = EDITABLE_KINDS.includes(kind) && !settled && state !== "busy";
                   const edit = editOf(action.token, extra);
@@ -1139,6 +1495,12 @@ export function LeadSuiteChat({ onActivity, variant = "panel" }: { onActivity?: 
                         <span className="ls-chat__action-icon" aria-hidden="true"><Icon size={18} /></span>
                         <h3 id={titleId}>{actionTitle(kind, leadName, extra)}</h3>
                       </header>
+
+                      {quotaChannel && messageQuota ? (() => {
+                        const usage = messageQuota[quotaChannel];
+                        const label = t(`quota.${quotaChannel}`);
+                        return <MessageQuotaMeter channel={quotaChannel} {...usage} label={label} today={t("quota.today", usage)} description={t("quota.progress", { channel: label, ...usage })} />;
+                      })() : null}
 
                       {spend ? (
                         <p className="ls-chat__cost">
@@ -1216,7 +1578,8 @@ export function LeadSuiteChat({ onActivity, variant = "panel" }: { onActivity?: 
                           <label className="ls-chat__check"><input type="checkbox" checked={Boolean(edit.meet)} onChange={(event) => setEdit(action.token, "meet", event.target.checked)} disabled={!editable} /><span>{t("meetingCard.meet")}</span></label>
                           {extra.attendee ? <label className="ls-chat__check"><input type="checkbox" checked={Boolean(edit.invite)} onChange={(event) => setEdit(action.token, "invite", event.target.checked)} disabled={!editable} /><span>{t("meetingCard.invite", { email: String(extra.attendee) })}</span></label> : null}
                         </div>
-                      ) : kind === "send_email_batch" ? <p className="ls-chat__action-note">{t("emailCard.batchNote", { seconds: 20 })}</p> : null}
+                      ) : kind === "send_email_batch" ? <p className="ls-chat__action-note">{t("emailCard.batchNote", { seconds: 20 })}</p>
+                        : kind === "send_whatsapp_batch" ? <p className="ls-chat__action-note">{t("whatsappCard.batchNote", { min: 45, max: 120, daily: 40 })}</p> : null}
 
                       {destructive && !settled ? <p className="ls-chat__action-note">{t("irreversible")}</p> : null}
 
@@ -1231,6 +1594,11 @@ export function LeadSuiteChat({ onActivity, variant = "panel" }: { onActivity?: 
                           <div className="ls-chat__action-connect" role="status">
                             <p>{t(state === "needs_gmail" ? "googleNeeds.gmail" : "googleNeeds.calendar")}</p>
                             <GoogleFeatureConnectButton feature={state === "needs_gmail" ? "gmail" : "calendar"} returnTo="/leadtita" />
+                          </div>
+                        ) : state === "needs_whatsapp" ? (
+                          <div className="ls-chat__drive-connect">
+                            <p className="ls-chat__action-note">{t("whatsappNeeds")}</p>
+                            <WhatsAppConnectCard compact />
                           </div>
                         ) : state === "stale" ? (
                           <p className="ls-chat__action-status" role="status">{t("staleChange")}</p>
@@ -1307,11 +1675,14 @@ export function LeadSuiteChat({ onActivity, variant = "panel" }: { onActivity?: 
                       {action.messages.map((draftMessage, draftIndex) => {
                         const key = `${message.id}-${index}-${draftIndex}`;
                         const full = draftMessage.subject ? `${draftMessage.subject}\n\n${draftMessage.text}` : draftMessage.text;
-                        const ChannelIcon = draftMessage.channel === "email" ? Mail : MessageCircle;
+                        const ChannelIcon = draftMessage.channel === "email" ? SiGmail : SiWhatsapp;
+                        const canSend = action.sendChannels?.[draftMessage.channel] === true;
+                        const hasRecipient = action.hasRecipient?.[draftMessage.channel] === true;
+                        const sendState = draftSendState[key];
                         return (
                           <article key={key} className="ls-chat__draft">
                             <header>
-                              <span className="ls-chat__draft-channel"><ChannelIcon aria-hidden="true" size={15} />{t(`channels.${draftMessage.channel}`)}{action.messages.length > 1 ? <em>{t("option", { n: draftIndex + 1 })}</em> : null}</span>
+                              <span className="ls-chat__draft-channel"><ChannelIcon className={`is-${draftMessage.channel}`} aria-hidden="true" size={15} />{t(`channels.${draftMessage.channel}`)}{action.messages.length > 1 ? <em>{t("option", { n: draftIndex + 1 })}</em> : null}</span>
                               <button type="button" className={copied === key ? "is-copied" : undefined} onClick={() => void copy(key, full)} aria-label={t("copyDraft", { n: draftIndex + 1 })}>
                                 {copied === key ? <Check aria-hidden="true" size={15} /> : <Copy aria-hidden="true" size={15} />}
                                 {copied === key ? t("copied") : t("copy")}
@@ -1319,6 +1690,16 @@ export function LeadSuiteChat({ onActivity, variant = "panel" }: { onActivity?: 
                             </header>
                             {draftMessage.subject ? <p className="ls-chat__draft-subject">{draftMessage.subject}</p> : null}
                             <p className="ls-chat__draft-text">{draftMessage.text}</p>
+                            {canSend ? (
+                              <div className="ls-chat__draft-send-row">
+                                <button type="button" className={`ls-chat__draft-send is-${draftMessage.channel}`} disabled={!hasRecipient || sendState === "busy"} onClick={() => void prepareDraftSend(action, draftMessage, key)}>
+                                  {sendState === "busy" ? <LoaderCircle aria-hidden="true" size={15} className="ls-chat__spin" /> : <Send aria-hidden="true" size={15} />}
+                                  {t(`draftSend.${draftMessage.channel}`)}
+                                </button>
+                                {!hasRecipient ? <span className="ls-chat__draft-send-hint">{t(`draftSend.missing${draftMessage.channel === "email" ? "Email" : "Whatsapp"}`)}</span> : null}
+                                {sendState === "error" ? <span className="ls-chat__draft-send-error" role="alert">{t("draftSend.error")}</span> : null}
+                              </div>
+                            ) : null}
                           </article>
                         );
                       })}
@@ -1335,6 +1716,12 @@ export function LeadSuiteChat({ onActivity, variant = "panel" }: { onActivity?: 
                       <GoogleFeatureConnectButton feature={action.feature} returnTo="/leadtita" />
                     </div>
                   );
+                }
+                if (action.type === "whatsapp_connect") {
+                  // One per message, and none when a WhatsApp batch card in the same message already offers it on confirm.
+                  if (message.actions?.some((item) => item.type === "pending_change" && item.change.kind === "send_whatsapp_batch")) return null;
+                  if (message.actions?.findIndex((item) => item.type === "whatsapp_connect") !== index) return null;
+                  return <div key={index} className="ls-chat__drive-connect"><WhatsAppConnectCard compact /></div>;
                 }
                 if (action.type === "google_connect") {
                   return <div key={index} className="ls-chat__drive-connect"><GoogleDriveConnect compact returnTo="/leadtita" /></div>;
@@ -1375,6 +1762,13 @@ export function LeadSuiteChat({ onActivity, variant = "panel" }: { onActivity?: 
               <span className="ls-chat__dots" aria-hidden="true"><span /><span /><span /></span>
               <span className="ls-chat__sr">{t("typing")}</span>
             </div>
+          </li>
+        ) : null}
+        {sending && progress.length ? (
+          <li className="ls-chat__tool-progress-active">
+            <ul className="ls-chat__tool-progress" aria-label={t("toolProgress.label")}>
+              {progress.map((item) => <li key={item.id} role="status" aria-live="polite"><span className={`ls-chat__tool-progress-icon is-${item.status}`} aria-hidden="true">{item.status === "running" ? <LoaderCircle className="ls-chat__spin" size={14} /> : item.status === "done" ? <CircleCheck size={14} /> : <CircleAlert size={14} />}</span><span>{progressCopy(item)}</span></li>)}
+            </ul>
           </li>
         ) : null}
       </ol>
@@ -1508,7 +1902,7 @@ export function LeadSuiteChat({ onActivity, variant = "panel" }: { onActivity?: 
           <button type="button" className="ls-chat__error-primary" onClick={startNewChat}>
             <SquarePen aria-hidden="true" size={14} />{t("newChat")}
           </button>
-          <button type="button" onClick={() => void request(failed)}>
+          <button type="button" onClick={() => void request(failed.history, failed.turnId)}>
             <RotateCcw aria-hidden="true" size={14} />{t("retry")}
           </button>
         </div>
@@ -1516,7 +1910,7 @@ export function LeadSuiteChat({ onActivity, variant = "panel" }: { onActivity?: 
         <div className="ls-chat__error" role="alert">
           <CircleAlert aria-hidden="true" size={16} />
           <span>{t("error")}</span>
-          <button type="button" onClick={() => void request(failed)}>
+          <button type="button" onClick={() => void request(failed.history, failed.turnId)}>
             <RotateCcw aria-hidden="true" size={14} />{t("retry")}
           </button>
           <ErrorReportButton message={t("error")} action="lead_suite_chat" />
@@ -1553,20 +1947,28 @@ export function LeadSuiteChat({ onActivity, variant = "panel" }: { onActivity?: 
             </ul>
           ) : null}
           <label htmlFor="ls-chat-input" className="ls-chat__sr">{t("inputLabel")}</label>
-          <textarea
-            id="ls-chat-input"
-            ref={inputRef}
-            className={fade ? "has-fade" : undefined}
-            value={draft}
-            rows={1}
-            maxLength={MAX_CHARS}
-            placeholder={narrow || variant === "panel" ? t("placeholderShort") : t("placeholder")}
-            onChange={(event) => setDraft(event.target.value)}
-            onKeyDown={onKeyDown}
-            onPaste={onPaste}
-            onScroll={updateFade}
-            aria-describedby="ls-chat-keyboard-hint"
-          />
+          <div className="ls-chat__input-wrap">
+            <div ref={mentionMirrorRef} className="ls-chat__input-highlight" aria-hidden="true">
+              {renderUserMessage(draft, draftMentions)}{draft.endsWith("\n") ? "\n" : ""}
+            </div>
+            <textarea
+              id="ls-chat-input"
+              ref={inputRef}
+              className={fade ? "has-fade" : undefined}
+              value={draft}
+              rows={1}
+              maxLength={MAX_CHARS}
+              placeholder={narrow || variant === "panel" ? t("placeholderShort") : t("placeholder")}
+              onChange={(event) => { updateDraft(event.target.value, event.target.selectionStart); }}
+              onKeyDown={onKeyDown}
+              onPaste={onPaste}
+              onScroll={updateFade}
+              aria-describedby="ls-chat-keyboard-hint"
+              aria-autocomplete={mention ? "list" : undefined}
+              aria-controls={mention ? "ls-chat-mentions" : undefined}
+              aria-activedescendant={mention && mentionLeads[mentionIndex] ? `ls-chat-mention-${mentionLeads[mentionIndex].id}` : undefined}
+            />
+          </div>
           <div className="ls-chat__toolbar">
             <input
               ref={fileInputRef}
@@ -1611,11 +2013,23 @@ export function LeadSuiteChat({ onActivity, variant = "panel" }: { onActivity?: 
                 </Popover>
               ) : null}
             </div>
+            <ChatControls mode={assistantMode} onModeChange={setAssistantMode} salesChannel={salesChannel} onSalesChannelChange={setSalesChannel} onResumeTyping={() => inputRef.current?.focus({ preventScroll: true })} />
             <button type="submit" className="ls-chat__send" disabled={sending || chips.some((chip) => chip.status === "uploading") || (!draft.trim() && !chips.some((chip) => chip.status === "ready"))} aria-label={sending ? t("sending") : t("send")}>
               {sending ? <LoaderCircle className="ls-chat__spin" aria-hidden="true" size={18} /> : <ArrowUp aria-hidden="true" size={18} strokeWidth={2.4} />}
             </button>
           </div>
         </div>
+        <LeadMentionPopover
+          anchorRef={inputRef}
+          open={Boolean(mention)}
+          query={mention?.query ?? ""}
+          leads={mentionLeads}
+          loading={mentionLoading}
+          activeIndex={mentionIndex}
+          onSelect={chooseMention}
+          onDismiss={() => setMention(null)}
+          labels={{ title: t("mentionResults"), start: t("mentionStart"), loading: t("mentionLoading"), empty: t("mentionEmpty"), fallback: t("mentionLead") }}
+        />
         <p className="ls-chat__sr" id="ls-chat-keyboard-hint">{t("hint")}</p>
       </form>
     </section>

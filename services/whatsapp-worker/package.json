@@ -1,0 +1,17 @@
+{
+  "name": "leadta-whatsapp-worker",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "start": "node src/server.mjs",
+    "check": "node --check src/server.mjs && node --check src/sessions.mjs && node --check src/queue.mjs && node --check src/store.mjs && node --check src/callbacks.mjs && node --check src/config.mjs"
+  },
+  "dependencies": {
+    "baileys": "7.0.0-rc14",
+    "pino": "10.4.0"
+  }
+}

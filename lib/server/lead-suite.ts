@@ -155,6 +155,19 @@ export async function recordLeadContact(userId: string, input: RecordContactInpu
   return toContact(created, lead.name);
 }
 
+/** Repairs the lead summary when a retried delivery callback finds its contact log already saved. */
+export async function ensureLeadContacted(userId: string, leadId: string, contactedAtValue: string): Promise<void> {
+  const lead = await requireLead(userId, leadId);
+  const contactedAt = validIso(contactedAtValue);
+  if (!contactedAt) throw new Error("Invalid contactedAt.");
+  if (lead.contactStatus !== "not_contacted") return;
+  const lastContactedAt = lead.lastContactedAt && lead.lastContactedAt > contactedAt ? lead.lastContactedAt : contactedAt;
+  await pocketBaseFetch(recordPath("leads", lead.id), {
+    method: "PATCH",
+    body: JSON.stringify({ contact_status: "contacted", last_contacted_at: toPbDate(lastContactedAt) }),
+  });
+}
+
 export async function updateLeadContactStatus(userId: string, leadId: string, status: ContactStatus): Promise<LeadMatch> {
   if (!isContactStatus(status)) throw new Error("Invalid status.");
   const lead = await requireLead(userId, leadId);

@@ -1,0 +1,20 @@
+services:
+  whatsapp-worker:
+    build: .
+    image: leadta-whatsapp-worker:latest
+    restart: unless-stopped
+    mem_limit: 512m
+    env_file: .env
+    ports:
+      - "127.0.0.1:8787:8787"
+    volumes:
+      - whatsapp-data:/data
+    stop_grace_period: 15s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  whatsapp-data:

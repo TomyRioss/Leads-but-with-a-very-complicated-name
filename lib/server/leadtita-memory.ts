@@ -1,4 +1,5 @@
 import "server-only";
+import { randomUUID } from "node:crypto";
 import { PocketBaseRequestError, pocketBaseFetch } from "@/lib/server/pocketbase";
 
 export type AccountMemoryFact = {
@@ -15,7 +16,10 @@ const MAX_SOURCE = 600;
 const MAX_BYTES = 20_000;
 const MAX_FACT_BYTES = 5_000;
 const RECORDS = "/api/collections/leadtita_account_memory/records";
+const LOCK_RECORDS = "/api/collections/leadtita_memory_locks/records";
+const LOCK_TTL_MS = 120_000;
 type MemoryRow = { id: string; user: string; key: string; fact: unknown };
+type LockRow = { id: string; user: string; key: string; token: string; created?: string };
 const clean = (value: string) => value.replace(/\s+/gu, " ").trim();
 const normalized = (value: string) => clean(value).normalize("NFKC").toLowerCase();
 const validUser = (value: string) => /^[a-zA-Z0-9]{15}$/.test(value);
@@ -60,6 +64,45 @@ async function findMemory(userId: string, key?: AccountMemoryFact["key"]): Promi
   return result.items.filter((row) => row.user === userId && (!key || row.key === key));
 }
 
+async function findLock(userId: string, key: AccountMemoryFact["key"]): Promise<LockRow | null> {
+  const query = new URLSearchParams({
+    filter: `user = ${JSON.stringify(userId)} && key = ${JSON.stringify(key)}`,
+    perPage: "1", skipTotal: "1", fields: "id,user,key,token,created",
+  });
+  const result = await pocketBaseFetch<{ items: LockRow[] }>(`${LOCK_RECORDS}?${query}`);
+  const row = result.items[0] ?? null;
+  return row?.user === userId && row.key === key ? row : null;
+}
+
+const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+async function acquireLock(userId: string, key: AccountMemoryFact["key"]): Promise<LockRow> {
+  for (let attempt = 0; attempt < 60; attempt += 1) {
+    const token = randomUUID();
+    try {
+      return await pocketBaseFetch<LockRow>(LOCK_RECORDS, {
+        method: "POST", body: JSON.stringify({ user: userId, key, token }),
+      });
+    } catch (error) {
+      if (!(error instanceof PocketBaseRequestError) || error.status !== 400) throw error;
+      const existing = await findLock(userId, key);
+      if (!existing) throw error;
+      const createdAt = Date.parse(existing.created ?? "");
+      if (!Number.isFinite(createdAt) || Date.now() - createdAt > LOCK_TTL_MS) {
+        await pocketBaseFetch(`${LOCK_RECORDS}/${encodeURIComponent(existing.id)}`, { method: "DELETE" }).catch(() => undefined);
+        continue;
+      }
+      await wait(100);
+    }
+  }
+  throw new Error("Memory update lock timed out.");
+}
+
+async function releaseLock(userId: string, key: AccountMemoryFact["key"], token: string) {
+  const existing = await findLock(userId, key).catch(() => null);
+  if (existing?.token === token) await pocketBaseFetch(`${LOCK_RECORDS}/${encodeURIComponent(existing.id)}`, { method: "DELETE" }).catch(() => undefined);
+}
+
 /** The caller must pass the session's authenticated user ID, never a tool argument. */
 export async function getAccountMemory(userId: string): Promise<AccountMemoryFact[]> {
   if (!validUser(userId)) return [];
@@ -72,18 +115,18 @@ export async function getAccountMemory(userId: string): Promise<AccountMemoryFac
 }
 
 async function upsertFact(userId: string, fact: AccountMemoryFact): Promise<void> {
-  for (let attempt = 0; attempt < 2; attempt++) {
+  const lock = await acquireLock(userId, fact.key);
+  try {
+    // Compare while holding the database-backed lock so an older delayed request cannot replace a newer fact.
     const existing = (await findMemory(userId, fact.key))[0];
-    try {
-      await pocketBaseFetch(existing ? `${RECORDS}/${encodeURIComponent(existing.id)}` : RECORDS, {
-        method: existing ? "PATCH" : "POST",
-        body: JSON.stringify({ user: userId, key: fact.key, fact }),
-      });
-      return;
-    } catch (error) {
-      // Two instances creating the same key: retry against the unique (user,key) row.
-      if (existing || attempt || !(error instanceof PocketBaseRequestError) || error.status !== 400) throw error;
-    }
+    const stored = existing ? storedFacts([existing], userId)[0] : undefined;
+    if (stored && Date.parse(stored.updatedAt) >= Date.parse(fact.updatedAt)) return;
+    await pocketBaseFetch(existing ? `${RECORDS}/${encodeURIComponent(existing.id)}` : RECORDS, {
+      method: existing ? "PATCH" : "POST",
+      body: JSON.stringify({ user: userId, key: fact.key, fact }),
+    });
+  } finally {
+    await releaseLock(userId, fact.key, lock.token);
   }
 }
 

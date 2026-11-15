@@ -1,0 +1,186 @@
+// HTTP API for the leadta WhatsApp worker.
+import http from 'node:http';
+import { createHash, timingSafeEqual } from 'node:crypto';
+import { config, logger } from './config.mjs';
+import { flushAllSync } from './store.mjs';
+import { kick as kickCallbacks, stopCallbacks } from './callbacks.mjs';
+import { enqueue, isKnownRef, pumpAll, stopQueue } from './queue.mjs';
+import { deleteSession, getSocket, getState, restoreSessions, shutdownSessions, startSession } from './sessions.mjs';
+
+const BODY_LIMIT = 64 * 1024;
+const USER_ID_RE = /^[a-zA-Z0-9]{15}$/;
+const PHONE_RE = /^[1-9][0-9]{7,14}$/;
+const SECRET_DIGEST = createHash('sha256').update(`Bearer ${config.secret}`).digest();
+
+class HttpError extends Error {
+  constructor(status, error) {
+    super(error);
+    this.status = status;
+  }
+}
+
+function send(res, status, body) {
+  const data = JSON.stringify(body);
+  res.writeHead(status, {
+    'content-type': 'application/json; charset=utf-8',
+    'content-length': Buffer.byteLength(data),
+    'cache-control': 'no-store',
+  });
+  res.end(data);
+}
+
+function authorized(req) {
+  const header = req.headers.authorization || '';
+  const digest = createHash('sha256').update(header).digest();
+  return timingSafeEqual(digest, SECRET_DIGEST);
+}
+
+function readJson(req) {
+  return new Promise((resolve, reject) => {
+    const len = Number(req.headers['content-length'] || 0);
+    if (len > BODY_LIMIT) return reject(new HttpError(413, 'payload_too_large'));
+    const chunks = [];
+    let size = 0;
+    req.on('data', (c) => {
+      size += c.length;
+      if (size > BODY_LIMIT) {
+        reject(new HttpError(413, 'payload_too_large'));
+        req.destroy();
+        return;
+      }
+      chunks.push(c);
+    });
+    req.on('end', () => {
+      if (!size) return resolve({});
+      try {
+        resolve(JSON.parse(Buffer.concat(chunks).toString('utf8')));
+      } catch {
+        reject(new HttpError(400, 'invalid_json'));
+      }
+    });
+    req.on('error', reject);
+  });
+}
+
+const isStr = (v, min, max) => typeof v === 'string' && v.length >= min && v.length <= max;
+
+function parseItems(body) {
+  const items = body?.items;
+  if (!Array.isArray(items) || items.length < 1 || items.length > 10) throw new HttpError(400, 'invalid_items');
+  return items.map((it) => {
+    if (!it || typeof it !== 'object') throw new HttpError(400, 'invalid_items');
+    if (!isStr(it.ref, 1, 64)) throw new HttpError(400, 'invalid_ref');
+    if (!isStr(it.leadId, 15, 15) || !USER_ID_RE.test(it.leadId)) throw new HttpError(400, 'invalid_lead_id');
+    if (!isStr(it.text, 1, 1500) || !it.text.trim()) throw new HttpError(400, 'invalid_text');
+    return { ref: it.ref, leadId: it.leadId, phone: typeof it.phone === 'string' ? it.phone : '', text: it.text };
+  });
+}
+
+async function postMessages(userId, body) {
+  const items = parseItems(body);
+  const sock = getSocket(userId);
+  if (!sock) throw new HttpError(409, 'not_connected');
+
+  const queued = [];
+  const duplicates = [];
+  const invalid = [];
+  const accepted = [];
+  const seen = new Set();
+
+  for (const it of items) {
+    if (seen.has(it.ref) || isKnownRef(userId, it.ref)) {
+      duplicates.push(it.ref);
+      continue;
+    }
+    seen.add(it.ref);
+    if (!PHONE_RE.test(it.phone)) {
+      invalid.push({ ref: it.ref, reason: 'invalid_phone' });
+      continue;
+    }
+    let result;
+    try {
+      [result] = (await sock.onWhatsApp(`${it.phone}@s.whatsapp.net`)) ?? [];
+    } catch (err) {
+      logger.warn({ userId, ref: it.ref, err: err?.message }, 'onWhatsApp lookup failed');
+      invalid.push({ ref: it.ref, reason: 'lookup_failed' });
+      continue;
+    }
+    if (!result?.exists || !result.jid) {
+      invalid.push({ ref: it.ref, reason: 'not_on_whatsapp' });
+      continue;
+    }
+    accepted.push({ ...it, jid: result.jid });
+    queued.push(it.ref);
+  }
+
+  const etaSeconds = accepted.length ? enqueue(userId, accepted) : 0;
+  return { queued, duplicates, invalid, etaSeconds };
+}
+
+async function route(req, res) {
+  const url = new URL(req.url, 'http://localhost');
+  const parts = url.pathname.split('/').filter(Boolean);
+
+  if (req.method === 'GET' && url.pathname === '/health') return send(res, 200, { ok: true });
+  if (!authorized(req)) return send(res, 401, { error: 'unauthorized' });
+  if (parts[0] !== 'sessions' || parts.length < 2 || parts.length > 3) return send(res, 404, { error: 'not_found' });
+
+  const userId = parts[1];
+  if (!USER_ID_RE.test(userId)) return send(res, 400, { error: 'invalid_user_id' });
+  const action = parts[2];
+
+  if (!action && req.method === 'GET') return send(res, 200, getState(userId));
+  if (!action && req.method === 'DELETE') return send(res, 200, await deleteSession(userId));
+  if (action === 'start' && req.method === 'POST') return send(res, 200, await startSession(userId));
+  if (action === 'messages' && req.method === 'POST') {
+    const body = await readJson(req);
+    return send(res, 200, await postMessages(userId, body));
+  }
+  return send(res, 404, { error: 'not_found' });
+}
+
+const server = http.createServer((req, res) => {
+  route(req, res).catch((err) => {
+    if (err instanceof HttpError) return send(res, err.status, { error: err.message });
+    logger.error({ err }, 'request failed');
+    if (!res.headersSent) send(res, 500, { error: 'internal_error' });
+  });
+});
+server.requestTimeout = 120_000;
+server.headersTimeout = 15_000;
+server.keepAliveTimeout = 5_000;
+
+server.listen(config.port, async () => {
+  logger.warn({ port: config.port }, 'whatsapp-worker listening');
+  try {
+    const n = await restoreSessions();
+    if (n) logger.warn({ sessions: n }, 'restoring sessions');
+  } catch (err) {
+    logger.error({ err }, 'failed to restore sessions');
+  }
+  kickCallbacks();
+  pumpAll();
+});
+
+let shuttingDown = false;
+async function shutdown(signal) {
+  if (shuttingDown) return;
+  shuttingDown = true;
+  logger.warn({ signal }, 'shutting down');
+  const force = setTimeout(() => process.exit(1), 10_000);
+  force.unref();
+  server.close();
+  stopQueue();
+  stopCallbacks();
+  await shutdownSessions();
+  try {
+    flushAllSync();
+  } catch (err) {
+    logger.error({ err }, 'failed to flush state');
+  }
+  process.exit(0);
+}
+
+process.on('SIGTERM', () => void shutdown('SIGTERM'));
+process.on('SIGINT', () => void shutdown('SIGINT'));
+process.on('unhandledRejection', (err) => logger.error({ err }, 'unhandled rejection'));

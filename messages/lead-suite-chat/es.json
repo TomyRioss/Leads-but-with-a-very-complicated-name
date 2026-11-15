@@ -7,6 +7,32 @@
     "example3": "Inmobiliaria Sur me respondió, tenemos reunión el jueves.",
     "useExample": "Usar ejemplo",
     "inputLabel": "Mensaje",
+    "mentionResults": "Leads de tu cuenta",
+    "mentionStart": "Escribí para buscar un lead de tu cuenta.",
+    "mentionLoading": "Buscando leads…",
+    "mentionEmpty": "No encontramos leads que coincidan.",
+    "mentionLead": "Lead de tu cuenta",
+    "modeLabel": "Modo",
+    "modeTitle": "Elegí cómo ayudarte",
+    "modeHelp": "Elegí el enfoque para esta conversación.",
+    "salesLabel": "Ventas",
+    "modes": { "seller": "Vendedor", "generator": "Generador", "planner": "Planificador" },
+    "modeHints": {
+      "seller": "Ofertas, mensajes y objeciones.",
+      "generator": "Buscar y calificar prospectos.",
+      "planner": "Prioridades y próximos pasos."
+    },
+    "salesTitle": "Canales de venta",
+    "salesHint": "Elegí un canal para enfocar la ayuda.",
+    "salesConnected": "Conectado",
+    "salesConnecting": "Conectando",
+    "salesDisconnected": "Sin conectar",
+    "salesUnavailable": "No disponible",
+    "salesChecking": "Consultando conexión…",
+    "salesStatusError": "No se pudo consultar el estado de conexión.",
+    "salesConnect": "Conectar",
+    "salesGmailConnectHint": "Conectá Gmail para preparar y enviar correos desde tu cuenta.",
+    "salesClear": "Sin canal preferido",
     "placeholder": "Pedile a Leadtita que busque, registre o redacte…",
     "hint": "Enter envía, Shift+Enter agrega una línea.",
     "send": "Enviar",
@@ -15,6 +41,13 @@
     "assistant": "Leadtita",
     "error": "No se pudo enviar el mensaje.",
     "retry": "Reintentar",
+    "toolProgress": {
+      "label": "Avance de herramientas",
+      "analysisDone": "Analizó los dolores del lead.",
+      "memoryDone": "Guardó el contexto de tu cuenta.",
+      "done": "Listo.",
+      "failed": "No pudo completar: {label}."
+    },
     "contextFull": {
       "title": "Esta conversación se hizo muy larga para Leadtita.",
       "body": "Empezá un chat nuevo para seguir: tus leads y contactos no se pierden."
@@ -23,6 +56,7 @@
     "pickReply": "Es {name}",
     "channels": {
       "whatsapp": "WhatsApp",
+      "gmail": "Gmail",
       "email": "Email",
       "phone": "Teléfono",
       "instagram": "Instagram",
@@ -70,8 +104,16 @@
       "import_contacts": "Listo: registré {created, plural, one {# contacto} other {# contactos}} de **{lead}**; omití {skipped} ya registrados{failed, plural, =0 {} other {, # fallaron}}.",
       "send_email": "Listo: envié el mail a **{lead}** desde tu Gmail y lo registré en Lead Suite.",
       "send_email_batch": "Listo: envié {delivered, plural, one {# mail} other {# mails}}{failed, plural, =0 {} other {, # fallaron}}{skipped, plural, =0 {} other {, # quedaron sin enviar}}. Quedaron registrados en Lead Suite.",
+      "send_whatsapp_batch": "Listo: puse {queued, plural, one {# WhatsApp} other {# WhatsApp}} en cola{skipped, plural, =0 {} other {; omití #}}{failed, plural, =0 {} other {; # sin WhatsApp o con número inválido}}. Salen de a uno y quedan registrados en Lead Suite.",
       "create_meeting": "Listo: agendé la reunión con **{lead}** y la registré como Reunión en Lead Suite. [Abrir en Google Calendar]({event})",
       "update_commercial_profile": "Listo: guardé tu perfil comercial. Lo uso para analizar dolores y sugerirte rubros."
+    },
+    "gmailDailyLimitReached": "Llegaste al límite diario de 40 mails por Gmail. Se restablece mañana.",
+    "quota": {
+      "gmail": "Gmail",
+      "whatsapp": "WhatsApp",
+      "today": "{used}/{limit} hoy",
+      "progress": "{channel}: {used} de {limit} mensajes enviados hoy"
     },
     "pageTitle": "Leadtita",
     "pageIntroTitle": "¿En qué te ayudo hoy?",
@@ -96,6 +138,14 @@
     "copy": "Copiar",
     "copied": "Copiado",
     "copyDraft": "Copiar mensaje {n}",
+    "draftSend": {
+      "whatsapp": "Enviar por WhatsApp",
+      "email": "Enviar por Gmail",
+      "missingWhatsapp": "Agregá un teléfono con WhatsApp al lead antes de enviar.",
+      "missingEmail": "Agregá un email válido al lead antes de enviar.",
+      "confirmPrompt": "Revisá el mensaje y confirmá el envío a {lead} por {channel}.",
+      "error": "No pudimos preparar el envío. Revisá la conexión e intentá de nuevo."
+    },
     "attach": "Adjuntar archivos",
     "attachHint": "Adjuntá imágenes, PDF, Markdown o CSV (hasta 5, 10 MB c/u, CSV hasta 2.000 filas). También podés arrastrarlos o pegar una captura.",
     "attachedFiles": "Archivos adjuntos",
@@ -150,6 +200,7 @@
       "import_contacts": "Registrar {count, plural, one {# contacto} other {# contactos}} de {file}",
       "send_email": "Enviar mail a {lead}",
       "send_email_batch": "Enviar {count, plural, one {# mail} other {# mails}}",
+      "send_whatsapp_batch": "Enviar WhatsApp a {count, plural, one {# lead} other {# leads}}",
       "create_meeting": "Agendar reunión con {lead}",
       "update_commercial_profile": "Guardar tu perfil comercial"
     },
@@ -240,6 +291,14 @@
       "title": "Conversaciones anteriores",
       "confirmDelete": "¿Borrar esta conversación?",
       "delete": "Borrar «{title}»",
+      "selectAll": "Seleccionar todas",
+      "deselectAll": "Quitar selección",
+      "selectConversation": "Seleccionar conversación {title}",
+      "selected": "{count, plural, one {# seleccionada} other {# seleccionadas}}",
+      "deleteSelected": "Borrar seleccionadas",
+      "confirmDeleteSelected": "¿Borrar {count, plural, one {# conversación} other {# conversaciones}}?",
+      "deleting": "Borrando…",
+      "deleteError": "No se pudieron borrar los chats. Probá de nuevo.",
       "empty": "Todavía no hay conversaciones guardadas."
     },
     "attachMenu": {
@@ -271,6 +330,9 @@
       "body": "Mensaje",
       "batchNote": "Se envían de a uno, cada {seconds} segundos, desde tu Gmail."
     },
+    "whatsappCard": {
+      "batchNote": "Se envían de a uno, cada {min}–{max} s, máx. {daily} por día."
+    },
     "meetingCard": {
       "title": "Título",
       "start": "Fecha y hora",
@@ -283,6 +345,7 @@
       "gmail": "Para enviar mails desde tu cuenta, conectá Gmail.",
       "calendar": "Para agendar reuniones, conectá Google Calendar."
     },
+    "whatsappNeeds": "Para enviar WhatsApp desde tu número, vinculalo primero. Después pedímelo de nuevo.",
     "dropzone": {
       "title": "Soltá los archivos para adjuntarlos",
       "types": "Imágenes, PDF, Markdown o CSV · hasta 5, 10 MB c/u"

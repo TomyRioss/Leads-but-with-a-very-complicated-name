@@ -48,6 +48,44 @@
         "description": "Leadtita books meetings with your leads on your primary calendar.",
         "hint": "Permission to create and edit events; we don't read the rest of your calendar."
       }
+    },
+    "whatsapp": {
+      "description": "Link your WhatsApp and Leadtita sends the messages you confirm.",
+      "connectedAs": "Linked: {phone}",
+      "connected": "Connected",
+      "loading": "Checking your WhatsApp…",
+      "retry": "Retry",
+      "notConfigured": "WhatsApp isn't available yet. Let us know and we'll turn it on.",
+      "connect": "Connect WhatsApp",
+      "generating": "Generating the code…",
+      "qrAlt": "QR code to link your WhatsApp with Leadta",
+      "steps": {
+        "open": "Open WhatsApp on your phone.",
+        "devices": "Go to Linked devices.",
+        "link": "Tap Link a device.",
+        "scan": "Scan this code."
+      },
+      "expired": "The code expired.",
+      "newCode": "Generate a new code",
+      "sentTodayLabel": "Today",
+      "sentToday": "{sent}/{limit} sent",
+      "queuedLabel": "Queued",
+      "queued": "{count, plural, one {# message} other {# messages}}",
+      "disconnect": "Disconnect",
+      "disconnecting": "Disconnecting…",
+      "risk": "Unofficial connection: WhatsApp may restrict numbers that send many messages to people who don't have them saved. Leadtita spaces out messages and caps them per day.",
+      "states": {
+        "disconnected": "WhatsApp not linked.",
+        "connecting": "Preparing the link…",
+        "qr": "Code ready to scan.",
+        "connected": "WhatsApp linked."
+      },
+      "errors": {
+        "load": "We couldn't check your WhatsApp.",
+        "worker": "The WhatsApp service isn't responding. Try again shortly.",
+        "connect": "We couldn't start linking. Try again.",
+        "disconnect": "We couldn't disconnect. Try again."
+      }
     }
   }
 }

@@ -7,6 +7,32 @@
     "example3": "Inmobiliaria Sur replied, we have a meeting on Thursday.",
     "useExample": "Use example",
     "inputLabel": "Message",
+    "mentionResults": "Leads in your account",
+    "mentionStart": "Type to search leads in your account.",
+    "mentionLoading": "Searching leads…",
+    "mentionEmpty": "No matching leads found.",
+    "mentionLead": "Lead in your account",
+    "modeLabel": "Mode",
+    "modeTitle": "Choose how I can help",
+    "modeHelp": "Choose the focus for this conversation.",
+    "salesLabel": "Sales",
+    "modes": { "seller": "Seller", "generator": "Generator", "planner": "Planner" },
+    "modeHints": {
+      "seller": "Offers, messages and objections.",
+      "generator": "Find and qualify prospects.",
+      "planner": "Priorities and next steps."
+    },
+    "salesTitle": "Sales channels",
+    "salesHint": "Choose a channel to focus the help.",
+    "salesConnected": "Connected",
+    "salesConnecting": "Connecting",
+    "salesDisconnected": "Not connected",
+    "salesUnavailable": "Unavailable",
+    "salesChecking": "Checking connection…",
+    "salesStatusError": "Could not check connection status.",
+    "salesConnect": "Connect",
+    "salesGmailConnectHint": "Connect Gmail to prepare and send emails from your account.",
+    "salesClear": "No preferred channel",
     "placeholder": "Ask Leadtita to find, log or write…",
     "hint": "Enter sends, Shift+Enter adds a line.",
     "send": "Send",
@@ -15,6 +41,13 @@
     "assistant": "Leadtita",
     "error": "The message couldn't be sent.",
     "retry": "Retry",
+    "toolProgress": {
+      "label": "Tool progress",
+      "analysisDone": "Analyzed the lead's pain points.",
+      "memoryDone": "Saved your account context.",
+      "done": "Done.",
+      "failed": "Couldn't finish: {label}."
+    },
     "contextFull": {
       "title": "This conversation got too long for Leadtita.",
       "body": "Start a new chat to keep going: your leads and contacts stay saved."
@@ -23,6 +56,7 @@
     "pickReply": "It's {name}",
     "channels": {
       "whatsapp": "WhatsApp",
+      "gmail": "Gmail",
       "email": "Email",
       "phone": "Phone",
       "instagram": "Instagram",
@@ -70,8 +104,16 @@
       "import_contacts": "Done: logged {created, plural, one {# contact} other {# contacts}} from **{lead}**; skipped {skipped} already logged{failed, plural, =0 {} other {, # failed}}.",
       "send_email": "Done: emailed **{lead}** from your Gmail and logged it in Lead Suite.",
       "send_email_batch": "Done: sent {delivered, plural, one {# email} other {# emails}}{failed, plural, =0 {} other {, # failed}}{skipped, plural, =0 {} other {, # not sent}}. Logged in Lead Suite.",
+      "send_whatsapp_batch": "Done: queued {queued, plural, one {# WhatsApp message} other {# WhatsApp messages}}{skipped, plural, =0 {} other {; skipped #}}{failed, plural, =0 {} other {; # not on WhatsApp or invalid number}}. They go out one at a time and get logged in Lead Suite.",
       "create_meeting": "Done: scheduled the meeting with **{lead}** and logged it as Meeting in Lead Suite. [Open in Google Calendar]({event})",
       "update_commercial_profile": "Done: I saved your business profile. I use it to analyze pains and suggest sectors."
+    },
+    "gmailDailyLimitReached": "You've reached the daily limit of 40 Gmail messages. It resets tomorrow.",
+    "quota": {
+      "gmail": "Gmail",
+      "whatsapp": "WhatsApp",
+      "today": "{used}/{limit} today",
+      "progress": "{channel}: {used} of {limit} messages sent today"
     },
     "pageTitle": "Leadtita",
     "pageIntroTitle": "How can I help today?",
@@ -96,6 +138,14 @@
     "copy": "Copy",
     "copied": "Copied",
     "copyDraft": "Copy message {n}",
+    "draftSend": {
+      "whatsapp": "Send via WhatsApp",
+      "email": "Send via Gmail",
+      "missingWhatsapp": "Add a WhatsApp number to this lead before sending.",
+      "missingEmail": "Add a valid email address to this lead before sending.",
+      "confirmPrompt": "Review the message and confirm sending it to {lead} via {channel}.",
+      "error": "We couldn't prepare the message. Check the connection and try again."
+    },
     "attach": "Attach files",
     "attachHint": "Attach images, PDF, Markdown or CSV (up to 5, 10 MB each, CSV up to 2,000 rows). You can also drag them or paste a screenshot.",
     "attachedFiles": "Attached files",
@@ -150,6 +200,7 @@
       "import_contacts": "Log {count, plural, one {# contact} other {# contacts}} from {file}",
       "send_email": "Email {lead}",
       "send_email_batch": "Send {count, plural, one {# email} other {# emails}}",
+      "send_whatsapp_batch": "Send WhatsApp to {count, plural, one {# lead} other {# leads}}",
       "create_meeting": "Schedule a meeting with {lead}",
       "update_commercial_profile": "Save your business profile"
     },
@@ -240,6 +291,14 @@
       "title": "Previous conversations",
       "confirmDelete": "Delete this conversation?",
       "delete": "Delete “{title}”",
+      "selectAll": "Select all",
+      "deselectAll": "Clear selection",
+      "selectConversation": "Select conversation {title}",
+      "selected": "{count, plural, one {# selected} other {# selected}}",
+      "deleteSelected": "Delete selected",
+      "confirmDeleteSelected": "Delete {count, plural, one {# conversation} other {# conversations}}?",
+      "deleting": "Deleting…",
+      "deleteError": "Chats could not be deleted. Try again.",
       "empty": "No saved conversations yet."
     },
     "attachMenu": {
@@ -271,6 +330,9 @@
       "body": "Message",
       "batchNote": "Sent one at a time, every {seconds} seconds, from your Gmail."
     },
+    "whatsappCard": {
+      "batchNote": "Sent one at a time, every {min}–{max} s, max {daily} per day."
+    },
     "meetingCard": {
       "title": "Title",
       "start": "Date and time",
@@ -283,6 +345,7 @@
       "gmail": "To send emails from your account, connect Gmail.",
       "calendar": "To schedule meetings, connect Google Calendar."
     },
+    "whatsappNeeds": "To send WhatsApp from your number, link it first. Then ask me again.",
     "dropzone": {
       "title": "Drop files to attach them",
       "types": "Images, PDF, Markdown or CSV · up to 5, 10 MB each"

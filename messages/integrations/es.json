@@ -48,6 +48,44 @@
         "description": "Leadtita agenda reuniones con tus leads en tu calendario principal.",
         "hint": "Permiso para crear y editar eventos; no leemos el resto de tu calendario."
       }
+    },
+    "whatsapp": {
+      "description": "Vinculá tu WhatsApp y Leadtita envía los mensajes que vos confirmás.",
+      "connectedAs": "Vinculado: {phone}",
+      "connected": "Conectado",
+      "loading": "Revisando tu WhatsApp…",
+      "retry": "Reintentar",
+      "notConfigured": "WhatsApp todavía no está disponible. Avisanos y lo activamos.",
+      "connect": "Conectar WhatsApp",
+      "generating": "Generando el código…",
+      "qrAlt": "Código QR para vincular tu WhatsApp con Leadta",
+      "steps": {
+        "open": "Abrí WhatsApp en tu celular.",
+        "devices": "Andá a Dispositivos vinculados.",
+        "link": "Tocá Vincular dispositivo.",
+        "scan": "Escaneá este código."
+      },
+      "expired": "El código venció.",
+      "newCode": "Generar otro código",
+      "sentTodayLabel": "Hoy",
+      "sentToday": "{sent}/{limit} enviados",
+      "queuedLabel": "En cola",
+      "queued": "{count, plural, one {# mensaje} other {# mensajes}}",
+      "disconnect": "Desconectar",
+      "disconnecting": "Desconectando…",
+      "risk": "Conexión no oficial: WhatsApp puede restringir números que mandan muchos mensajes a gente que no los tiene agendados. Leadtita espacia los envíos y pone un tope diario.",
+      "states": {
+        "disconnected": "WhatsApp sin vincular.",
+        "connecting": "Preparando la vinculación…",
+        "qr": "Código listo para escanear.",
+        "connected": "WhatsApp vinculado."
+      },
+      "errors": {
+        "load": "No pudimos revisar tu WhatsApp.",
+        "worker": "El servicio de WhatsApp no responde. Probá en un rato.",
+        "connect": "No pudimos iniciar la vinculación. Probá de nuevo.",
+        "disconnect": "No pudimos desconectar. Probá de nuevo."
+      }
     }
   }
 }

@@ -1,0 +1,13 @@
+# Exposes the worker over HTTPS through a Cloudflare Tunnel (no open ports).
+# Usage: docker compose -f docker-compose.yml -f docker-compose.tunnel.yml up -d
+# Needs ./cloudflared/config.yml and ./cloudflared/<tunnel-id>.json (secret, never commit).
+services:
+  cloudflared:
+    image: cloudflare/cloudflared:2026.11.0
+    restart: unless-stopped
+    command: tunnel --no-autoupdate --config /etc/cloudflared/config.yml run
+    volumes:
+      - ./cloudflared:/etc/cloudflared:ro
+    mem_limit: 128m
+    depends_on:
+      - whatsapp-worker

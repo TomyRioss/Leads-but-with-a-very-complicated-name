@@ -8,7 +8,7 @@ const MAX_REPLY_CHARS = 30_000;
 const MAX_ACTIONS = 20;
 const USER_ID = /^[A-Za-z0-9]{15}$/;
 const CLIENT_ID = /^[A-Za-z0-9_-]{1,64}$/;
-const ERROR_CODES = new Set(["chat_failed", "unavailable", "aborted"]);
+const ERROR_CODES = new Set(["chat_failed", "unavailable", "aborted", "context_full"]);
 const ACTION_TYPES = new Set([
   "pending_change",
   "lead_candidates",

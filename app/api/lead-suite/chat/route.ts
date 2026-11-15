@@ -1,9 +1,11 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser, withRefreshedSession } from "@/lib/server/auth";
 import { isPocketBaseConfigured } from "@/lib/server/pocketbase";
+import { isClientId, isConversationInactive } from "@/lib/server/leadtita-conversations";
 import { uiError } from "@/lib/server/public-error";
 import { errorTranslator, resolveLocale } from "@/lib/server/locale";
 import { DEFAULT_TIME_ZONE, isValidTimeZone, parseChatMessages, runLeadSuiteChat } from "@/lib/server/lead-suite-agent";
+import { claimChatTurn, finishChatTurn, type ChatTurnOutcome } from "@/lib/server/leadtita-chat-turns";
 
 export const maxDuration = 300;
 // Attachment contexts (CSV rows up to 2,000 per file) travel with the conversation.
@@ -25,7 +27,7 @@ export async function POST(request: Request) {
   if (!isPocketBaseConfigured()) return NextResponse.json({ error: uiError(t("pocketbaseNotConfigured"), t("generic")) }, { status: 503 });
   if (!apiKey) return NextResponse.json({ error: uiError(t("openRouterKeyMissing"), t("generic")) }, { status: 503 });
 
-  let body: { messages?: unknown; timeZone?: unknown };
+  let body: { conversationId?: unknown; turnId?: unknown; messages?: unknown; timeZone?: unknown; mode?: unknown; salesChannel?: unknown };
   try {
     const raw = await request.text();
     if (raw.length > MAX_BODY_BYTES) return NextResponse.json({ error: t("invalidRequestBody"), code: CONTEXT_FULL }, { status: 413 });
@@ -33,19 +35,74 @@ export async function POST(request: Request) {
   } catch {
     return NextResponse.json({ error: t("invalidRequestBody") }, { status: 400 });
   }
+  if (!isClientId(body?.conversationId) || !isClientId(body?.turnId)) return NextResponse.json({ error: t("invalidRequestBody") }, { status: 400 });
+  try {
+    if (await isConversationInactive(session.user.id, body.conversationId)) return NextResponse.json({ error: t("generic"), code: "conversation_inactive" }, { status: 410 });
+  } catch {
+    return NextResponse.json({ error: t("accountService") }, { status: 503 });
+  }
   const messages = parseChatMessages(body?.messages);
   const timeZone = body?.timeZone === undefined ? DEFAULT_TIME_ZONE : typeof body.timeZone === "string" && body.timeZone.length <= 64 && isValidTimeZone(body.timeZone) ? body.timeZone : null;
-  if (!messages || !timeZone) return NextResponse.json({ error: t("invalidRequestBody") }, { status: 400 });
-
-  try {
-    const result = await runLeadSuiteChat({ userId: session.user.id, messages, timeZone, apiKey, locale: resolveLocale(request), signal: request.signal });
-    // No text and no card: the model could not answer this conversation; the client offers a new chat.
-    if (!result.reply.trim() && !result.actions.length) return withRefreshedSession(NextResponse.json({ error: t("generic"), code: CONTEXT_FULL }, { status: 422 }), session.token);
-    return withRefreshedSession(NextResponse.json(result), session.token);
-  } catch (error) {
-    console.error("Lead Suite chat failed", error);
-    const detail = error instanceof Error ? error.message : String(error);
-    if (CONTEXT_ERROR.test(detail)) return withRefreshedSession(NextResponse.json({ error: t("generic"), code: CONTEXT_FULL }, { status: 413 }), session.token);
-    return withRefreshedSession(NextResponse.json({ error: uiError(detail, t("generic")) }, { status: 502 }), session.token);
+  const mode = body?.mode === undefined ? "seller" : body.mode;
+  const salesChannel = body?.salesChannel === undefined ? null : body.salesChannel;
+  if (!messages || !timeZone || !["seller", "generator", "planner"].includes(String(mode)) || !(salesChannel === null || salesChannel === "whatsapp" || salesChannel === "gmail")) {
+    return NextResponse.json({ error: t("invalidRequestBody") }, { status: 400 });
   }
+
+  const locale = resolveLocale(request);
+  let claim: Awaited<ReturnType<typeof claimChatTurn>>;
+  try {
+    claim = await claimChatTurn(session.user.id, body.conversationId, body.turnId);
+  } catch (error) {
+    console.error("Lead Suite chat turn claim failed", error);
+    return withRefreshedSession(NextResponse.json({ error: t("accountService") }, { status: 503 }), session.token);
+  }
+
+  const encoder = new TextEncoder();
+  const stream = new ReadableStream<Uint8Array>({
+    start(controller) {
+      const send = (name: string, data: unknown) => {
+        try { controller.enqueue(encoder.encode(`event: ${name}\ndata: ${JSON.stringify(data)}\n\n`)); } catch { /* client disconnected */ }
+      };
+      void (async () => {
+        if (claim.kind === "completed") { send("complete", claim.result); controller.close(); return; }
+        if (claim.kind === "failed") { send("failure", { code: claim.errorCode }); controller.close(); return; }
+        if (claim.kind === "running") { send("failure", { code: "turn_in_progress" }); controller.close(); return; }
+
+        try {
+          const result = await runLeadSuiteChat({
+            userId: session.user.id,
+            messages,
+            timeZone,
+            apiKey,
+            locale,
+            mode: mode as "seller" | "generator" | "planner",
+            salesChannel,
+            signal: request.signal,
+            internalCall: { origin: new URL(request.url).origin, cookie: request.headers.get("cookie") ?? "", locale },
+            onToolProgress: (event) => send("progress", event),
+          });
+          if (!result.reply.trim() && !result.actions.length) throw new Error("context_full");
+          await finishChatTurn(session.user.id, body.conversationId as string, body.turnId as string, { status: "completed", result });
+          send("complete", result);
+        } catch (error) {
+          console.error("Lead Suite chat failed", error);
+          const detail = error instanceof Error ? error.message : String(error);
+          const code = CONTEXT_ERROR.test(detail) || detail === "context_full" ? CONTEXT_FULL : request.signal.aborted ? "aborted" : "chat_failed";
+          const outcome: ChatTurnOutcome = { status: "failed", errorCode: code === CONTEXT_FULL ? "context_full" : code };
+          await finishChatTurn(session.user.id, body.conversationId as string, body.turnId as string, outcome).catch(() => undefined);
+          send("failure", { code });
+        } finally {
+          try { controller.close(); } catch { /* stream already cancelled */ }
+        }
+      })();
+    },
+  });
+  return withRefreshedSession(new NextResponse(stream, {
+    headers: {
+      "Content-Type": "text/event-stream; charset=utf-8",
+      "Cache-Control": "no-cache, no-transform",
+      "X-Accel-Buffering": "no",
+    },
+  }), session.token);
 }

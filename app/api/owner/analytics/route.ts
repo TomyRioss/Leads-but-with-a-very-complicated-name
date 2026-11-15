@@ -49,7 +49,8 @@ async function loadTraffic(days: Days) {
   if (!key || !projectId) return { configured: false as const };
   const host = (process.env.POSTHOG_API_HOST || "https://us.posthog.com").replace(/\/+$/, "");
   // `days` is validated against a fixed allow-list, so interpolating it is safe.
-  const where = `event = '$pageview' AND timestamp >= now() - INTERVAL ${days} DAY`;
+  // ponytail: the PostHog project is shared with other sites; only count leadta.app traffic.
+  const where = `event = '$pageview' AND properties.$host IN ('leadta.app', 'www.leadta.app') AND timestamp >= now() - INTERVAL ${days} DAY`;
   try {
     const [daily, totals, pages, referrers] = await Promise.all([
       postHogQuery(host, projectId, key, `SELECT toString(toDate(timestamp)) AS day, count() AS pageviews, count(DISTINCT person_id) AS visitors FROM events WHERE ${where} GROUP BY day ORDER BY day`),

@@ -57,3 +57,9 @@ The active Apify Actor is `k-data-lab/google-maps-scraper`, with a monitor scope
 - B3 | 2026-11-07 | Enrichment returned narrative text without persisting profile URLs per network, while the UI exposed one generic social column. | V3
 - V3: Enrichment validates and persists official profile URLs by selected network, then renders only those networks as separate columns.
 - B4 | 2026-11-09 | Pain analysis relied on a JSON prompt without response_format, allowing narrative output that the parser could not save. | Mechanical omission corrected by requiring the existing strict schema for all analysis requests.
+- B5 | 2026-11-14 | Highlighted lead mentions used semibold glyph widths unlike the transparent textarea, shifting the visible caret. | V4
+- V4: Text mirrors over inputs preserve the input's font metrics; highlighting may change color, never glyph width, so caret and selection stay aligned.
+- B6 | 2026-11-14 | The WhatsApp worker could return a disconnected session as HTTP 200 after socket startup failed, leaving the connect button with no visible result. | V5
+- V5: WhatsApp connection attempts that end disconnected surface an actionable error; brand controls use the WhatsApp logo.
+- B7 | 2026-11-14 | A WhatsApp callback retry found its contact log already saved and skipped repairing the lead status after a partial write failure. | V6
+- V6: A duplicate successful-send callback repairs a still-uncontacted lead without adding another contact log or downgrading an advanced status.

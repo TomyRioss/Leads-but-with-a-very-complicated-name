@@ -7,5 +7,8 @@ if (projectToken && apiHost) {
   posthog.init(projectToken, {
     api_host: apiHost,
     defaults: "2026-08-30",
+    // Session replay's DOM observer flags React/Next's streamed script tags in development.
+    // Keep product analytics enabled locally, and record sessions in production as configured.
+    disable_session_recording: process.env.NODE_ENV !== "production",
   });
 }

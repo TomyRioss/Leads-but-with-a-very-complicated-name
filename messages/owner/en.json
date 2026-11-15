@@ -60,7 +60,8 @@
       "dismissNotice": "Dismiss notice",
       "navFeedback": "Feedback",
       "navBlog": "Blog",
-      "navAnalytics": "Analytics"
+      "navAnalytics": "Analytics",
+      "navTraceability": "Traceability"
     },
     "overview": {
       "title": "Overview",
@@ -438,6 +439,93 @@
         "lead_analysis": "AI · Pain analysis",
         "contact_ai_fill": "AI · AI contact fill",
         "other": "AI · Other"
+      }
+    },
+    "traceability": {
+      "title": "Traceability",
+      "intro": "What each client did: Leadtita conversations, emails, searches, AI usage and payments.",
+      "clientLabel": "Search client by email or id",
+      "clientPlaceholder": "Client (email or id)",
+      "typesLabel": "Event types",
+      "from": "From",
+      "to": "To",
+      "clearFilters": "Clear filters",
+      "loadError": "Couldn't load traceability.",
+      "empty": "No activity recorded yet.",
+      "emptyFilter": "No events match these filters. Try another client, type or range.",
+      "unavailable": "No data from: {types}. The source may not be available yet.",
+      "open": "View details",
+      "noUser": "No user",
+      "noTitle": "Untitled",
+      "types": {
+        "conversation": "Leadtita",
+        "email_sent": "Email to lead",
+        "email_system": "System email",
+        "batch": "Business search",
+        "people_search": "People search",
+        "ai_usage": "AI usage",
+        "payment": "Payment"
+      },
+      "system": {
+        "verification": "Verification email",
+        "welcome": "Welcome email",
+        "weekly_report": "Lead Suite weekly report"
+      },
+      "summary": {
+        "messages": "{count, plural, one {# message} other {# messages}}",
+        "results": "{results} of {requested} results",
+        "ai": "{calls, plural, one {# call} other {# calls}} · {tokens} tokens · US$ {cost}",
+        "payment": "{amount} · {credits} credits",
+        "week": "Week of {date}",
+        "toLead": "To {lead}"
+      },
+      "email": {
+        "title": "Email sent",
+        "subject": "Subject",
+        "to": "Recipient",
+        "lead": "Lead",
+        "status": "Status",
+        "sentAt": "Sent",
+        "body": "Body",
+        "client": "Client"
+      },
+      "chat": {
+        "title": "Leadtita conversation",
+        "loading": "Loading conversation…",
+        "notFound": "We couldn't find this conversation. The client may have deleted it.",
+        "loadError": "Couldn't load the conversation.",
+        "empty": "This conversation has no messages.",
+        "user": "Client",
+        "assistant": "Leadtita",
+        "tools": "Tools",
+        "attachments": "Attachments",
+        "emailDraft": "Email draft",
+        "card": "Action card",
+        "states": {
+          "confirmed": "Confirmed",
+          "rejected": "Rejected",
+          "pending": "Pending",
+          "failed": "Failed",
+          "expired": "Expired"
+        },
+        "kinds": {
+          "record_contact": "Log contact",
+          "update_contact": "Edit contact",
+          "delete_contact": "Delete contact",
+          "update_status": "Change status",
+          "add_note": "Add note",
+          "add_lead": "Add lead",
+          "analyze_pains": "Analyze pains",
+          "search_businesses": "Search businesses",
+          "search_people": "Search people",
+          "import_leads": "Import leads",
+          "import_contacts": "Import contacts",
+          "send_email": "Send email",
+          "send_email_batch": "Send batch emails",
+          "create_meeting": "Create meeting",
+          "update_commercial_profile": "Update commercial profile",
+          "send_whatsapp_batch": "Send WhatsApp batch"
+        }
       }
     }
   }

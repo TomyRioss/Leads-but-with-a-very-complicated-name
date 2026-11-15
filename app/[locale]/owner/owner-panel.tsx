@@ -5,13 +5,13 @@ import dynamic from "next/dynamic";
 import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
-import { ChartLine, CreditCard, LayoutDashboard, Newspaper, LoaderCircle, LogOut, Menu, MessageSquare, Receipt, RefreshCw, ScrollText, Search, Users, X } from "lucide-react";
+import { ChartLine, CreditCard, LayoutDashboard, Newspaper, LoaderCircle, LogOut, Menu, MessageSquare, Receipt, RefreshCw, Route, ScrollText, Search, Users, X } from "lucide-react";
 import { BrandLogo } from "@/app/brand-logo";
 import { LanguageSwitcher } from "@/app/language-switcher";
 import { ghostButton, iconButton, isUnauthorized, ownerFetch, stateBox, useFocusTrap, type OnAction } from "./ui";
 import { getSession, invalidateSession } from "@/lib/client/session";
 
-export type OwnerSectionKey = "resumen" | "analiticas" | "usuarios" | "suscripciones" | "pagos" | "busquedas" | "comentarios" | "blog" | "auditoria";
+export type OwnerSectionKey = "resumen" | "analiticas" | "usuarios" | "suscripciones" | "pagos" | "busquedas" | "comentarios" | "blog" | "trazabilidad" | "auditoria";
 
 const navItems: { key: OwnerSectionKey; label: string; icon: ComponentType<{ size?: number; className?: string; "aria-hidden"?: boolean }> }[] = [
   { key: "resumen", label: "navSummary", icon: LayoutDashboard },
@@ -22,6 +22,7 @@ const navItems: { key: OwnerSectionKey; label: string; icon: ComponentType<{ siz
   { key: "busquedas", label: "navSearches", icon: Search },
   { key: "comentarios", label: "navFeedback", icon: MessageSquare },
   { key: "blog", label: "navBlog", icon: Newspaper },
+  { key: "trazabilidad", label: "navTraceability", icon: Route },
   { key: "auditoria", label: "navAudit", icon: ScrollText },
 ];
 
@@ -38,6 +39,7 @@ const PaymentsSection = dynamic(() => import("./sections/payments-section"), { l
 const SearchesSection = dynamic(() => import("./sections/searches-section"), { loading: Loading });
 const FeedbackSection = dynamic(() => import("./sections/feedback-section"), { loading: Loading });
 const BlogSection = dynamic(() => import("./sections/blog-section"), { loading: Loading });
+const TraceabilitySection = dynamic(() => import("./sections/traceability-section"), { loading: Loading });
 const AuditSection = dynamic(() => import("./sections/audit-section"), { loading: Loading });
 
 const sectionKeys = navItems.map((item) => item.key);
@@ -188,6 +190,7 @@ export default function OwnerPanel() {
           {section === "busquedas" && <SearchesSection onUnauthorized={leavePanel} onAction={onAction} />}
           {section === "comentarios" && <FeedbackSection onUnauthorized={leavePanel} onAction={onAction} />}
           {section === "blog" && <BlogSection onUnauthorized={leavePanel} onAction={onAction} />}
+          {section === "trazabilidad" && <TraceabilitySection onUnauthorized={leavePanel} />}
           {section === "auditoria" && <AuditSection onUnauthorized={leavePanel} />}
           </>}
         </div>

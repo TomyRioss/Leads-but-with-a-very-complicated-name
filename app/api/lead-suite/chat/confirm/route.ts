@@ -1,12 +1,14 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser, withRefreshedSession } from "@/lib/server/auth";
 import { isPocketBaseConfigured } from "@/lib/server/pocketbase";
+import { isClientId, isConversationInactive } from "@/lib/server/leadtita-conversations";
 import { uiError } from "@/lib/server/public-error";
 import { errorTranslator, resolveLocale } from "@/lib/server/locale";
 import { applyPendingChange, StaleChangeError, verifyPendingChange } from "@/lib/server/lead-suite-agent";
 import { withGoogleEdits, withKeywordSubset } from "@/lib/server/leadtita-tools";
 import { GmailNotConnectedError, GmailQuotaError, GmailValidationError } from "@/lib/server/google-gmail";
 import { CalendarNotConnectedError, CalendarValidationError } from "@/lib/server/google-calendar";
+import { WhatsAppNotConnectedError, WhatsAppUnavailableError } from "@/lib/server/whatsapp";
 
 // Confirmed lead searches run here (through /api/search and /api/people/search), so allow their full duration.
 export const maxDuration = 300;
@@ -26,17 +28,25 @@ export async function POST(request: Request) {
   if (!isPocketBaseConfigured()) return NextResponse.json({ error: uiError(t("pocketbaseNotConfigured"), t("generic")) }, { status: 503 });
 
   let token: unknown;
+  let conversationId: unknown;
   let keywords: unknown;
   let edits: unknown;
   try {
     const raw = await request.text();
     if (raw.length > MAX_BODY_BYTES) return NextResponse.json({ error: t("invalidRequestBody") }, { status: 413 });
-    const body = JSON.parse(raw) as { token?: unknown; keywords?: unknown; edits?: unknown };
+    const body = JSON.parse(raw) as { token?: unknown; conversationId?: unknown; keywords?: unknown; edits?: unknown };
     token = body?.token;
+    conversationId = body?.conversationId;
     keywords = body?.keywords;
     edits = body?.edits;
   } catch {
     return NextResponse.json({ error: t("invalidRequestBody") }, { status: 400 });
+  }
+  if (!isClientId(conversationId)) return NextResponse.json({ error: t("invalidRequestBody") }, { status: 400 });
+  try {
+    if (await isConversationInactive(session.user.id, conversationId)) return NextResponse.json({ error: t("generic"), code: "conversation_inactive" }, { status: 410 });
+  } catch {
+    return NextResponse.json({ error: t("accountService") }, { status: 503 });
   }
   // Stateless token, but single effect: applyPendingChange dedupes creations/searches and checks the signed record hash on edits.
   const verified = verifyPendingChange(token, session.user.id);
@@ -57,6 +67,11 @@ export async function POST(request: Request) {
     if (error instanceof StaleChangeError) return withRefreshedSession(NextResponse.json({ error: error.message, code: "stale" }, { status: 409 }), session.token);
     if (error instanceof GmailNotConnectedError) return withRefreshedSession(NextResponse.json({ error: t("generic"), code: "needs_gmail" }, { status: 409 }), session.token);
     if (error instanceof CalendarNotConnectedError) return withRefreshedSession(NextResponse.json({ error: t("generic"), code: "needs_calendar" }, { status: 409 }), session.token);
+    if (error instanceof WhatsAppNotConnectedError) return withRefreshedSession(NextResponse.json({ error: t("generic"), code: "needs_whatsapp" }, { status: 409 }), session.token);
+    if (error instanceof WhatsAppUnavailableError) {
+      console.error("Lead Suite confirm: WhatsApp worker", error.message);
+      return withRefreshedSession(NextResponse.json({ error: t("generic"), code: "whatsapp_unavailable" }, { status: 503 }), session.token);
+    }
     if (error instanceof GmailQuotaError) return withRefreshedSession(NextResponse.json({ error: t("generic"), code: "gmail_quota" }, { status: 429 }), session.token);
     if (error instanceof GmailValidationError || error instanceof CalendarValidationError) return withRefreshedSession(NextResponse.json({ error: t("generic"), code: "invalid" }, { status: 400 }), session.token);
     console.error("Lead Suite confirm failed", error);

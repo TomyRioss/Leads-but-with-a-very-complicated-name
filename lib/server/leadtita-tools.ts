@@ -16,9 +16,12 @@ import {
 import { ATTACHMENT_LIMITS, attachmentPromptBlock, driveToContext, type AttachmentContext } from "@/lib/server/leadtita-attachments";
 import { getConnection, GoogleNotConnectedError, hasCalendar, hasGmail, isGoogleDriveFullAccess } from "@/lib/server/google-connections";
 import { isValidEmail as isValidGmailAddress, sendGmail, sendGmailBatch } from "@/lib/server/google-gmail";
+import { reserveGmailDailyUsage } from "@/lib/server/gmail-daily-usage";
 import { createCalendarEvent } from "@/lib/server/google-calendar";
 import { GoogleDriveError, readDriveFile, searchDriveFiles } from "@/lib/server/google-drive";
 import { createLeadRecords, pocketBaseFetch } from "@/lib/server/pocketbase";
+import { createHash } from "node:crypto";
+import { enqueueWhatsApp, getLeadWhatsApp, isWhatsAppConfigured, isWhatsAppConnected, WHATSAPP_BATCH_MAX, WHATSAPP_TEXT_MAX } from "@/lib/server/whatsapp";
 import { COMMERCIAL_SECTORS_MAX, getCommercialProfile, SERVICE_OFFERING_MAX, updateCommercialProfile, type CommercialProfile } from "@/lib/server/user-profile";
 import type { ConfirmedChange, LeadPreview, LeadSuiteAction, PendingPayload, ProposalInput } from "@/lib/server/lead-suite-agent";
 
@@ -84,7 +87,7 @@ export const leadtitaTools: ReturnType<typeof fn>[] = [
       items: { type: "object", additionalProperties: false, properties: { channel: { type: "string", enum: ["whatsapp", "email"] }, subject: text(120), text: { type: "string", minLength: 1, maxLength: 1500 } }, required: ["channel", "text"] },
     },
   }, ["leadRef", "messages"]),
-  fn("propose_analyze_pains", "Propose analyzing a lead's pains (needed before drafting from evidence). Yes/No card with its cost.", { leadRef: leadRefSchema, focus: text(300) }, ["leadRef"]),
+  fn("propose_analyze_pains", CREDITS_PER_PAIN_ANALYSIS === 0 ? "Request analyzing a lead's pains before drafting from evidence. This analysis is free and the server runs it automatically." : `Propose analyzing a lead's pains (needed before drafting from evidence). Yes/No card with its cost of ${CREDITS_PER_PAIN_ANALYSIS} credits.`, { leadRef: leadRefSchema, focus: text(300) }, ["leadRef"]),
   fn("propose_add_lead", "Propose adding a lead manually to the user's \"Manual\" batch. Yes/No card.", {
     name: { type: "string", minLength: 1, maxLength: 255 }, category: text(200), city: text(160), phone: text(60), email: text(254), website: text(500),
   }, ["name"]),
@@ -111,7 +114,7 @@ export const leadtitaTools: ReturnType<typeof fn>[] = [
 
 const LEADTITA_BASE_PROMPT = [
   "FEEDBACK: call followup_feedback, then give 2-4 short, concrete recommendations as a bullet list (who to follow up first, best channel, reply rate). No generic advice.",
-  "MESSAGES: for a specific lead call lead_brief. If it has analyzed pains or proposals, draft 1-2 messages and send them with suggest_messages (WhatsApp by default; email adds a subject). Tone: first person, warm and close, rioplatense voseo in Spanish, 3-5 short sentences, open with the business name and one concrete detail, talk about the client's result not the technical task, no jargon, never invent facts, end with one low-commitment question. If it has no analyzed pains, call propose_analyze_pains right away (the Yes/No card is the offer, with its cost) instead of inventing problems; after the user confirms and asks again, draft from the new analysis.",
+  `MESSAGES: for a specific lead call lead_brief. If it has analyzed pains or proposals, draft 1-2 messages and show them with suggest_messages (WhatsApp by default; email adds a subject). Tone: first person, warm and close, rioplatense voseo in Spanish, 3-5 short sentences, open with the business name and one concrete detail, talk about the client's result not the technical task, no jargon, never invent facts, end with one low-commitment question. If it has no analyzed pains, call propose_analyze_pains right away instead of inventing problems. ${CREDITS_PER_PAIN_ANALYSIS === 0 ? "The server runs this analysis automatically at no credit cost; then draft from its results." : "The user must confirm its paid proposal before analysis; after confirmation, draft from the new analysis."}`,
   "LOAD LEADS: to add a lead manually use propose_add_lead with what the user gave; ask only for the name if missing.",
   `GENERATE LEADS: businesses → propose_search_businesses (keywords: every business type the user named; for an ambiguous or niche type add 2-4 useful local-language variants of that same type, e.g. "distribuidora de insumos", "mayorista de insumos para comercios"; never other business types; always pass province/district when the user names a city or province; count = exactly what the user asked, one of ${BUSINESS_SEARCH_COUNTS.join(", ")} (closest size otherwise, say so); country required, ask if missing). Pass the user's conditions as the real filters (minReviews, maxReviews, minRating, website/phone/email with|without; closed businesses are always skipped); never raise the count to filter later. If a condition has no filter (e.g. by social network or by age of the business), say in one line that the search can't filter by it and propose without it.`,
   "COMMERCIAL PROFILE: the user's saved service and usual sectors are in USER PROFILE below. Before proposing a lead search, if the service is empty, ask ONE short question about what service they offer (offer 2-3 likely options as a list if the conversation lets you infer them); when they answer, call update_commercial_profile, then continue with the search. If they don't want to say, continue without it and don't ask again. When the user mentions the sectors they usually sell to, call update_commercial_profile with commercialSectors. Use the sectors to suggest business types and keywords when the user asks for leads without naming a type, and the service to pick the analysis focus.",
@@ -128,6 +131,7 @@ export async function runLeadtitaTool(h: LeadtitaHelpers, name: string, args: Re
   if (name === "propose_import_leads" || name === "propose_import_contacts") return proposeImport(h, name, args);
   if (name === "list_google_files" || name === "read_google_file" || name === "search_google_drive") return runDriveTool(h, name, args);
   if (name === "propose_send_email" || name === "propose_send_email_batch" || name === "propose_create_meeting") return proposeGoogleAction(h, name, args);
+  if (name === "propose_send_whatsapp_batch") return whatsAppEnabled ? proposeWhatsApp(h, args) : undefined;
 
   if (name === "followup_feedback") {
     const [metrics, recent] = await Promise.all([
@@ -171,7 +175,22 @@ export async function runLeadtitaTool(h: LeadtitaHelpers, name: string, args: Re
       return body ? [{ channel, subject: channel === "email" ? str(item.subject, 120) : "", text: body }] : [];
     });
     if (!messages.length) return { error: "Pass 1-2 messages with text." };
-    h.push({ type: "message_suggestions", leadName: lead.name, messages });
+    const needsEmail = messages.some((message) => message.channel === "email");
+    const needsWhatsApp = messages.some((message) => message.channel === "whatsapp");
+    const [brief, phone, whatsappConnected, gmailConnected] = await Promise.all([
+      needsEmail ? getLeadPainBrief(h.userId, lead.id).catch(() => null) : Promise.resolve(null),
+      needsWhatsApp ? getLeadWhatsApp(h.userId, lead.id).catch(() => "") : Promise.resolve(""),
+      needsWhatsApp ? isWhatsAppConnected(h.userId) : Promise.resolve(false),
+      needsEmail ? hasGmail(h.userId).catch(() => false) : Promise.resolve(false),
+    ]);
+    h.push({
+      type: "message_suggestions",
+      leadId: lead.id,
+      leadName: lead.name,
+      sendChannels: { whatsapp: needsWhatsApp && whatsappConnected, email: needsEmail && gmailConnected },
+      hasRecipient: { whatsapp: Boolean(phone), email: Boolean(brief?.email && isValidGmailAddress(brief.email)) },
+      messages,
+    });
     return { shown: true, note: "Shown as cards with a copy button. Reply with one short line; don't repeat the text." };
   }
 
@@ -305,6 +324,7 @@ export function revalidateLeadtitaExtra(payload: PendingPayload): boolean {
   if (payload.kind === "import_leads" || payload.kind === "import_contacts") return revalidateImport(payload);
   if (payload.kind === "send_email" || payload.kind === "send_email_batch" || payload.kind === "create_meeting") return revalidateGoogleAction(payload);
   if (payload.kind === "update_commercial_profile") return commercialProfileExtra(extra) !== null;
+  if (payload.kind === "send_whatsapp_batch") return whatsAppEnabled && revalidateWhatsApp(payload);
   if (payload.kind === "analyze_pains") return typeof extra.batchId === "string" && /^[a-zA-Z0-9]{15}$/.test(extra.batchId) && /^[a-zA-Z0-9]{15}$/.test(payload.leadId);
   return true;
 }
@@ -348,6 +368,7 @@ export async function applyLeadtitaChange(userId: string, payload: PendingPayloa
 
   if (payload.kind === "import_leads" || payload.kind === "import_contacts") return applyImport(userId, payload);
   if (payload.kind === "send_email" || payload.kind === "send_email_batch" || payload.kind === "create_meeting") return applyGoogleAction(userId, payload);
+  if (payload.kind === "send_whatsapp_batch") return applyWhatsApp(userId, payload);
 
   if (payload.kind === "add_lead") {
     const result = await addManualLead(userId, extra as { name: string });
@@ -810,7 +831,14 @@ export async function applyGoogleAction(userId: string, payload: PendingPayload)
     const body = String(extra.body);
     const message = emailLog(subject, body);
     if (await alreadyLogged(userId, payload.leadId, since, message)) return { kind: payload.kind, leadName: payload.leadName, summary: { delivered: 1, replayed: true } };
-    await sendGmail(userId, { to: String(extra.to), subject, text: body });
+    const quota = await reserveGmailDailyUsage(userId, 1);
+    if (!quota.granted) return { kind: payload.kind, leadName: payload.leadName, summary: { delivered: 0, skipped: 1, limitReached: true } };
+    try {
+      await sendGmail(userId, { to: String(extra.to), subject, text: body });
+    } catch (error) {
+      await quota.settle(0).catch(() => undefined);
+      throw error;
+    }
     const contact = await recordLeadContact(userId, { leadId: payload.leadId, channel: "email", message, contactedAt: new Date().toISOString() });
     return { kind: payload.kind, leadName: payload.leadName, contact, summary: { delivered: 1 } };
   }
@@ -824,13 +852,23 @@ export async function applyGoogleAction(userId: string, payload: PendingPayload)
       else pending.push(row);
     }
     // Spaced out to stay far from Gmail limits; ≤10 × 20 s fits the route's maxDuration.
-    const result = await sendGmailBatch(userId, pending.map((row) => ({ to: row.to, subject: row.subject, text: row.body })), { delayMs: EMAIL_BATCH_DELAY_MS, max: EMAIL_BATCH_MAX });
+    const quota = await reserveGmailDailyUsage(userId, pending.length);
+    const permitted = pending.slice(0, quota.granted);
+    let result: Awaited<ReturnType<typeof sendGmailBatch>>;
+    try {
+      result = await sendGmailBatch(userId, permitted.map((row) => ({ to: row.to, subject: row.subject, text: row.body })), { delayMs: EMAIL_BATCH_DELAY_MS, max: EMAIL_BATCH_MAX });
+    } catch (error) {
+      await quota.settle(0).catch(() => undefined);
+      throw error;
+    }
+    await quota.settle(result.sent).catch(() => undefined);
     for (const item of result.results) {
       if (!item.ok) continue;
       const row = pending[item.index];
       await recordLeadContact(userId, { leadId: row.leadId, channel: "email", message: emailLog(row.subject, row.body), contactedAt: new Date().toISOString() }).catch(() => undefined);
     }
-    return { kind: payload.kind, leadName: "", summary: { delivered: result.sent, failed: result.failed, skipped: result.skipped + replayed, ...(result.stoppedBy ? { stoppedBy: result.stoppedBy } : {}) } };
+    const overLimit = pending.length - permitted.length;
+    return { kind: payload.kind, leadName: "", summary: { delivered: result.sent, failed: result.failed, skipped: result.skipped + replayed + overLimit, ...(overLimit ? { limitReached: true } : {}), ...(result.stoppedBy ? { stoppedBy: result.stoppedBy } : {}) } };
   }
 
   // create_meeting
@@ -851,5 +889,71 @@ export async function applyGoogleAction(userId: string, payload: PendingPayload)
   return { kind: payload.kind, leadName: payload.leadName, contact, summary: { eventLink: event.htmlLink, ...(event.meetLink ? { meetLink: event.meetLink } : {}) } };
 }
 
-leadtitaTools.push(...importTools, ...driveTools, ...googleActionTools);
-export const LEADTITA_PROMPT = [LEADTITA_BASE_PROMPT, IMPORT_PROMPT, DRIVE_PROMPT, GOOGLE_ACTIONS_PROMPT].join("\n");
+// ---------- WhatsApp (user's own linked number via the Baileys worker; queued, spaced out, daily cap) ----------
+
+/** Off until the worker is configured (WHATSAPP_WORKER_URL + WHATSAPP_WORKER_SECRET): Leadtita neither offers nor runs it. */
+const whatsAppEnabled = isWhatsAppConfigured();
+const PHONE_DIGITS = /^\d{8,15}$/;
+
+export const whatsAppTools = whatsAppEnabled ? [
+  fn("propose_send_whatsapp_batch", `Propose sending WhatsApp messages from the user's linked WhatsApp, one per lead (1-${WHATSAPP_BATCH_MAX}), in one confirmation. They are queued and go out one by one, spaced out, with a daily cap. Leads without a valid international phone are skipped.`, {
+    items: { type: "array", minItems: 1, maxItems: WHATSAPP_BATCH_MAX, items: { type: "object", additionalProperties: false, properties: { leadRef: leadRefSchema, text: { type: "string", minLength: 1, maxLength: WHATSAPP_TEXT_MAX } }, required: ["leadRef", "text"] } },
+  }, ["items"]),
+] : [];
+
+export const WHATSAPP_PROMPT = whatsAppEnabled
+  ? "WHATSAPP: when the user asks to contact or message leads by WhatsApp (send it, not just draft), call lead_brief for each lead, draft with the MESSAGES tone rules (one personalized text per lead) and use propose_send_whatsapp_batch (also for a single lead). Nothing is sent until the user confirms the card; then messages are queued and go out spaced out. If WhatsApp isn't linked, say so in one line; the app shows the QR to link it."
+  : "";
+
+const firstWords = (value: string) => (value.length > 60 ? `${value.slice(0, 60).trimEnd()}…` : value).replace(/\s+/g, " ");
+
+async function proposeWhatsApp(h: LeadtitaHelpers, args: Record<string, unknown>): Promise<unknown> {
+  const connected = await isWhatsAppConnected(h.userId);
+  if (!connected) h.push({ type: "whatsapp_connect" });
+  const rows: Record<string, string>[] = [];
+  const skipped: string[] = [];
+  for (const raw of (Array.isArray(args.items) ? args.items : []).slice(0, WHATSAPP_BATCH_MAX)) {
+    const item = raw && typeof raw === "object" ? raw as Record<string, unknown> : {};
+    const lead = h.leadByRef(item.leadRef);
+    const text = str(item.text, WHATSAPP_TEXT_MAX);
+    if (!lead || !text || rows.some((row) => row.leadId === lead.id)) continue;
+    const phone = await getLeadWhatsApp(h.userId, lead.id);
+    if (!phone) { skipped.push(lead.name); continue; }
+    rows.push({ leadId: lead.id, leadName: lead.name, phone, text });
+  }
+  if (!rows.length) return { error: "None of these leads has a valid international phone number for WhatsApp.", skipped };
+  return {
+    ...(h.propose({ kind: "send_whatsapp_batch", leadId: "", leadName: "", data: {}, extra: { count: rows.length, skipped: skipped.length, preview: rows.map((row) => `${row.leadName} · ${firstWords(row.text)}`).join("\n") }, rows }) as object),
+    ...(skipped.length ? { skippedWithoutPhone: skipped } : {}),
+    ...(connected ? {} : { note: "WhatsApp isn't linked: the card shows the messages and a QR to link it. Say so in one line." }),
+  };
+}
+
+function revalidateWhatsApp(payload: PendingPayload) {
+  const rows = payload.rows ?? [];
+  return rows.length > 0 && rows.length <= WHATSAPP_BATCH_MAX && rows.every((row) => /^[a-zA-Z0-9]{15}$/.test(row.leadId ?? "") && PHONE_DIGITS.test(row.phone ?? "") && Boolean(row.text) && row.text.length <= WHATSAPP_TEXT_MAX);
+}
+
+/** Idempotent: each message's ref comes from the signed card, so a replayed card comes back from the worker as duplicates. */
+async function applyWhatsApp(userId: string, payload: PendingPayload): Promise<ConfirmedChange> {
+  const items = (payload.rows ?? []).map((row) => ({
+    ref: createHash("sha256").update(`${userId}:${payload.iat}:${row.leadId}:${row.text}`).digest("hex").slice(0, 40),
+    leadId: row.leadId,
+    phone: row.phone,
+    text: row.text,
+  }));
+  const result = await enqueueWhatsApp(userId, items);
+  return {
+    kind: payload.kind,
+    leadName: "",
+    summary: {
+      queued: result.queued.length + result.duplicates.length,
+      skipped: Number(payload.extra?.skipped ?? 0),
+      failed: result.invalid.length,
+      ...(result.duplicates.length && !result.queued.length ? { replayed: true } : {}),
+    },
+  };
+}
+
+leadtitaTools.push(...importTools, ...driveTools, ...googleActionTools, ...whatsAppTools);
+export const LEADTITA_PROMPT = [LEADTITA_BASE_PROMPT, IMPORT_PROMPT, DRIVE_PROMPT, GOOGLE_ACTIONS_PROMPT, WHATSAPP_PROMPT].filter(Boolean).join("\n");

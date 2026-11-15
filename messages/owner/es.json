@@ -60,7 +60,8 @@
       "dismissNotice": "Cerrar aviso",
       "navFeedback": "Comentarios",
       "navBlog": "Blog",
-      "navAnalytics": "Analíticas"
+      "navAnalytics": "Analíticas",
+      "navTraceability": "Trazabilidad"
     },
     "overview": {
       "title": "Resumen",
@@ -438,6 +439,93 @@
         "lead_analysis": "IA · Análisis de dolores",
         "contact_ai_fill": "IA · Completar contacto con IA",
         "other": "IA · Otros"
+      }
+    },
+    "traceability": {
+      "title": "Trazabilidad",
+      "intro": "Qué hizo cada cliente: conversaciones con Leadtita, mails, búsquedas, uso de IA y pagos.",
+      "clientLabel": "Buscar cliente por email o id",
+      "clientPlaceholder": "Cliente (email o id)",
+      "typesLabel": "Tipos de evento",
+      "from": "Desde",
+      "to": "Hasta",
+      "clearFilters": "Limpiar filtros",
+      "loadError": "No se pudo cargar la trazabilidad.",
+      "empty": "Todavía no hay actividad registrada.",
+      "emptyFilter": "No hay eventos con estos filtros. Probá con otro cliente, tipo o rango.",
+      "unavailable": "Sin datos de: {types}. Puede que la fuente todavía no esté disponible.",
+      "open": "Ver detalle",
+      "noUser": "Sin usuario",
+      "noTitle": "Sin título",
+      "types": {
+        "conversation": "Leadtita",
+        "email_sent": "Mail a lead",
+        "email_system": "Mail del sistema",
+        "batch": "Búsqueda de negocios",
+        "people_search": "Búsqueda de personas",
+        "ai_usage": "Uso de IA",
+        "payment": "Pago"
+      },
+      "system": {
+        "verification": "Mail de verificación",
+        "welcome": "Mail de bienvenida",
+        "weekly_report": "Reporte semanal de Lead Suite"
+      },
+      "summary": {
+        "messages": "{count, plural, one {# mensaje} other {# mensajes}}",
+        "results": "{results} de {requested} resultados",
+        "ai": "{calls, plural, one {# llamada} other {# llamadas}} · {tokens} tokens · US$ {cost}",
+        "payment": "{amount} · {credits} créditos",
+        "week": "Semana del {date}",
+        "toLead": "Para {lead}"
+      },
+      "email": {
+        "title": "Mail enviado",
+        "subject": "Asunto",
+        "to": "Destinatario",
+        "lead": "Lead",
+        "status": "Estado",
+        "sentAt": "Enviado",
+        "body": "Cuerpo",
+        "client": "Cliente"
+      },
+      "chat": {
+        "title": "Conversación con Leadtita",
+        "loading": "Cargando conversación…",
+        "notFound": "No encontramos esta conversación. Puede que el cliente la haya borrado.",
+        "loadError": "No se pudo cargar la conversación.",
+        "empty": "La conversación no tiene mensajes.",
+        "user": "Cliente",
+        "assistant": "Leadtita",
+        "tools": "Herramientas",
+        "attachments": "Adjuntos",
+        "emailDraft": "Borrador de mail",
+        "card": "Tarjeta de acción",
+        "states": {
+          "confirmed": "Confirmada",
+          "rejected": "Rechazada",
+          "pending": "Pendiente",
+          "failed": "Falló",
+          "expired": "Vencida"
+        },
+        "kinds": {
+          "record_contact": "Registrar contacto",
+          "update_contact": "Editar contacto",
+          "delete_contact": "Borrar contacto",
+          "update_status": "Cambiar estado",
+          "add_note": "Agregar nota",
+          "add_lead": "Agregar lead",
+          "analyze_pains": "Analizar dolores",
+          "search_businesses": "Buscar negocios",
+          "search_people": "Buscar personas",
+          "import_leads": "Importar leads",
+          "import_contacts": "Importar contactos",
+          "send_email": "Enviar mail",
+          "send_email_batch": "Enviar mails en lote",
+          "create_meeting": "Crear reunión",
+          "update_commercial_profile": "Actualizar perfil comercial",
+          "send_whatsapp_batch": "Enviar WhatsApp en lote"
+        }
       }
     }
   }
