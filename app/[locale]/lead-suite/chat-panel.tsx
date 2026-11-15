@@ -873,7 +873,8 @@ export function LeadSuiteChat({ onActivity, variant = "panel" }: { onActivity?: 
       if (!reader) throw new Error("chat_failed");
       const decoder = new TextDecoder();
       let buffer = "";
-      let completed: { reply?: string; actions?: ChatAction[] } | null = null;
+      // ponytail: assertion stops TS narrowing to null; consumeFrame assigns it inside a closure.
+      let completed = null as { reply?: string; actions?: ChatAction[] } | null;
       let streamFailure: string | null = null;
       const consumeFrame = (rawFrame: string) => {
         const lines = rawFrame.replace(/\r\n/g, "\n").split("\n");
