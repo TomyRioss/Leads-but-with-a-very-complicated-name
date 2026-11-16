@@ -37,7 +37,7 @@ export const exclusivePill = "inline-flex items-center rounded-full bg-(--lime) 
 export const statusPill = (status: string) =>
   `inline-block rounded-full px-[7px] py-0.5 text-[10px] font-bold ${
     ["authorized", "processed", "completed"].includes(status) ? "bg-(--lime) text-(color:--ink)"
-      : ["cancelled", "canceled", "rejected", "failed"].includes(status) ? "bg-(--ash-150) text-(color:--ash-600)"
+      : ["cancelled", "canceled", "rejected", "failed"].includes(status) ? "bg-(--ash-150) text-(color:--ash-800)"
       : "bg-(--ash-200) text-(color:--ash-800)"
   }`;
 

@@ -61,9 +61,13 @@ body {
 
 ::selection { background: var(--lime); color: var(--ash-900); }
 
-button, input, textarea { font: inherit; }
-button { color: inherit; }
-a { color: inherit; }
+/* Base layer: unlayered element rules beat every Tailwind utility (text-*, font-*), which hid the colors and sizes
+   set on buttons/links (e.g. owner filter chips rendered dark text on dark fill). Class-based CSS still overrides these. */
+@layer base {
+  button, input, textarea { font: inherit; }
+  button { color: inherit; }
+  a { color: inherit; }
+}
 
 :focus-visible {
   outline: 3px solid var(--ash-950);
