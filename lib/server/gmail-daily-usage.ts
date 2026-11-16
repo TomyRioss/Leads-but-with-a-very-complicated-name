@@ -1,4 +1,5 @@
 import { pocketBaseFetch } from "@/lib/server/pocketbase";
+import { getPlanLimits } from "@/lib/server/usage-limits";
 
 export const GMAIL_DAILY_LIMIT = 40;
 const TIME_ZONE = "America/Argentina/Buenos_Aires";
@@ -61,12 +62,25 @@ export async function getGmailDailyUsage(userId: string) {
   return { used: Math.min(GMAIL_DAILY_LIMIT, used), limit: GMAIL_DAILY_LIMIT };
 }
 
-/** Reserves capacity atomically before Gmail sends, then refunds failed or unused slots. */
+/** Emails sent this Buenos Aires month: sum of this month's daily rows (≤31). */
+async function monthUsed(userId: string, day: string) {
+  const params = new URLSearchParams({ filter: `user = ${JSON.stringify(userId)} && day >= ${JSON.stringify(`${day.slice(0, 7)}-01`)}`, fields: "used", perPage: "31", skipTotal: "1" });
+  const result = await pocketBaseFetch<UsageList>(`/api/collections/gmail_daily_usage/records?${params}`);
+  return result.items.reduce((sum, item) => sum + (typeof item.used === "number" && Number.isFinite(item.used) ? Math.max(0, item.used) : 0), 0);
+}
+
+/**
+ * Reserves capacity atomically against the daily cap, trimmed to the plan's monthly cap; refunds failed or unused slots.
+ * ponytail: the monthly check is read-then-reserve; concurrent batches can overshoot it by one batch (≤10).
+ */
 export async function reserveGmailDailyUsage(userId: string, requested: number): Promise<GmailDailyReservation> {
-  const count = Math.max(0, Math.min(GMAIL_DAILY_LIMIT, Math.trunc(requested)));
+  const day = todayInBuenosAires();
+  const { emailMonthly } = await getPlanLimits(userId);
+  const monthlyLeft = Number.isFinite(emailMonthly) ? Math.max(0, emailMonthly - await monthUsed(userId, day)) : Infinity;
+  const count = Math.max(0, Math.min(GMAIL_DAILY_LIMIT, monthlyLeft, Math.trunc(requested)));
   if (!count) return { granted: 0, settle: async () => undefined };
 
-  const usage = await getOrCreateUsage(userId, todayInBuenosAires());
+  const usage = await getOrCreateUsage(userId, day);
   const after = await adjustUsage(usage.id, count);
   const excess = Math.min(count, Math.max(0, after - GMAIL_DAILY_LIMIT));
   if (excess) await adjustUsage(usage.id, -excess);

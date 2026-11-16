@@ -21,7 +21,7 @@ export async function GET(request: Request) {
     ]);
     return NextResponse.json({
       gmail,
-      // Monthly (100): sent + queued + scheduled.
+      // Monthly (plan cap): sent + queued + scheduled.
       whatsapp: { used: whatsapp.used, limit: whatsapp.limit },
       // null = no daily AI cap (owner or active plan).
       ai: ai.unlimited ? null : { used: Math.min(ai.limit, ai.used), limit: ai.limit },

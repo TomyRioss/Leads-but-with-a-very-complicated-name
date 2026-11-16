@@ -10,7 +10,7 @@ Standalone Baileys (`baileys@7.0.0-rc14`) service. Each leadta user links their 
 | `WHATSAPP_CALLBACK_URL` | required | Next.js endpoint that receives callbacks. |
 | `PORT` | 8787 | |
 | `DATA_DIR` | /data | Holds `queue.json`, `sessions/<userId>/` (auth) and `users/<userId>/contacts.json`. |
-| Monthly message cap | 100 | Per user, fixed in code (same as the app's `WHATSAPP_MONTHLY_LIMIT`). The month rolls over at midnight of the 1st, America/Argentina/Buenos_Aires. |
+| Monthly message cap | 500 | Per user safety cap, fixed in code (= highest plan). The app enforces each plan's cap (`lib/plans.ts`) before queueing. The month rolls over at midnight of the 1st, America/Argentina/Buenos_Aires. |
 | `MIN_DELAY_S` / `MAX_DELAY_S` | 45 / 120 | Random gap between two sends from the same user. |
 | `LOG_LEVEL` | warn | pino level. Baileys' own logs stay at warn unless this is set to debug or trace. |
 

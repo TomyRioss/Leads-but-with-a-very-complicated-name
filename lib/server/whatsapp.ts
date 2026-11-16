@@ -7,9 +7,8 @@ import { pocketBaseFetch } from "@/lib/server/pocketbase";
 // sessions and the send queue, this app only talks to it with a shared secret and records what it reports back.
 
 export type WhatsAppStatus = "disconnected" | "connecting" | "qr" | "connected";
-/** sentThisMonth / monthlyLimit: the worker's monthly cap (100), month in Buenos Aires time. */
+/** sentThisMonth / monthlyLimit: the worker's safety cap, month in Buenos Aires time. Per-plan caps live in the app (whatsAppMonthlyUsage). */
 export type WhatsAppSession = { status: WhatsAppStatus; qr: string | null; phone: string | null; sentThisMonth: number; monthlyLimit: number; queued: number };
-export const WHATSAPP_MONTHLY_LIMIT = 100;
 export type WhatsAppOutgoing = { ref: string; leadId: string; phone: string; text: string };
 export type WhatsAppEnqueueResult = { queued: string[]; duplicates: string[]; invalid: { ref: string; reason: string }[]; etaSeconds: number };
 

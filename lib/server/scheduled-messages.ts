@@ -4,8 +4,8 @@ import { getLeadPainBrief, getUserLead, recordLeadContact } from "@/lib/server/l
 import { GmailNotConnectedError, isValidEmail, sendGmail } from "@/lib/server/google-gmail";
 import { hasGmail } from "@/lib/server/google-connections";
 import { reserveGmailDailyUsage } from "@/lib/server/gmail-daily-usage";
-import { enqueueWhatsApp, getLeadWhatsApp, getWhatsAppSession, isWhatsAppConnected, WhatsAppNotConnectedError, WHATSAPP_MONTHLY_LIMIT, WHATSAPP_TEXT_MAX } from "@/lib/server/whatsapp";
-import { hasActivePlan } from "@/lib/server/usage-limits";
+import { enqueueWhatsApp, getLeadWhatsApp, getWhatsAppSession, isWhatsAppConnected, WhatsAppNotConnectedError, WHATSAPP_TEXT_MAX } from "@/lib/server/whatsapp";
+import { getPlanLimits } from "@/lib/server/usage-limits";
 import type { PendingPayload } from "@/lib/server/lead-suite-agent";
 
 // "Programados": emails and WhatsApp messages scheduled from Leadtita cards. Rows live in PocketBase (server-only);
@@ -52,9 +52,6 @@ export function parseSendAt(value: unknown, now = Date.now()): string | null {
   return new Date(time).toISOString();
 }
 
-/** Accounts without a plan schedule at most this many messages per month (cancelled ones free their slot). */
-export const FREE_SCHEDULES_PER_MONTH = 10;
-
 /** Start of the current month, Buenos Aires time. ponytail: fixed UTC-3 offset (Argentina has no DST). */
 function monthStartIso(now = Date.now()) {
   const [y, m] = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Argentina/Buenos_Aires", year: "numeric", month: "2-digit" }).format(new Date(now)).split("-").map(Number);
@@ -67,29 +64,36 @@ async function countRows(userId: string, filter: string) {
 }
 
 /**
- * WhatsApp quota is monthly (100): sent this month + waiting in the worker queue + scheduled and not sent yet.
+ * WhatsApp quota is monthly (per plan): sent this month + waiting in the worker queue + scheduled and not sent yet.
  * Scheduling consumes it right away, so the counter and the limit already include what is programmed.
  */
 export async function whatsAppMonthlyUsage(userId: string) {
-  const [session, scheduled] = await Promise.all([
+  const [session, scheduled, limits] = await Promise.all([
     getWhatsAppSession(userId).catch(() => null),
     countRows(userId, `channel = "whatsapp" && (status = "scheduled" || status = "sending")`),
+    getPlanLimits(userId),
   ]);
+  const limit = limits.whatsappMonthly;
   const used = (session?.sentThisMonth ?? 0) + (session?.queued ?? 0) + scheduled;
-  return { used: Math.min(WHATSAPP_MONTHLY_LIMIT, used), limit: WHATSAPP_MONTHLY_LIMIT, remaining: Math.max(0, WHATSAPP_MONTHLY_LIMIT - used) };
+  return { used: Math.min(limit, used), limit, remaining: Math.max(0, limit - used) };
 }
 
-/** Schedules left this month: unlimited with an active plan (or owner), else 10 minus the non-cancelled ones created this month. */
-export async function freeSchedulesLeft(userId: string) {
-  const [user, plan] = await Promise.all([pocketBaseFetch<{ role?: string }>(`/api/collections/users/records/${encodeURIComponent(userId)}?fields=role`), hasActivePlan(userId)]);
-  if (plan || user.role === "owner") return Infinity;
-  const used = await countRows(userId, `status != "cancelled" && created >= ${quote(pbDate(monthStartIso()))}`);
-  return Math.max(0, FREE_SCHEDULES_PER_MONTH - used);
+/**
+ * Schedules left this month for `channel`. Without a plan: 10 across every channel (cancelled ones free their slot).
+ * With a plan: its WhatsApp schedule cap; emails stay unlimited. Owners are unlimited.
+ */
+export async function schedulesLeft(userId: string, channel: ScheduledChannel | "any" = "any") {
+  const [user, limits] = await Promise.all([pocketBaseFetch<{ role?: string }>(`/api/collections/users/records/${encodeURIComponent(userId)}?fields=role`), getPlanLimits(userId)]);
+  if (user.role === "owner") return Infinity;
+  const since = `status != "cancelled" && created >= ${quote(pbDate(monthStartIso()))}`;
+  if (!limits.hasPlan) return Math.max(0, limits.scheduledMonthly - await countRows(userId, since));
+  if (channel !== "whatsapp") return Infinity;
+  return Math.max(0, limits.scheduledMonthly - await countRows(userId, `channel = "whatsapp" && ${since}`));
 }
 
 /** Both caps for `count` new rows. ponytail: check-then-insert; two concurrent schedules can overshoot by one batch. */
 async function assertCanSchedule(userId: string, channel: ScheduledChannel, count: number) {
-  if (count > await freeSchedulesLeft(userId)) throw new ScheduleError("schedule_limit");
+  if (count > await schedulesLeft(userId, channel)) throw new ScheduleError("schedule_limit");
   if (channel === "whatsapp" && count > (await whatsAppMonthlyUsage(userId)).remaining) throw new ScheduleError("whatsapp_monthly_limit");
 }
 

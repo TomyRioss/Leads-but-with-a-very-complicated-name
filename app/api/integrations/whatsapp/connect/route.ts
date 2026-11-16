@@ -12,7 +12,7 @@ export async function POST(request: Request) {
     // Baileys may fail while opening its socket and report `disconnected` without an HTTP error.
     // Surface that failure so the client can explain it and leave the retry button available.
     if (session.status === "disconnected") return json({ error: "connect_failed" }, 502);
-    return json(await toClientState(session));
+    return json(await toClientState(session, user.id));
   } catch (error) {
     console.error("WhatsApp connect failed", error instanceof Error ? error.message : "unknown");
     return json({ error: "connect_failed" }, 503);

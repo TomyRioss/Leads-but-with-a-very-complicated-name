@@ -3,3 +3,12 @@
 .credits-plans-cta { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 46px; font-family: inherit; font-size: 15px; text-decoration: none; }
 .credits-plans-cta:focus-visible { outline: 0; box-shadow: 0 0 0 3px color-mix(in srgb, var(--lime) 45%, transparent); }
 .credits-plans-phone { margin: -4px 0 0; color: var(--muted); font-size: 12px; text-align: center; }
+.credits-plan-current { display: grid; gap: 10px; margin: 0; padding: 14px 16px; border: 1px solid var(--line); border-radius: 12px; background: var(--ash-50); color: var(--ink); font-size: 14px; line-height: 1.5; }
+.credits-plan-current p { margin: 0; }
+.credits-plan-confirm { display: grid; gap: 10px; }
+.credits-plan-confirm div { display: flex; flex-wrap: wrap; gap: 8px; }
+.credits-plan-link { color: var(--ink); font-weight: 600; text-decoration: underline; text-underline-offset: 3px; }
+.credits-plan-keep { justify-self: start; min-height: 44px; padding: 0 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--paper); color: var(--ink); font: inherit; font-weight: 600; cursor: pointer; }
+.credits-plan-keep:hover:not(:disabled) { background: var(--ash-100); }
+.credits-plan-keep:disabled { opacity: .55; cursor: not-allowed; }
+.credits-plan-keep:focus-visible, .credits-plan-link:focus-visible { outline: 0; box-shadow: 0 0 0 3px color-mix(in srgb, var(--lime) 45%, transparent); }

@@ -173,7 +173,7 @@
       "create_meeting": "Listo: agendé la reunión con **{lead}** y la registré como Reunión en Lead Suite. [Abrir en Google Calendar]({event})",
       "update_commercial_profile": "Listo: guardé tu perfil comercial. Lo uso para analizar dolores y sugerirte rubros."
     },
-    "gmailDailyLimitReached": "Llegaste al límite diario de 40 mails por Gmail. Se restablece mañana.",
+    "gmailDailyLimitReached": "Llegaste al límite de mails por Gmail (40 por día o el cupo mensual de tu plan).",
     "quota": {
       "gmail": "Gmail",
       "whatsapp": "WhatsApp",
@@ -407,7 +407,7 @@
       "batchNote": "Se envían de a uno, cada {seconds} segundos, desde tu Gmail."
     },
     "whatsappCard": {
-      "batchNote": "Se envían de a uno, cada {min}–{max} s. Cupo: {monthly} WhatsApp por mes (los programados también cuentan)."
+      "batchNote": "Se envían de a uno, cada {min}–{max} s. Usan tu cupo mensual de WhatsApp (los programados también cuentan)."
     },
     "meetingCard": {
       "title": "Título",
@@ -440,7 +440,7 @@
       "generic": "No se pudo completar la acción. Probá de nuevo.",
       "noCredits": "No tenés créditos suficientes: esta acción necesita {required, plural, one {# crédito} other {# créditos}} y tenés {available}.",
       "creditBusy": "Ya hay otra búsqueda en curso en tu cuenta. Esperá a que termine y reintentá.",
-      "gmailQuota": "Llegaste al límite diario de envíos de Gmail. Probá mañana.",
+      "gmailQuota": "Llegaste al límite de envíos de Gmail (diario o mensual de tu plan).",
       "whatsappUnavailable": "El servicio de WhatsApp no responde. Probá en unos minutos.",
       "invalid": "Hay datos inválidos en la tarjeta. Revisalos y reintentá.",
       "session": "Tu sesión venció. Recargá la página e ingresá de nuevo.",
@@ -448,8 +448,8 @@
       "service": "Leadtita no está disponible en este momento. Probá en unos minutos.",
       "offline": "Sin conexión a internet. Revisá tu red y reintentá.",
       "invalidSendAt": "La fecha programada ya pasó o es inválida. Elegí otra.",
-      "scheduleLimit": "Llegaste a los 10 programados del mes de tu cuenta sin plan. Cancelá alguno o pasate a un plan.",
-      "whatsappMonthlyLimit": "No te alcanza el cupo mensual de WhatsApp (100 por mes, incluye los programados). Quitá destinatarios o esperá al mes que viene."
+      "scheduleLimit": "Llegaste al límite de programados del mes. Cancelá alguno o mejorá tu plan.",
+      "whatsappMonthlyLimit": "No te alcanza el cupo mensual de WhatsApp (incluye los programados). Quitá destinatarios o esperá al mes que viene."
     },
     "creditWarning": {
       "none": "No tenés créditos para esta búsqueda.",
@@ -560,8 +560,8 @@
         "generic": "No pudimos guardar el cambio. Probá de nuevo.",
         "needs_gmail": "Conectá Gmail para programar mails.",
         "needs_whatsapp": "Vinculá WhatsApp para programar mensajes.",
-        "schedule_limit": "Llegaste a los 10 programados del mes (cuenta sin plan). Cancelá alguno o pasate a un plan.",
-        "whatsapp_monthly_limit": "No te queda cupo mensual de WhatsApp (100 por mes, incluye los programados)."
+        "schedule_limit": "Llegaste al límite de programados del mes. Cancelá alguno o mejorá tu plan.",
+        "whatsapp_monthly_limit": "No te queda cupo mensual de WhatsApp (incluye los programados)."
       },
       "new": "Nuevo programado",
       "freeLeft": "{count, plural, =0 {Usaste los {limit} programados del mes de tu cuenta sin plan.} one {Te queda # programado este mes (cuenta sin plan).} other {Te quedan # programados este mes (cuenta sin plan).}}",
@@ -578,7 +578,7 @@
         "subject": "Asunto",
         "body": "Mensaje",
         "hintEmail": "Se envía desde tu Gmail al email del lead.",
-        "hintWhatsapp": "Se envía desde tu WhatsApp al número del lead y usa 1 de tus 100 WhatsApp del mes.",
+        "hintWhatsapp": "Se envía desde tu WhatsApp al número del lead y usa 1 WhatsApp de tu cupo mensual.",
         "missingEmail": "Este lead no tiene un email válido. Agregalo y volvé a intentar.",
         "missingWhatsapp": "Este lead no tiene un número de WhatsApp válido. Agregalo y volvé a intentar.",
         "submit": "Programar",

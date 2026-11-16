@@ -1,5 +1,8 @@
 import { ArrowRight, Check, Download, History, MapPin, Plus, Sparkles, Table2 } from "lucide-react";
 import { getTranslations, setRequestLocale } from "next-intl/server";
+import { CUSTOM_PLAN_WHATSAPP, publicPlans, subscriptionPlans } from "@/lib/plans";
+import { CREDITS_PER_LEAD } from "@/lib/server/credits";
+import { SubscribeButton } from "./subscribe-button";
 
 /** Título con el punto final en lime, como el logo "Leadta.". */
 function Dotted({ text }: { text: string }) {
@@ -46,6 +49,21 @@ export async function PriceHero({ locale }: { locale: string }) {
 export async function PriceSections({ locale }: { locale: string }) {
   setRequestLocale(locale);
   const t = await getTranslations("Pricing");
+  const number = new Intl.NumberFormat(locale);
+  const plans = publicPlans(subscriptionPlans).map((plan) => ({
+    ...plan,
+    features: [
+      t("planCredits", { credits: number.format(plan.credits) }),
+      t("planLeads", { leads: number.format(Math.floor(plan.credits / CREDITS_PER_LEAD)) }),
+      t("planWhatsapp", { count: number.format(plan.limits.whatsappMonthly) }),
+      t("planEmail", { count: number.format(plan.limits.emailMonthly) }),
+      t("planScheduled", { count: number.format(plan.limits.scheduledMonthly) }),
+    ],
+  }));
+  const customHref = `https://wa.me/${CUSTOM_PLAN_WHATSAPP}?text=${encodeURIComponent(t("customMessage"))}`;
+  // Mercado Pago only charges in Argentina (ARS): Spanish shows ARS + checkout, English shows USD + contact.
+  const argentina = locale === "es";
+  const abroadHref = `https://wa.me/${CUSTOM_PLAN_WHATSAPP}?text=${encodeURIComponent(t("abroadMessage"))}`;
   const examples = [
     { credits: "100", leads: "50", note: t("trial") },
     { credits: "500", leads: "250", note: t("monthlyAreas") },
@@ -73,6 +91,51 @@ export async function PriceSections({ locale }: { locale: string }) {
   ];
   return (
     <>
+      <section className="price-band price-band-paper" aria-labelledby="price-plans">
+        <div className="price-inner">
+          <div className="price-head">
+            <p className="price-kicker">{t("plansKicker")}</p>
+            <h2 id="price-plans"><Dotted text={t("plansTitle")} /></h2>
+            <p>{t("plansText")}</p>
+            <p className="price-plans-note">{t("paymentsNote")}</p>
+          </div>
+          <ul className="price-plans">
+            {plans.map((plan) => (
+              <li key={plan.id} className={plan.featured ? "price-plan price-plan-featured" : "price-plan"}>
+                <div className="price-plan-top">
+                  <h3>{plan.name}</h3>
+                  {plan.featured ? <span className="price-plan-badge">{t("featuredBadge")}</span> : null}
+                </div>
+                <p className="price-plan-amount">
+                  <strong>{t("planPrice", { price: number.format(argentina ? plan.priceArs : plan.priceUsd) })}</strong>
+                  <span>{t("perMonth")}</span>
+                </p>
+                <ul className="price-plan-features">
+                  {plan.features.map((feature) => (
+                    <li key={feature}><Check size={16} aria-hidden="true" />{feature}</li>
+                  ))}
+                </ul>
+                {argentina ? <SubscribeButton planId={plan.id} /> : (
+                  <a className="price-button price-button-dark" href={abroadHref} target="_blank" rel="noreferrer">
+                    {t("abroadCta")}<ArrowRight size={16} aria-hidden="true" />
+                  </a>
+                )}
+              </li>
+            ))}
+            <li className="price-plan">
+              <div className="price-plan-top">
+                <h3>{t("customName")}</h3>
+              </div>
+              <p className="price-plan-amount"><strong>{t("customPrice")}</strong></p>
+              <p className="price-plan-text">{t("customText")}</p>
+              <a className="price-button price-button-dark" href={customHref} target="_blank" rel="noreferrer">
+                {t("customCta")}<ArrowRight size={16} aria-hidden="true" />
+              </a>
+            </li>
+          </ul>
+        </div>
+      </section>
+
       <section className="price-band" aria-labelledby="price-credits">
         <div className="price-inner price-split">
           <div className="price-head">

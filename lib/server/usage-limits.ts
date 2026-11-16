@@ -1,3 +1,4 @@
+import { FREE_LIMITS, findPlan, subscriptionPlans, UNKNOWN_PLAN_LIMITS, type PlanLimits } from "@/lib/plans";
 import { pocketBaseFetch } from "@/lib/server/pocketbase";
 
 // Lifetime caps for accounts without an active paid plan. Owners and subscribers are unlimited.
@@ -18,6 +19,15 @@ export async function hasActivePlan(userId: string) {
   const filter = encodeURIComponent(`user = "${userId}" && status = "authorized"`);
   const response = await pocketBaseFetch<{ totalItems: number }>(`/api/collections/subscriptions/records?perPage=1&fields=id&filter=${filter}`);
   return response.totalItems > 0;
+}
+
+/** Monthly caps of the newest active subscription's plan; FREE_LIMITS without one. */
+export async function getPlanLimits(userId: string): Promise<PlanLimits & { hasPlan: boolean }> {
+  const filter = encodeURIComponent(`user = "${userId}" && status = "authorized"`);
+  const response = await pocketBaseFetch<{ items: { plan_id?: string }[] }>(`/api/collections/subscriptions/records?perPage=1&skipTotal=1&sort=-created&fields=plan_id&filter=${filter}`);
+  const subscription = response.items[0];
+  if (!subscription) return { ...FREE_LIMITS, hasPlan: false };
+  return { ...(findPlan(subscriptionPlans, subscription.plan_id ?? "")?.limits ?? UNKNOWN_PLAN_LIMITS), hasPlan: true };
 }
 
 export async function getFreeUsage(userId: string, kind: FreeUsageKind) {

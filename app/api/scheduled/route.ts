@@ -1,5 +1,5 @@
 import { conversationJson as json, sameOrigin, sessionUserId } from "@/lib/server/leadtita-conversations";
-import { createScheduled, freeSchedulesLeft, listScheduled, ScheduleError } from "@/lib/server/scheduled-messages";
+import { createScheduled, listScheduled, schedulesLeft, ScheduleError } from "@/lib/server/scheduled-messages";
 
 const MAX_BODY_BYTES = 16_000;
 
@@ -8,7 +8,7 @@ export async function GET(request: Request) {
   const userId = await sessionUserId(request);
   if (typeof userId !== "string") return userId;
   try {
-    const [items, left] = await Promise.all([listScheduled(userId), freeSchedulesLeft(userId)]);
+    const [items, left] = await Promise.all([listScheduled(userId), schedulesLeft(userId)]);
     return json({ items, freeLeft: Number.isFinite(left) ? left : null });
   } catch (error) {
     console.error("Scheduled list failed", error instanceof Error ? error.name : "unknown");

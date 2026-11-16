@@ -1,6 +1,7 @@
 import type { OwnerIdentity } from "@/lib/server/owner";
 import { recordOwnerAction } from "@/lib/server/owner-audit";
 import { pocketBaseFetch } from "@/lib/server/pocketbase";
+import { cancelUserSubscriptions, SubscriptionError, syncOwnerStatusToMercadoPago } from "@/lib/server/subscriptions";
 import { sendFeedbackThanksEmail } from "@/lib/server/email";
 import { getFeedbackIssue, setFeedbackIssueState } from "@/lib/server/linear";
 import {
@@ -150,6 +151,15 @@ export async function deleteOwnerUser(request: Request, owner: OwnerIdentity, id
   if (confirmEmail.trim().toLowerCase() !== user.email.toLowerCase()) return fail(400, "ownerConfirmEmailMismatch");
 
   try {
+    // Stop Mercado Pago charges before the rows cascade away.
+    await cancelUserSubscriptions(id).catch((error) => { if (!(error instanceof SubscriptionError && error.code === "not_found")) throw error; });
+  } catch (error) {
+    console.error("Owner user delete Mercado Pago cancel failed:", error instanceof Error ? error.name : "unknown");
+    await recordOwnerAction(request, owner, { action: "user.delete", targetType: "user", targetId: id, targetLabel: user.email, details: { status: "failed", reason: "mercadopago_cancel_failed", email: user.email } });
+    return fail(502, "ownerUserDeleteFailed");
+  }
+
+  try {
     const [batches, leads, subscriptions] = await Promise.all([
       countRecords("lead_batches", `user = ${filterString(id)}`),
       countRecords("leads", `batch.user = ${filterString(id)}`),
@@ -200,6 +210,13 @@ export async function setOwnerSubscriptionStatus(
 
   // Cancelled subscriptions are stored with the "canceled" spelling.
   const status = requestedStatus === "cancelled" ? "canceled" : requestedStatus;
+  try {
+    // Mercado Pago first: if it refuses, nothing is saved and the subscription keeps charging as before.
+    await syncOwnerStatusToMercadoPago(subscription.mp_subscription_id, status);
+  } catch (error) {
+    console.error("Owner subscription Mercado Pago sync failed:", error instanceof Error ? error.name : "unknown");
+    return fail(502, "ownerSubscriptionSaveFailed");
+  }
   try {
     await pocketBaseFetch(`/api/collections/subscriptions/records/${subscription.id}`, { method: "PATCH", body: JSON.stringify({ status }) });
   } catch (error) {

@@ -508,6 +508,8 @@
       "active": "Active"
     },
     "plans": {
+      "starter": "Starter",
+      "growth": "Growth",
       "initial": "Starter plan",
       "pro": "Pro plan",
       "agency": "Agency plan",

@@ -7,7 +7,7 @@ export async function GET(request: Request) {
   if (!user) return json({ error: "unauthorized" }, 401);
   if (!isWhatsAppConfigured()) return json(notConfiguredState);
   try {
-    return json(await toClientState(await getWhatsAppSession(user.id)));
+    return json(await toClientState(await getWhatsAppSession(user.id), user.id));
   } catch (error) {
     console.error("WhatsApp status failed", error instanceof Error ? error.message : "unknown");
     return json({ error: "status_failed" }, 503);

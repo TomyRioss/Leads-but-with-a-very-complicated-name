@@ -1825,7 +1825,7 @@ export function LeadSuiteChat({ onActivity, variant = "panel" }: { onActivity?: 
                       ) : null}
                       {review ? <BatchReview channel={kind === "send_email_batch" ? "email" : "whatsapp"} original={review} state={reviewOf(action.token, review)} disabled={settled || state === "busy"} onChange={(next) => setBatchReviews((current) => ({ ...current, [action.token]: next }))} /> : null}
                       {kind === "send_email_batch" ? <p className="ls-chat__action-note">{t("emailCard.batchNote", { seconds: 20 })}</p>
-                        : kind === "send_whatsapp_batch" ? <p className="ls-chat__action-note">{t("whatsappCard.batchNote", { min: 45, max: 120, monthly: 100 })}</p> : null}
+                        : kind === "send_whatsapp_batch" ? <p className="ls-chat__action-note">{t("whatsappCard.batchNote", { min: 45, max: 120 })}</p> : null}
                       {SCHEDULABLE_KINDS.includes(kind) && !settled ? <SchedulePicker value={scheduleOf(action.token, extra)} disabled={state === "busy"} onChange={(next) => setScheduleAt((current) => ({ ...current, [action.token]: next }))} /> : null}
 
                       {destructive && !settled ? <p className="ls-chat__action-note">{t("irreversible")}</p> : null}

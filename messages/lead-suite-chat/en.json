@@ -173,7 +173,7 @@
       "create_meeting": "Done: scheduled the meeting with **{lead}** and logged it as Meeting in Lead Suite. [Open in Google Calendar]({event})",
       "update_commercial_profile": "Done: I saved your business profile. I use it to analyze pains and suggest sectors."
     },
-    "gmailDailyLimitReached": "You've reached the daily limit of 40 Gmail messages. It resets tomorrow.",
+    "gmailDailyLimitReached": "You've reached your Gmail sending limit (40 per day or your plan's monthly quota).",
     "quota": {
       "gmail": "Gmail",
       "whatsapp": "WhatsApp",
@@ -407,7 +407,7 @@
       "batchNote": "Sent one at a time, every {seconds} seconds, from your Gmail."
     },
     "whatsappCard": {
-      "batchNote": "Sent one by one, every {min}–{max} s. Quota: {monthly} WhatsApp messages per month (scheduled ones count too)."
+      "batchNote": "Sent one by one, every {min}–{max} s. They use your monthly WhatsApp quota (scheduled ones count too)."
     },
     "meetingCard": {
       "title": "Title",
@@ -440,7 +440,7 @@
       "generic": "The action couldn't be completed. Try again.",
       "noCredits": "Not enough credits: this action needs {required, plural, one {# credit} other {# credits}} and you have {available}.",
       "creditBusy": "Another search is already running on your account. Wait for it to finish and retry.",
-      "gmailQuota": "You reached Gmail's daily sending limit. Try again tomorrow.",
+      "gmailQuota": "You reached your Gmail sending limit (daily or your plan's monthly quota).",
       "whatsappUnavailable": "The WhatsApp service isn't responding. Try again in a few minutes.",
       "invalid": "The card has invalid data. Review it and retry.",
       "session": "Your session expired. Reload the page and sign in again.",
@@ -448,8 +448,8 @@
       "service": "Leadtita isn't available right now. Try again in a few minutes.",
       "offline": "No internet connection. Check your network and retry.",
       "invalidSendAt": "The scheduled date already passed or is invalid. Pick another one.",
-      "scheduleLimit": "You reached the 10 scheduled messages per month of an account without a plan. Cancel one or get a plan.",
-      "whatsappMonthlyLimit": "Not enough monthly WhatsApp quota (100 per month, scheduled ones included). Remove recipients or wait for next month."
+      "scheduleLimit": "You reached this month's scheduled messages limit. Cancel one or upgrade your plan.",
+      "whatsappMonthlyLimit": "Not enough monthly WhatsApp quota (scheduled ones included). Remove recipients or wait for next month."
     },
     "creditWarning": {
       "none": "You don't have credits for this search.",
@@ -560,8 +560,8 @@
         "generic": "We couldn't save the change. Try again.",
         "needs_gmail": "Connect Gmail to schedule emails.",
         "needs_whatsapp": "Link WhatsApp to schedule messages.",
-        "schedule_limit": "You reached the 10 scheduled messages of this month (account without a plan). Cancel one or get a plan.",
-        "whatsapp_monthly_limit": "No monthly WhatsApp quota left (100 per month, scheduled ones included)."
+        "schedule_limit": "You reached this month's scheduled messages limit. Cancel one or upgrade your plan.",
+        "whatsapp_monthly_limit": "No monthly WhatsApp quota left (scheduled ones included)."
       },
       "new": "New scheduled message",
       "freeLeft": "{count, plural, =0 {You used the {limit} scheduled messages of this month (account without a plan).} one {# scheduled message left this month (account without a plan).} other {# scheduled messages left this month (account without a plan).}}",
@@ -578,7 +578,7 @@
         "subject": "Subject",
         "body": "Message",
         "hintEmail": "Sent from your Gmail to the lead's email.",
-        "hintWhatsapp": "Sent from your WhatsApp to the lead's number and uses 1 of your 100 WhatsApp messages this month.",
+        "hintWhatsapp": "Sent from your WhatsApp to the lead's number and uses 1 message of your monthly WhatsApp quota.",
         "missingEmail": "This lead has no valid email. Add one and try again.",
         "missingWhatsapp": "This lead has no valid WhatsApp number. Add one and try again.",
         "submit": "Schedule",
