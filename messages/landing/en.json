@@ -150,7 +150,7 @@
       "download": "Download",
       "creditsTitle": "Pay for what you search.",
       "credits": [
-        { "value": "240", "label": "welcome credits when you create your account" },
+        { "value": "50", "label": "welcome credits when you create your account" },
         { "value": "2", "label": "credits for every lead in your search" },
         { "value": "0", "label": "credits to analyze pain points: it is free" }
       ]
@@ -168,7 +168,7 @@
     },
     "cta": {
       "title": "Your first list is one search away.",
-      "text": "Create your account and start with 240 welcome credits.",
+      "text": "Create your account and start with 50 welcome credits.",
       "primary": "Create a free account",
       "secondary": "I already have an account"
     },

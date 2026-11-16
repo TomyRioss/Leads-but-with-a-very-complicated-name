@@ -15,6 +15,8 @@ import { ErrorReportButton } from "@/app/feedback-dialog";
 import CellDetailsPopover from "@/app/cell-details-popover";
 import WhatsAppContact from "@/app/whatsapp-contact";
 import { Onboarding } from "@/app/onboarding/onboarding";
+import { MAX_SEARCH_COUNTRIES } from "@/lib/search-random-location";
+import { claimLeadtitaTour } from "@/app/onboarding/leadtita-onboarding";
 import { getSession, invalidateSession, peekSessionUser, setSessionCredits } from "@/lib/client/session";
 import { defaultSearchFilters, SearchFiltersPanel, type SearchFilters } from "./search-filters";
 
@@ -148,18 +150,30 @@ export default function Home() {
     if (numbered) return s(`columns.${numbered[1]}`, { number: Number(numbered[2]) });
     return s.has(`columns.${key}`) ? s(`columns.${key}`) : fallback;
   }, [s]);
-  const [country, setCountry] = useState("");
+  // Varios países: los leads se reparten parejo; provincia y ciudad solo aplican con un único país.
+  const [selectedCountries, setSelectedCountries] = useState<GeographyOption[]>([]);
+  const hasCountry = selectedCountries.length > 0;
   const [randomLocation, setRandomLocation] = useState(false);
   const [hasKeywords, setHasKeywords] = useState(false);
   const [province, setProvince] = useState("");
   const [district, setDistrict] = useState("");
-  const [countryCode, setCountryCode] = useState("");
   const [provinceCode, setProvinceCode] = useState("");
   const [countries, setCountries] = useState<GeographyOption[]>([]);
   const [provinces, setProvinces] = useState<GeographyOption[]>([]);
   const [districts, setDistricts] = useState<GeographyOption[]>([]);
   const [geographyLoading, setGeographyLoading] = useState({ countries: true, provinces: false, districts: false });
   const [geographyError, setGeographyError] = useState("");
+  const countryCode = selectedCountries.length === 1 ? selectedCountries[0].code : "";
+  const changeCountries = (next: GeographyOption[]) => {
+    setSelectedCountries(next);
+    setProvinceCode("");
+    setProvince("");
+    setDistrict("");
+    setProvinces([]);
+    setDistricts([]);
+    setGeographyLoading((current) => ({ ...current, provinces: next.length === 1, districts: false }));
+    setGeographyError("");
+  };
   const [guidedCount, setGuidedCount] = useState<number | null>(null);
   const [selectedCount, setCount] = useState(25);
   const count = guidedCount ?? selectedCount;
@@ -395,14 +409,6 @@ export default function Home() {
   }
 
   useEffect(() => {
-    // ?ref=<code> from a shared link: remember it (httpOnly cookie) until signup.
-    const params = new URLSearchParams(window.location.search);
-    const ref = params.get("ref");
-    if (!ref) return;
-    void fetch("/api/referrals/capture", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ code: ref }) }).catch(() => undefined);
-  }, []);
-
-  useEffect(() => {
     let current = true;
     async function loadInitialData() {
       try {
@@ -444,7 +450,11 @@ export default function Home() {
 
         const loadedBatches = payload.batches as LeadBatch[];
         setHistoryLoading(false);
-        if (loadedBatches.length === 0) return;
+        if (loadedBatches.length === 0) {
+          // Usuario nuevo: el primer lead se genera con Leadtita (una sola vez por usuario y navegador).
+          if (claimLeadtitaTour(authPayload.user.id)) window.location.replace(`${window.location.pathname.startsWith("/en/") ? "/en" : ""}/leadtita?tour=1`);
+          return;
+        }
 
         const latest = loadedBatches[0];
         setActiveBatch(latest);
@@ -513,7 +523,7 @@ export default function Home() {
       setProblem(s("keywordRequired"));
       return;
     }
-    if (!randomLocation && !country.trim()) {
+    if (!randomLocation && !hasCountry) {
       setProblem(s("countryRequired"));
       return;
     }
@@ -529,7 +539,7 @@ export default function Home() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           keywords, count,
-          ...(randomLocation ? { random: true } : { country, province, district }),
+          ...(randomLocation ? { random: true } : { country: selectedCountries[0].name, countries: selectedCountries.map((option) => option.name), province, district }),
           filters: {
             ...filters,
             minReviews: filters.minReviews === "" ? undefined : Number(filters.minReviews),
@@ -657,15 +667,15 @@ export default function Home() {
   // Shell visible from the first paint: sidebar skeleton (or cached session) while auth resolves.
   if (authLoading) return (
     <main className="app-shell">
-      <AppSidebar active="search" user={currentUser} onSignOut={signOut} />
+      <AppSidebar active="search" user={currentUser} onSignOut={signOut} announce={false} />
       <div className="workspace"><p className="auth-loading" aria-live="polite">{t("t_50aa6fdfd6")}</p></div>
     </main>
   );
-  if (!currentUser) return <AuthForm initialError={authProblem || googleAuthError} initialMode={typeof window !== "undefined" && new URLSearchParams(window.location.search).get("signup") === "1" || new URLSearchParams(window.location.search).has("ref") ? "register" : "login"} onAuthenticated={() => window.location.reload()} />;
+  if (!currentUser) return <AuthForm initialError={authProblem || googleAuthError} initialMode={typeof window !== "undefined" && new URLSearchParams(window.location.search).get("signup") === "1" ? "register" : "login"} onAuthenticated={() => window.location.reload()} />;
 
   return (
     <main className="app-shell">
-      <AppSidebar active="search" user={currentUser} onSignOut={signOut} />
+      <AppSidebar active="search" user={currentUser} onSignOut={signOut} announce={Boolean(activeBatch)} />
 
       <div className="workspace">
         <form className="search-panel" onSubmit={submitSearch}>
@@ -677,9 +687,8 @@ export default function Home() {
             <div className="onboarding-aside">
               <Onboarding
                 userId={currentUser.id}
-                ready={!historyLoading}
                 hasHistory={Boolean(activeBatch)}
-                hasCountry={randomLocation || Boolean(country.trim())}
+                hasCountry={randomLocation || hasCountry}
                 busy={busy}
                 resultCount={leads.length}
                 onGuidedCountChange={setGuidedCount}
@@ -703,25 +712,17 @@ export default function Home() {
                 <label>
                   <span className="sr-only">{t("t_c4a5d0602b")}</span>
                   <span className="select-control"><select
-                    value={countryCode}
+                    value=""
                     onChange={(event) => {
-                      const nextCountryCode = event.target.value;
-                      setCountryCode(nextCountryCode);
-                      setCountry(countries.find((option) => option.code === nextCountryCode)?.name ?? "");
-                      setProvinceCode("");
-                      setProvince("");
-                      setDistrict("");
-                      setProvinces([]);
-                      setDistricts([]);
-                      setGeographyLoading((current) => ({ ...current, provinces: Boolean(nextCountryCode), districts: false }));
-                      setGeographyError("");
+                      const added = countries.find((option) => option.code === event.target.value);
+                      if (added) changeCountries([...selectedCountries, added]);
                     }}
-                    required={!randomLocation}
+                    required={!randomLocation && !hasCountry}
                     aria-label={s("countryAria")}
-                    disabled={geographyLoading.countries || countries.length === 0}
+                    disabled={busy || geographyLoading.countries || countries.length === 0 || selectedCountries.length >= MAX_SEARCH_COUNTRIES}
                   >
-                    <option value="">{geographyLoading.countries ? s("countryLoading") : s("countryPlaceholder")}</option>
-                    {countries.map((option) => <option value={option.code} key={option.code}>{option.name}</option>)}
+                    <option value="">{geographyLoading.countries ? s("countryLoading") : hasCountry ? s("countryAddAnother") : s("countryPlaceholder")}</option>
+                    {countries.filter((option) => !selectedCountries.some((chosen) => chosen.code === option.code)).map((option) => <option value={option.code} key={option.code}>{option.name}</option>)}
                   </select><span className="select-chevron" aria-hidden="true" /></span>
                 </label>
                 <label>
@@ -757,7 +758,19 @@ export default function Home() {
                   </select><span className="select-chevron" aria-hidden="true" /></span>
                 </label>
               </div>
-              {!randomLocation && <span className="field-help">{t("t_08a1c28ca4")}</span>}
+              {!randomLocation && hasCountry && (
+                <ul className="country-chips" aria-label={s("countriesSelected")}>
+                  {selectedCountries.map((option) => (
+                    <li key={option.code}>
+                      <span>{option.name}</span>
+                      <button type="button" onClick={() => changeCountries(selectedCountries.filter((chosen) => chosen.code !== option.code))} disabled={busy} aria-label={s("countryRemove", { country: option.name })}>
+                        <X size={14} aria-hidden="true" />
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {!randomLocation && <span className="field-help">{selectedCountries.length > 1 ? s("countriesHelp") : t("t_08a1c28ca4")}</span>}
               {geographyError && <span className="field-error" role="alert">{geographyError}</span>}
             </div>
 
@@ -793,7 +806,7 @@ export default function Home() {
             <SearchFiltersPanel filters={filters} setFilters={setFilters} disabled={busy} />
 
             <div className="search-action">
-              <button className="primary-button" type="submit" data-onboarding="submit" disabled={busy || !hasKeywords || !apifyConfigured || !pocketBaseConfigured || (!randomLocation && !country.trim())}>
+              <button className="primary-button" type="submit" data-onboarding="submit" disabled={busy || !hasKeywords || !apifyConfigured || !pocketBaseConfigured || (!randomLocation && !hasCountry)}>
                 {busy ? <><span className="button-spinner" aria-hidden="true" /> {t("t_b6d453ae3d")}</> : s("searchButton")}
               </button>
               <span className="action-caption">{!apifyConfigured ? s("missingApify") : !pocketBaseConfigured ? s("missingPocketBase") : s("maxPerBatch", { count })}</span>

@@ -34,7 +34,7 @@
 @media (max-width: 559px) { .lp-hide-sm { display: none; } }
 
 /* Header: píldora flotante */
-.lp-header { position: sticky; z-index: 20; top: 0; padding-block: 12px; pointer-events: none; }
+.lp-header { position: sticky; z-index: 20; top: var(--campaign-banner-h, 0px); padding-block: 12px; pointer-events: none; }
 .lp-header-inner { display: flex; min-height: 58px; align-items: center; justify-content: space-between; gap: 16px; padding: 6px 8px 6px 22px; border: 1px solid var(--ash-200); border-radius: 999px; background: var(--paper); box-shadow: 0 8px 24px -12px rgb(23 25 24 / 0.28); pointer-events: auto; }
 .lp-header-inner .lp-btn { border-radius: 999px; }
 .lp-header-links { display: none; align-items: center; gap: 24px; margin: 0 auto; padding: 0; list-style: none; }
@@ -114,7 +114,7 @@
   .lp-split-wide { grid-template-columns: minmax(0, 6fr) minmax(0, 6fr); }
   .lp-split-reverse { grid-template-columns: minmax(0, 6fr) minmax(0, 6fr); }
   .lp-split-reverse .lp-split-copy { order: 2; }
-  .lp-split-copy { position: sticky; top: 96px; }
+  .lp-split-copy { position: sticky; top: calc(96px + var(--campaign-banner-h, 0px)); }
   .lp-split-reverse .lp-split-copy, .lp-split-wide .lp-split-copy { position: static; }
 }
 

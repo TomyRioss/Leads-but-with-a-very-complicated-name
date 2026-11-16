@@ -10,35 +10,57 @@
     "steps": {
       "lead": {
         "title": "What is a lead",
-        "body": "A lead is a local business with its contact details: phone, website, email and reviews. In 5 steps you will run your first search for 1 lead.",
-        "bodyRepeat": "Review how to run a search in 5 steps. Since you have already searched, this walkthrough uses the normal minimum batch: 5 leads."
+        "body": "A business with its contact details. Find your first in 5 steps.",
+        "bodyRepeat": "Review the search in 5 steps, with a 5-lead batch."
       },
       "keywords": {
         "title": "Choose what to search",
-        "body": "Type the kind of business you want to find, for example “accounting firms”. You can enter several keywords separated by commas or line breaks.",
-        "hint": "Type at least one keyword to continue."
+        "body": "Type the business type, e.g. “accounting firms”.",
+        "hint": "Type at least one keyword."
       },
       "location": {
         "title": "Choose where to search",
-        "body": "Select the country. State and city are optional and narrow the search.",
-        "hint": "Pick a country to continue."
+        "body": "Pick the country. State and city are optional.",
+        "hint": "Pick a country."
       },
       "count": {
-        "title": "Quantity fixed at 1",
-        "body": "Your first search is a batch of 1 lead, so you can try the whole flow at a minimal cost: 2 credits.",
-        "titleRepeat": "Minimum quantity: 5",
-        "bodyRepeat": "The 1-lead batch is only for your first search. In this walkthrough the batch is 5 leads, the normal minimum, and it costs {credits} credits."
+        "title": "Quantity: 1",
+        "body": "Your first search brings 1 lead for 2 credits.",
+        "titleRepeat": "Quantity: 5",
+        "bodyRepeat": "Minimum batch of 5 leads: {credits} credits."
       },
       "launch": {
         "title": "Launch the search",
-        "body": "Press “Buscar leads”. It takes a few seconds to fetch and save the result.",
-        "searching": "Searching and saving your lead…",
-        "failed": "No lead was found. Check the message, change the keyword or area and search again."
+        "body": "Press “Buscar leads”.",
+        "searching": "Searching for your lead…",
+        "failed": "No results. Change the keyword or area."
       },
       "results": {
-        "title": "Here is your result",
-        "body": "Your lead shows up in this table. Next you can export it with “Download CSV”, or use the pain points and enrichment columns to analyze it.",
-        "bodyRepeat": "Your leads show up in this table. Next you can export them with “Download CSV”, or use the pain points and enrichment columns to analyze them."
+        "title": "Your result",
+        "body": "Your lead is in the table. Export or analyze it.",
+        "bodyRepeat": "Your leads are in the table. Export or analyze them."
+      }
+    },
+    "leadtita": {
+      "intro": {
+        "title": "Meet Leadtita",
+        "body": "Your sales assistant: finds leads, logs contacts and drafts messages."
+      },
+      "ask": {
+        "title": "Ask for leads",
+        "body": "E.g. “Find me 5 real estate agencies in Córdoba, Argentina”.",
+        "hint": "If she asks something, answer in the chat.",
+        "retry": "Not confirmed. Ask again."
+      },
+      "confirm": {
+        "title": "Confirm the search",
+        "body": "Check what she'll search and the cost.",
+        "hint": "Confirm the card.",
+        "searching": "Searching for your leads…"
+      },
+      "results": {
+        "title": "Leads ready",
+        "body": "They're in your history. Keep going in the chat."
       }
     }
   }

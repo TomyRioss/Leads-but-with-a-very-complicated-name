@@ -1,22 +1,15 @@
 import { NextResponse } from "next/server";
 import { getOwnerSession, requireOwner } from "@/lib/server/owner";
-import { recordOwnerAction } from "@/lib/server/owner-audit";
-import { pocketBaseFetch } from "@/lib/server/pocketbase";
+import { adjustOwnerUserCredits, deleteOwnerUser, isValidCreditAmount, parseUserProfileChanges, updateOwnerUserProfile } from "@/lib/server/owner-actions";
 import {
-  countRecords,
   errorResponse,
-  findUserSummary,
   filterString,
-  isNotFound,
   isValidRecordId,
   listRecords,
-  maxCredits,
   normalizeCredits,
-  OwnerCreditsBusyError,
   pocketBaseNotReady,
   readJsonObject,
   toSubscriptionSummary,
-  updateUserCredits,
   type PaymentRecord,
   type SubscriptionRecord,
   type UserRecord,
@@ -68,10 +61,6 @@ export async function GET(request: Request, context: Context) {
   }
 }
 
-function isHalfStep(value: unknown): value is number {
-  return typeof value === "number" && Number.isFinite(value) && Number.isInteger(value * 2);
-}
-
 export async function PATCH(request: Request, context: Context) {
   const t = errorTranslator(request);
   const session = await getOwnerSession(request);
@@ -91,85 +80,17 @@ export async function PATCH(request: Request, context: Context) {
   if (!hasProfile && !hasAbsolute && !hasDelta) return errorResponse(t("ownerSendCreditsOrProfile"), 400);
 
   if (hasProfile) {
-    const changes: { name?: string; email?: string; phone?: string } = {};
-    if (body.name !== undefined) {
-      if (typeof body.name !== "string" || body.name.trim().length > 100) return errorResponse(t("ownerNameTooLong"), 400);
-      changes.name = body.name.trim();
-    }
-    if (body.email !== undefined) {
-      const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
-      if (!/^\S+@\S+\.\S+$/.test(email) || email.length > 200) return errorResponse(t("invalidEmail"), 400);
-      changes.email = email;
-    }
-    if (body.phone !== undefined) {
-      // Same free-text storage as registration; the column holds at most 30 characters.
-      const phone = typeof body.phone === "string" ? body.phone.trim() : "";
-      if (typeof body.phone !== "string" || phone.length > 30 || !/^[0-9+().\- ]*$/.test(phone)) {
-        return errorResponse(t("ownerPhoneFormat"), 400);
-      }
-      changes.phone = phone;
-    }
-
-    try {
-      const user = await findUserSummary(id);
-      if (!user) return errorResponse(t("ownerUserNotFound"), 404);
-      const current: Record<string, string> = { name: user.name || "", email: user.email, phone: user.phone || "" };
-      const changed = Object.entries(changes).filter(([field, value]) => value !== current[field]);
-      if (changed.some(([field]) => field === "email") && (user.role === "owner" || user.id === session.owner.id)) {
-        return errorResponse(t("ownerEmailLocked"), 403);
-      }
-      if (changed.length > 0) {
-        const patch = Object.fromEntries(changed);
-        try {
-          await pocketBaseFetch(`/api/collections/users/records/${id}`, { method: "PATCH", body: JSON.stringify(patch) });
-        } catch (error) {
-          if (error instanceof Error && error.message.includes("validation_not_unique")) return errorResponse(t("ownerEmailInUse"), 409);
-          throw error;
-        }
-        await recordOwnerAction(request, session.owner, {
-          action: "user.update",
-          targetType: "user",
-          targetId: id,
-          targetLabel: changes.email ?? user.email,
-          details: Object.fromEntries(changed.map(([field, value]) => [field, { before: current[field], after: value }])),
-        });
-      }
-      return NextResponse.json(changes);
-    } catch (error) {
-      console.error("Owner user update failed:", error instanceof Error ? error.name : "unknown");
-      return errorResponse(t("ownerUserUpdateFailed"), 502);
-    }
+    const parsed = parseUserProfileChanges(body);
+    if (!parsed.ok) return errorResponse(t(parsed.error), parsed.status);
+    const result = await updateOwnerUserProfile(request, session.owner, id, parsed.value);
+    return result.ok ? NextResponse.json(result.value) : errorResponse(t(result.error), result.status);
   }
 
+  const mode = hasAbsolute ? "set" : "add";
   const amount = hasAbsolute ? body.credits : body.addCredits;
-  if (!isHalfStep(amount) || Math.abs(amount) > maxCredits || (hasAbsolute && amount < 0)) {
-    return errorResponse(t("ownerCreditsMultiple"), 400);
-  }
-
-  try {
-    const user = await findUserSummary(id);
-    if (!user) return errorResponse(t("ownerUserNotFound"), 404);
-    let before = 0;
-    const credits = await updateUserCredits(id, (current) => {
-      before = current;
-      const next = hasAbsolute ? amount : current + amount;
-      return next >= 0 && next <= maxCredits ? next : null;
-    });
-    if (credits === null) return errorResponse(t("ownerCreditsRange"), 400);
-    await recordOwnerAction(request, session.owner, {
-      action: hasAbsolute ? "user.credits_set" : "user.credits_add",
-      targetType: "user",
-      targetId: id,
-      targetLabel: user.email,
-      details: { creditsBefore: before, creditsAfter: credits, ...(hasDelta ? { delta: amount } : {}) },
-    });
-    return NextResponse.json({ credits });
-  } catch (error) {
-    if (error instanceof OwnerCreditsBusyError) return errorResponse(t("ownerCreditsBusy"), 409);
-    if (isNotFound(error)) return errorResponse(t("ownerUserNotFound"), 404);
-    console.error("Owner credits update failed:", error instanceof Error ? error.name : "unknown");
-    return errorResponse(t("ownerCreditsUpdateFailed"), 502);
-  }
+  if (!isValidCreditAmount(mode, amount)) return errorResponse(t("ownerCreditsMultiple"), 400);
+  const result = await adjustOwnerUserCredits(request, session.owner, id, mode, amount);
+  return result.ok ? NextResponse.json({ credits: result.value.credits }) : errorResponse(t(result.error), result.status);
 }
 
 export async function DELETE(request: Request, context: Context) {
@@ -183,47 +104,6 @@ export async function DELETE(request: Request, context: Context) {
 
   const body = await readJsonObject(request);
   if (!body || typeof body.confirmEmail !== "string") return errorResponse(t("ownerConfirmEmailRequired"), 400);
-
-  let user;
-  try {
-    user = await findUserSummary(id);
-  } catch (error) {
-    console.error("Owner user delete lookup failed:", error instanceof Error ? error.name : "unknown");
-    return errorResponse(t("ownerUserDeleteFailed"), 502);
-  }
-  if (!user) return errorResponse(t("ownerUserNotFound"), 404);
-  if (user.role === "owner" || user.id === session.owner.id) return errorResponse(t("ownerDeleteForbidden"), 403);
-  if (body.confirmEmail.trim().toLowerCase() !== user.email.toLowerCase()) return errorResponse(t("ownerConfirmEmailMismatch"), 400);
-
-  const auditFailure = (reason: string) => recordOwnerAction(request, session.owner, {
-    action: "user.delete",
-    targetType: "user",
-    targetId: id,
-    targetLabel: user.email,
-    details: { status: "failed", reason, email: user.email },
-  });
-
-  try {
-    const [batches, leads, subscriptions] = await Promise.all([
-      countRecords("lead_batches", `user = ${filterString(id)}`),
-      countRecords("leads", `batch.user = ${filterString(id)}`),
-      countRecords("subscriptions", `user = ${filterString(id)}`),
-    ]);
-    // lead_batches.user, leads.batch, subscriptions.user, subscription_payments.user and credit_locks.user all cascade on delete.
-    await pocketBaseFetch(`/api/collections/users/records/${id}`, { method: "DELETE" });
-
-    const deleted = { batches, leads, subscriptions };
-    await recordOwnerAction(request, session.owner, {
-      action: "user.delete",
-      targetType: "user",
-      targetId: id,
-      targetLabel: user.email,
-      details: { email: user.email, name: user.name || "", ...deleted },
-    });
-    return NextResponse.json({ ok: true, deleted });
-  } catch (error) {
-    console.error("Owner user delete failed:", error instanceof Error ? error.name : "unknown");
-    await auditFailure("delete_failed");
-    return errorResponse(t("ownerUserDeleteFailed"), 502);
-  }
+  const result = await deleteOwnerUser(request, session.owner, id, body.confirmEmail);
+  return result.ok ? NextResponse.json({ ok: true, deleted: result.value }) : errorResponse(t(result.error), result.status);
 }

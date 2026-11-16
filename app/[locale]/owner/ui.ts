@@ -23,6 +23,8 @@ export const tableWrap = "overflow-x-auto rounded-[10px] border border-(color:--
 export const tableClass = "w-full border-collapse text-[13px] max-md:block max-md:[&_tbody]:block [&_tr:last-child_td]:border-b-0";
 export const theadClass = "max-md:sr-only";
 export const thClass = "whitespace-nowrap border-b border-(color:--line) px-3.5 py-2.5 text-left text-[11px] font-semibold text-(color:--muted)";
+/** thead for tables with SortableTh: on mobile it stays visible as a row of sort chips; non-sortable headers stay screen-reader only. */
+export const sortTheadClass = "max-md:block max-md:border-b max-md:border-(color:--ash-150) max-md:[&_tr]:flex max-md:[&_tr]:flex-wrap max-md:[&_tr]:gap-1.5 max-md:[&_tr]:px-3.5 max-md:[&_tr]:py-2.5 max-md:[&_th:not([aria-sort])]:sr-only";
 export const tdClass = "border-b border-(color:--ash-150) px-3.5 py-2.5 align-middle max-md:flex max-md:justify-between max-md:gap-3 max-md:border-0 max-md:px-0 max-md:py-[3px] max-md:text-right max-md:before:text-left max-md:before:text-[11px] max-md:before:text-(color:--muted) max-md:before:content-[attr(data-label)]";
 export const trClass = "hover:bg-(--ash-50) max-md:block max-md:border-b max-md:border-(color:--ash-150) max-md:px-3.5 max-md:py-2.5";
 export const rightCell = "text-right tabular-nums";
@@ -43,7 +45,7 @@ export const statusPill = (status: string) =>
 export type OnAction = (message: string) => void;
 
 /** Audit action ids, in the order shown by the audit filter. Message keys replace "." with "_". */
-export const auditActions = ["user.credits_set", "user.credits_add", "user.update", "user.delete", "subscription.assign", "subscription.status", "subscription.plan", "batch.delete"];
+export const auditActions = ["user.credits_set", "user.credits_add", "user.update", "user.delete", "subscription.assign", "subscription.status", "subscription.plan", "batch.delete", "campaign.create", "campaign.update", "campaign.delete", "user.view_conversation", "user.view_message"];
 
 /** Sentinel returned by ownerFetch when the request never reached the server; callers show a localized message. */
 const NETWORK_ERROR = "__network__";
@@ -121,13 +123,17 @@ export async function ownerFetch<T>(path: string, init?: { method?: string; body
 
 export type ListPage<T> = { items: T[]; page: number; totalPages: number; totalItems: number };
 
-/** Paginated list with debounced search, status filter and protection against stale responses. */
-export function useOwnerList<T>(endpoint: string, errorMessage: string, onUnauthorized: () => void, filterKey = "status") {
+/** Sort value sent to the list routes: `key` (ascending) or `-key` (descending). The server whitelists keys. */
+export type ListSort = string;
+
+/** Paginated list with debounced search, status filter, server-side sort and protection against stale responses. */
+export function useOwnerList<T>(endpoint: string, errorMessage: string, onUnauthorized: () => void, filterKey = "status", defaultSort: ListSort = "") {
   const { errorText } = useOwnerFormat();
   const [query, setQueryState] = useState("");
   const [search, setSearch] = useState("");
   const [status, setStatusState] = useState("");
   const [page, setPage] = useState(1);
+  const [sort, setSortState] = useState<ListSort>(defaultSort);
   const [data, setData] = useState<ListPage<T> | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
@@ -140,15 +146,16 @@ export function useOwnerList<T>(endpoint: string, errorMessage: string, onUnauth
     setLoading(true);
     const params = new URLSearchParams({ page: String(page), perPage: "25", q: search });
     if (status) params.set(filterKey, status);
+    if (sort) params.set("sort", sort);
     const result = await ownerFetch<ListPage<T>>(`${endpoint}?${params}`);
     if (id !== requestId.current) return;
     setLoading(false);
     if (isUnauthorized(result.status)) return unauthorizedRef.current();
     if (result.ok) { setData(result.data); setError(""); }
     else setError(errorText(result.data.error, errorMessage));
-  }, [endpoint, errorMessage, errorText, filterKey, page, search, status]);
+  }, [endpoint, errorMessage, errorText, filterKey, page, search, sort, status]);
 
-  // eslint-disable-next-line react-hooks/set-state-in-effect -- refetch on page/search/status change
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- refetch on page/search/status/sort change
   useEffect(() => { void load(); }, [load]);
   useEffect(() => {
     const timer = window.setTimeout(() => { setPage(1); setSearch(query.trim()); }, 350);
@@ -157,8 +164,9 @@ export function useOwnerList<T>(endpoint: string, errorMessage: string, onUnauth
 
   const setQuery = useCallback((value: string) => setQueryState(value), []);
   const setStatus = useCallback((value: string) => { setPage(1); setStatusState(value); }, []);
+  const setSort = useCallback((value: ListSort) => { setPage(1); setSortState(value); }, []);
 
-  return { data, error, loading, page, setPage, query, setQuery, status, setStatus, reload: load };
+  return { data, error, loading, page, setPage, query, setQuery, status, setStatus, sort, setSort, reload: load };
 }
 
 /** Traps Tab/Shift+Tab inside `containerRef` and calls `onEscape` on Esc while `active`. */

@@ -13,7 +13,10 @@ export interface PersonCandidate { name: string; role: string; location: string;
  * sources: scrapers picked by the router; empty until routed.
  */
 export interface PeopleSearchPlan { profileType: ProfileType; role: string; location: string; summary: string; intent: string; keywords: string[]; webQueries: string[]; githubQuery: string | null; instagramQueries: string[]; facebookGroupQueries: string[]; sources: SearchSource[]; }
-export interface PeopleSearchRequest { query: string; location: string; count: number; locale: "es" | "en"; includeMeta?: boolean; } // count 1..25, includeMeta default true
+export interface PeopleSearchRequest { query: string; location: string; count: number; locale: "es" | "en"; includeMeta?: boolean; cardKey?: string; } // count 1..25, includeMeta default true
+
+/** Leadtita card fingerprint (32 hex) that ties a batch to the card that launched it; anything else is ignored. */
+export const parseCardKey = (value: unknown) => (typeof value === "string" && /^[a-f0-9]{32}$/.test(value) ? value : undefined);
 export interface PeopleSearchResponse { batchId: string; plan: PeopleSearchPlan; delivered: number; charged: number; refunded: number; leads: Lead[]; }
 
 const filled = (value: string | undefined) => Boolean(value?.trim());

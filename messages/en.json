@@ -6,7 +6,7 @@
     "pricing": "Plans and pricing",
     "registerTitle": "Create your account",
     "loginTitle": "Sign in to Leadta",
-    "registerIntro": "Create an account and get 240 free credits. ",
+    "registerIntro": "Create an account and get 50 free credits. ",
     "privateIntro": "Your searches and leads are saved in your private history.",
     "phone": "Phone",
     "googlePhoneTitle": "Your phone number is missing",
@@ -47,25 +47,8 @@
     "accountExists": "Couldn't create the account. Check whether this email is already registered.",
     "phoneTaken": "This phone number is already registered.",
     "email": "Email",
-    "passwordRange": "Password must be between 6 and 128 characters."
-  },
-  "Referral": {
-    "title": "Recommend Leadta",
-    "close": "Close",
-    "intro": "You earn {referrer} credits for each person who signs up and verifies their email; they get {referred} extra credits.",
-    "loading": "Loading your link…",
-    "loadFailed": "Couldn't load your link. Please try again in a few minutes.",
-    "yourLink": "Your personal link",
-    "copy": "Copy",
-    "copied": "Copied",
-    "copiedStatus": "Link copied to the clipboard.",
-    "shareWhatsapp": "WhatsApp",
-    "shareEmail": "Email",
-    "shareMessage": "I recommend Leadta for finding local businesses. Sign up with my link and get extra credits:",
-    "emailSubject": "I recommend Leadta",
-    "invited": "Invited",
-    "verified": "Verified",
-    "creditsEarned": "Credits earned"
+    "passwordRange": "Password must be between 6 and 128 characters.",
+    "captchaRequired": "Complete the security check to continue."
   },
   "Verification": {
     "title": "Verify your email",
@@ -376,5 +359,27 @@
   "LanguageSwitcher": {
     "label": "Switch language to Spanish",
     "title": "Español"
+  },
+  "WhatsNew": {
+    "title": "Leadta x WhatsApp + Gmail!",
+    "close": "Close",
+    "text": "Connect your WhatsApp and Gmail and let Leadtita write, send and follow up with your leads for you. All from one chat.",
+    "whatsapp": "Message your leads on WhatsApp, no copy-paste.",
+    "gmail": "Send emails from your Gmail, with automatic follow-ups.",
+    "later": "Not now",
+    "cta": "Try it with Leadtita"
+  },
+  "CampaignBanner": {
+    "label": "Current promotional campaign"
+  },
+  "CreditsPlans": {
+    "title": "Custom plans",
+    "close": "Close",
+    "from": "From",
+    "price": "$15 USD",
+    "text": "We build your plan around the leads and credits you need. Message us and we will set it up today.",
+    "cta": "Talk on WhatsApp",
+    "phone": "or call us at +54 11 3408-3140",
+    "whatsappMessage": "Hi, I am interested in a Leadta plan."
   }
 }

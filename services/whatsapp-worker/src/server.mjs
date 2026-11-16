@@ -4,6 +4,7 @@ import { createHash, timingSafeEqual } from 'node:crypto';
 import { config, logger } from './config.mjs';
 import { flushAllSync } from './store.mjs';
 import { kick as kickCallbacks, stopCallbacks } from './callbacks.mjs';
+import { startScheduler, stopScheduler } from './scheduler.mjs';
 import { enqueue, isKnownRef, pumpAll, stopQueue } from './queue.mjs';
 import { deleteSession, getSocket, getState, restoreSessions, shutdownSessions, startSession } from './sessions.mjs';
 
@@ -160,6 +161,7 @@ server.listen(config.port, async () => {
   }
   kickCallbacks();
   pumpAll();
+  startScheduler();
 });
 
 let shuttingDown = false;
@@ -172,6 +174,7 @@ async function shutdown(signal) {
   server.close();
   stopQueue();
   stopCallbacks();
+  stopScheduler();
   await shutdownSessions();
   try {
     flushAllSync();

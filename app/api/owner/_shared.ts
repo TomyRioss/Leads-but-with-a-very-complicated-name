@@ -57,6 +57,27 @@ export function filterString(value: string) {
   return `"${value.replace(/[\\"]/g, "\\$&")}"`;
 }
 
+/** Parses a `sort` query param (`key` asc, `-key` desc); null unless `key` is one of `keys`. */
+export function parseSortParam<K extends string>(value: string | null, keys: readonly K[]) {
+  if (!value) return null;
+  const desc = value.startsWith("-");
+  const key = (desc ? value.slice(1) : value) as K;
+  return keys.includes(key) ? { key, desc } : null;
+}
+
+/**
+ * Maps a `sort` query param to a PocketBase sort through an explicit whitelist (UI key → comma-separated fields).
+ * Unknown keys fall back to `fallback`, which is also appended as tie-breaker so pagination stays stable.
+ */
+export function resolveSort(value: string | null, columns: Readonly<Record<string, string>>, fallback: string) {
+  const parsed = parseSortParam(value, Object.keys(columns));
+  if (!parsed) return fallback;
+  const fields = columns[parsed.key].split(",");
+  const sort = fields.map((field) => (parsed.desc ? `-${field}` : field));
+  const tieBreaker = fallback.replace(/^-/, "");
+  return (fields.includes(tieBreaker) ? sort : [...sort, fallback]).join(",");
+}
+
 export function pocketBaseDate(date: Date) {
   return date.toISOString().replace("T", " ");
 }
@@ -154,7 +175,7 @@ export async function updateUserCredits(userId: string, compute: (current: numbe
     const current = normalizeCredits(user.credits);
     const next = compute(current);
     if (next === null) return null;
-    // Relative write (credits+/credits-) so concurrent referral rewards outside the lock are not lost.
+    // Relative write (credits+/credits-) so concurrent increments outside the lock are not lost.
     return await adjustCredits(userId, next - current, next);
   } finally {
     await releaseCreditLock(lock.id);

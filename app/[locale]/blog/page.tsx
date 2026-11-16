@@ -78,7 +78,7 @@ async function PostList({ locale, searchParams }: { locale: string; searchParams
           <h2>{tag ? t("emptyTagTitle") : t("emptyTitle")}</h2>
           {tag
             ? <Link className="lp-btn lp-btn-ghost" href="/blog">{t("emptyTagLink")}</Link>
-            : <><p>{t("emptyText")}</p><Link className="lp-btn lp-btn-ink" href="/buscar?signup=1">{t("ctaPrimary")} <ArrowRight size={17} aria-hidden="true" /></Link></>}
+            : <><p>{t("emptyText")}</p><Link className="lp-btn lp-btn-ink" href="/register">{t("ctaPrimary")} <ArrowRight size={17} aria-hidden="true" /></Link></>}
         </div>
       ) : (
         <>

@@ -150,7 +150,7 @@
       "download": "Descargar",
       "creditsTitle": "Pagás por lo que buscás.",
       "credits": [
-        { "value": "240", "label": "créditos de bienvenida al crear tu cuenta" },
+        { "value": "50", "label": "créditos de bienvenida al crear tu cuenta" },
         { "value": "2", "label": "créditos por cada lead de tu búsqueda" },
         { "value": "0", "label": "créditos por analizar dolores: es gratis" }
       ]
@@ -168,7 +168,7 @@
     },
     "cta": {
       "title": "Tu primera lista está a una búsqueda de distancia.",
-      "text": "Creá tu cuenta y empezá con 240 créditos de bienvenida.",
+      "text": "Creá tu cuenta y empezá con 50 créditos de bienvenida.",
       "primary": "Crear cuenta gratis",
       "secondary": "Ya tengo cuenta"
     },

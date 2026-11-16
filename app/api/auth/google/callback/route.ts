@@ -1,7 +1,6 @@
 import { randomBytes, timingSafeEqual } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { clearSessionCookie, setPendingPhoneCookie, setSessionCookie, toUserRole } from "@/lib/server/auth";
-import { REFERRAL_COOKIE, attachReferral, rewardReferral } from "@/lib/server/referrals";
 import { sendWelcomeEmail, updateEmailUser } from "@/lib/server/email";
 import { pocketBaseFetch } from "@/lib/server/pocketbase";
 
@@ -9,7 +8,7 @@ const stateCookie = "leadta_google_state";
 const verifierCookie = "leadta_google_verifier";
 const localeCookie = "leadta_google_locale";
 const sessionDurationSeconds = 60 * 60 * 24 * 30;
-const signupCredits = 240;
+const signupCredits = 50;
 
 type GoogleProfile = { sub?: unknown; email?: unknown; email_verified?: unknown; name?: unknown };
 type PocketBaseUser = { id: string; email: string; name?: string; credits?: number; role?: unknown; verified?: boolean; phone?: string; welcome_email_sent_at?: string };
@@ -30,7 +29,7 @@ function sameState(actual: string, expected: string) {
 }
 
 function clearOauthCookies(response: NextResponse) {
-  for (const name of [stateCookie, verifierCookie, localeCookie, REFERRAL_COOKIE]) {
+  for (const name of [stateCookie, verifierCookie, localeCookie]) {
     response.cookies.set(name, "", {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
@@ -99,7 +98,6 @@ export async function GET(request: NextRequest) {
     const query = new URLSearchParams({ filter, perPage: "1", fields: "id,email,name,credits,role,verified,phone,welcome_email_sent_at" });
     const result = await pocketBaseFetch<PocketBaseList>(`/api/collections/users/records?${query.toString()}`);
     let user = result.items[0];
-    const isNewUser = !user;
     if (!user) {
       const password = randomBytes(48).toString("base64url");
       user = await pocketBaseFetch<PocketBaseUser>("/api/collections/users/records", {
@@ -121,14 +119,6 @@ export async function GET(request: NextRequest) {
         method: "PATCH",
         body: JSON.stringify({ verified: true }),
       });
-    }
-
-    if (isNewUser) {
-      // Google emails arrive verified, so a new referred user is rewarded right away.
-      const referralCode = request.cookies.get(REFERRAL_COOKIE)?.value;
-      if (referralCode && await attachReferral(user, referralCode)) {
-        await rewardReferral(user.id).catch((error) => console.error("Leadta referral reward failed:", error instanceof Error ? error.message : "unknown error"));
-      }
     }
 
     if (user.verified && !user.welcome_email_sent_at) {

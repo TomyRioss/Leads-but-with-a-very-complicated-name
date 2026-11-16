@@ -26,9 +26,9 @@ export async function LandingHeader({ current = "home" }: { current?: Current })
         </ul>
         <div className="lp-header-actions">
           <LanguageSwitcher />
-          <Link className="lp-btn lp-btn-ghost lp-btn-sm lp-hide-sm" href="/buscar">{t("login")}</Link>
-          <Link className="lp-btn lp-btn-ink lp-btn-sm lp-show-sm" href="/buscar">{t("login")}</Link>
-          <Link className="lp-btn lp-btn-lime lp-btn-sm lp-hide-sm" href="/buscar?signup=1">{t("signup")}</Link>
+          <Link className="lp-btn lp-btn-ghost lp-btn-sm lp-hide-sm" href="/login">{t("login")}</Link>
+          <Link className="lp-btn lp-btn-ink lp-btn-sm lp-show-sm" href="/login">{t("login")}</Link>
+          <Link className="lp-btn lp-btn-lime lp-btn-sm lp-hide-sm" href="/register">{t("signup")}</Link>
         </div>
       </nav>
     </header>

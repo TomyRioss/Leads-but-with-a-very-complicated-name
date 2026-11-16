@@ -1,4 +1,4 @@
-// Per-user FIFO outbound queue with daily limit and random spacing.
+// Per-user FIFO outbound queue with a monthly limit and random spacing.
 import { config, logger } from './config.mjs';
 import { state, saveState, rememberContact } from './store.mjs';
 import { emitCallback } from './callbacks.mjs';
@@ -14,13 +14,19 @@ const timeFmt = new Intl.DateTimeFormat('en-GB', {
   timeZone: config.timeZone, hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23',
 });
 
-export const today = () => dayFmt.format(new Date());
+/** "YYYY-MM" in config.timeZone: the monthly quota rolls over at local midnight of the 1st. */
+export const thisMonth = (now = Date.now()) => dayFmt.format(new Date(now)).slice(0, 7);
 
-/** ms until the next local midnight in config.timeZone (+1 s margin). */
-export function msUntilNextDay(now = Date.now()) {
+/**
+ * ms until the 1st of next month, local midnight in config.timeZone (+1 s margin).
+ * ponytail: walks local days with timeFmt/dayFmt; fine for a fixed-offset zone like Buenos Aires.
+ */
+export function msUntilNextMonth(now = Date.now()) {
   const [h, m, s] = timeFmt.format(new Date(now)).split(':').map(Number);
-  const elapsed = ((h * 60 + m) * 60 + s) * 1000 + (now % 1000);
-  return 86_400_000 - elapsed + 1000;
+  const msToMidnight = 86_400_000 - (((h * 60 + m) * 60 + s) * 1000 + (now % 1000));
+  const [y, mo, d] = dayFmt.format(new Date(now)).split('-').map(Number);
+  const daysInMonth = new Date(Date.UTC(y, mo, 0)).getUTCDate();
+  return msToMidnight + (daysInMonth - d) * 86_400_000 + 1000;
 }
 
 const randomDelay = () =>
@@ -37,16 +43,23 @@ let stopped = false;
 export function userState(userId) {
   let u = state.users[userId];
   if (!u) {
-    u = state.users[userId] = { queue: [], sentRefs: [], day: today(), sentToday: 0, nextAt: 0 };
+    u = state.users[userId] = { queue: [], sentRefs: [], month: thisMonth(), sentMonth: 0, nextAt: 0 };
   }
-  const d = today();
-  if (u.day !== d) { u.day = d; u.sentToday = 0; }
+  // State saved before the monthly quota had a daily counter: today's sends count toward this month.
+  if (u.month === undefined) {
+    u.month = thisMonth();
+    u.sentMonth = typeof u.day === 'string' && u.day.startsWith(u.month) ? u.sentToday || 0 : 0;
+    delete u.day;
+    delete u.sentToday;
+  }
+  const mo = thisMonth();
+  if (u.month !== mo) { u.month = mo; u.sentMonth = 0; }
   return u;
 }
 
 export function stats(userId) {
   const u = state.users[userId] ? userState(userId) : null;
-  return { sentToday: u ? u.sentToday : 0, dailyLimit: config.dailyLimit, queued: u ? u.queue.length : 0 };
+  return { sentThisMonth: u ? u.sentMonth : 0, monthlyLimit: config.monthlyLimit, queued: u ? u.queue.length : 0 };
 }
 
 export function isKnownRef(userId, ref) {
@@ -59,14 +72,13 @@ export function isKnownRef(userId, ref) {
 function etaFor(u, idx) {
   const now = Date.now();
   const avg = (config.minDelayMs + config.maxDelayMs) / 2;
-  const remainingToday = Math.max(0, config.dailyLimit - u.sentToday);
+  const remaining = Math.max(0, config.monthlyLimit - u.sentMonth);
   let ms;
-  if (idx < remainingToday) {
+  if (idx < remaining) {
     ms = Math.max(0, u.nextAt - now) + idx * avg;
   } else {
-    const over = idx - remainingToday;
-    const extraDays = Math.floor(over / config.dailyLimit);
-    ms = msUntilNextDay(now) + extraDays * 86_400_000 + (over % config.dailyLimit) * avg;
+    // Over the monthly cap: waits for next month (the app blocks this before queueing; kept as a safety net).
+    ms = msUntilNextMonth(now) + (idx - remaining) * avg;
   }
   return Math.round(ms / 1000);
 }
@@ -107,10 +119,10 @@ export function pump(userId) {
   if (stopped || busy.has(userId) || timers.has(userId)) return;
   const u = state.users[userId];
   if (!u || !u.queue.length) return;
-  userState(userId); // day rollover
+  userState(userId); // month rollover
   const sock = sessions?.getSocket(userId);
   if (!sock) return; // waits until session connects (sessions calls pump on open)
-  if (u.sentToday >= config.dailyLimit) return wakeIn(userId, msUntilNextDay());
+  if (u.sentMonth >= config.monthlyLimit) return wakeIn(userId, Math.min(msUntilNextMonth(), 2_147_000_000));
   const wait = u.nextAt - Date.now();
   if (wait > 0) return wakeIn(userId, wait);
   busy.add(userId);
@@ -149,7 +161,7 @@ async function sendHead(userId, u, sock) {
 
   u.queue.shift();
   pushSentRef(u, item.ref);
-  userState(userId).sentToday += 1;
+  userState(userId).sentMonth += 1;
   u.nextAt = Date.now() + randomDelay();
   saveState();
 

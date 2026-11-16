@@ -5,6 +5,7 @@ import {
   getStatesOfCountry,
 } from "@countrystatecity/countries";
 import { errorTranslator } from "@/lib/server/locale";
+import { countryDisplayName, stateDisplayName } from "@/lib/server/geography";
 
 type GeographyOption = { code: string; name: string };
 
@@ -14,10 +15,6 @@ function jsonOptions(options: GeographyOption[]) {
   });
 }
 
-function localizedName(name: string, native: string | null, translations: Record<string, string> | undefined) {
-  return translations?.es || native || name;
-}
-
 export async function GET(request: Request) {
   const t = errorTranslator(request);
   const { searchParams } = new URL(request.url);
@@ -25,10 +22,9 @@ export async function GET(request: Request) {
 
   try {
     if (level === "countries") {
-      const displayNames = new Intl.DisplayNames(["es"], { type: "region" });
       const countries = await getCountries();
       const options = countries
-        .map(({ iso2, name }) => ({ code: iso2, name: displayNames.of(iso2) || name }))
+        .map(({ iso2, name }) => ({ code: iso2, name: countryDisplayName(iso2, name) }))
         .sort((a, b) => a.name.localeCompare(b.name, "es"));
       return jsonOptions(options);
     }
@@ -43,7 +39,7 @@ export async function GET(request: Request) {
       const options = states
         .map((state) => ({
           code: state.iso2,
-          name: localizedName(state.name, state.native, state.translations),
+          name: stateDisplayName(state),
         }))
         .filter((option) => option.code && option.name)
         .sort((a, b) => a.name.localeCompare(b.name, "es"));

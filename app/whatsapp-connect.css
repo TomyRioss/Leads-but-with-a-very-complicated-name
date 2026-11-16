@@ -7,6 +7,7 @@
 .gdrive-card-compact .wa-qr { width: 188px; height: 188px; }
 .gdrive-card-compact .wa-qr img { width: 172px; height: 172px; }
 .wa-steps { display: grid; min-width: 180px; flex: 1; gap: 6px; margin: 0; padding-left: 20px; color: var(--ash-800); font-size: 13px; line-height: 1.45; }
+.wa-expiry { flex-basis: 100%; margin: 0; color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
 .wa-steps li::marker { color: var(--ash-600); font-weight: 650; }
 
 .wa-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 8px; margin: 0; }

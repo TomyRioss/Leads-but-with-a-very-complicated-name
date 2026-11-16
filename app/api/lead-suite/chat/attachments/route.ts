@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getCurrentUser, withRefreshedSession } from "@/lib/server/auth";
 import { uiError } from "@/lib/server/public-error";
 import { errorTranslator } from "@/lib/server/locale";
+import { aiRequestLimit } from "@/lib/server/ai-daily-limit";
 import { ATTACHMENT_LIMITS, AttachmentError, extractAttachment, type AttachmentContext } from "@/lib/server/leadtita-attachments";
 
 // Node.js is the default runtime (a `runtime` export is rejected with cacheComponents).
@@ -38,6 +39,9 @@ export async function POST(request: Request) {
   if (!session) return NextResponse.json({ error: t("signInToContinue") }, { status: 401 });
   const apiKey = process.env.OPENROUTER_API_KEY;
   if (!apiKey) return NextResponse.json({ error: uiError(t("openRouterKeyMissing"), t("generic")) }, { status: 503 });
+  // Images/PDFs go through a vision model. Gated by the daily cap but not counted: the chat message that uses them is.
+  const limited = await aiRequestLimit(session.user, t);
+  if (limited) return limited;
 
   const declared = Number(request.headers.get("content-length") ?? "0");
   if (!declared || declared > MAX_REQUEST_BYTES) return NextResponse.json({ error: t("invalidRequestBody"), code: "size" }, { status: 413 });

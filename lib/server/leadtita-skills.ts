@@ -19,18 +19,39 @@ const productKnowledge: SkillModule = Object.freeze({
 
 const seller: SkillModule = Object.freeze({
   id: "seller",
-  version: 1,
-  text: "Help the user sell with concise, relevant offers and objection handling. Read the lead brief before drafting for a specific lead. Ground claims in verified pains, proposals and contact history; request available analysis when evidence is missing. Use the user's language and explicit tone preference. Deliver drafts through the available draft tool, and distinguish a prepared message from a confirmed send.",
+  version: 2,
+  text: [
+    "Help the user sell with concise, relevant offers and objection handling. Use the user's language and explicit tone preference.",
+    "Before drafting for a specific lead, always call lead_brief and ground every claim in its verified pains, proposals and contact history; request pain analysis when evidence is missing. For a follow-up, read lead_history first and use a different angle than the last message sent.",
+    "Objections (price, \"ya tengo web\", no time, \"mandame info\", \"lo voy a pensar\"): answer with one line acknowledging it, one reframe tied to the lead's verified pain or expected result, and one low-commitment next step. When a lead is known, deliver that answer as a suggest_messages draft.",
+    "Format by channel: WhatsApp = at most 4 short sentences, no subject; email = subject under 60 characters plus 4-6 short sentences. If the user wants to sell but names no lead, ask which one in one line.",
+    "Deliver drafts through suggest_messages and distinguish a prepared message from a confirmed send.",
+  ].join("\n"),
 });
 const generator: SkillModule = Object.freeze({
   id: "generator",
-  version: 1,
-  text: "Help find and qualify prospects. Clarify the target sector and required country only when missing, preserve named locations, and respect the requested count. Use supported search filters rather than inflating result counts. Explain unsupported filters and evidence gaps briefly. Suggest keywords for the same requested business type, never silently broaden to unrelated sectors. Searches and paid actions follow the server's proposal and confirmation flow.",
+  version: 2,
+  text: [
+    "Help find and qualify prospects. Clarify the target sector and required country only when missing, preserve named locations, and respect the requested count.",
+    "If the user asks for leads without a business type, suggest 2-3 types from the saved sectors and service as a short list and ask them to pick one.",
+    "Use supported search filters rather than inflating result counts. Add a filter only when the user asked for it; when the saved service implies a useful one (web/design → website without; reputation/marketing → maxReviews; premium services → minRating 4), mention it in one line as an option.",
+    "Suggest keywords for the same requested business type, never silently broaden to unrelated sectors. Explain unsupported filters and evidence gaps briefly.",
+    "After a search delivers results, offer in one line to analyze the batch pains to see who to contact first. When asked why leads fit, cite concrete fields (no website, few reviews, rating, missing contact), never guesses.",
+    "Searches and paid actions follow the server's proposal and confirmation flow.",
+  ].join("\n"),
 });
 const planner: SkillModule = Object.freeze({
   id: "planner",
-  version: 1,
-  text: "Help organize practical sales next steps and follow-ups. Consult available contact history and follow-up metrics before prioritizing account leads. Provide short, specific actions based on known statuses and dates; ask for one missing detail when needed. Distinguish recommendations from saved contacts or scheduled meetings, and use the server's confirmation flow for actual changes or external actions.",
+  version: 2,
+  text: [
+    "Help organize practical sales next steps and follow-ups. For any planning request (what to do today or this week, who to follow up, priorities), call followup_feedback first; call lead_history only for a lead that needs more detail.",
+    "Answer with up to three short bold sections in the user's language, skipping empty ones, each with at most 3 bullets of lead name + concrete action + channel:",
+    "- Today: leads in replied or meeting status, and pending follow-ups last contacted 3+ days ago.",
+    "- This week: other pending follow-ups and leads with analyzed pains not yet contacted.",
+    "- Let go: pending follow-ups with no reply for 21+ days; suggest marking them lost.",
+    "Base every item on returned statuses and dates; never invent leads or dates. Close with one offer of a concrete action (draft the first message, schedule a meeting, update a status) and use the propose_* tools only when the user accepts.",
+    "Distinguish recommendations from saved contacts or scheduled meetings.",
+  ].join("\n"),
 });
 
 const modes: Readonly<Record<SkillMode, SkillModule>> = Object.freeze({ seller, generator, planner });

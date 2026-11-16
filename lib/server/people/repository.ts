@@ -1,4 +1,4 @@
-import { completenessOf, type PeopleSearchPlan, type PeopleSearchRequest, type PersonCandidate } from "@/lib/people";
+import { completenessOf, SEARCH_SOURCES, type PeopleSearchPlan, type PeopleSearchRequest, type PersonCandidate } from "@/lib/people";
 import { createLeadRecords, pocketBaseFetch } from "@/lib/server/pocketbase";
 import type { Lead, LeadBatch } from "@/lib/types";
 
@@ -8,9 +8,9 @@ const httpUrl = (value: string | undefined) => {
   return /^https?:\/\/\S+$/i.test(url) ? url : "";
 };
 
-// leads.source is a PocketBase select: serper|github|instagram|facebook|web. Newer scrapers are stored as "web";
-// source_url still points at the real platform. ponytail: add the values with a migration when they must be filterable.
-const STORED_SOURCES = new Set<PersonCandidate["source"]>(["serper", "github", "instagram", "facebook", "web"]);
+// leads.source is a PocketBase select holding every SEARCH_SOURCES value plus "web" (migration 1794510000).
+// Anything else still falls back to "web"; source_url keeps the real platform link.
+const STORED_SOURCES = new Set<string>([...SEARCH_SOURCES, "web"]);
 const storedSource = (source: PersonCandidate["source"]) => (STORED_SOURCES.has(source) ? source : "web");
 
 /** Same "network: url" lines that business leads store in `social_profiles`. */
@@ -40,7 +40,8 @@ export async function createPeopleBatch(userId: string, req: PeopleSearchRequest
       result_count: 0,
       status: "running",
       created_at: new Date().toISOString(),
-    } satisfies Partial<LeadBatch> & { user: string }),
+      ...(req.cardKey ? { card_key: req.cardKey } : {}),
+    } satisfies Partial<LeadBatch> & { user: string; card_key?: string }),
   });
   return { id: batch.id };
 }

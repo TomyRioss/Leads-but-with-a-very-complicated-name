@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { CREDITS_PER_PERSON } from "@/lib/people";
 import { getCurrentUser, withRefreshedSession } from "@/lib/server/auth";
+import { aiRequestLimit } from "@/lib/server/ai-daily-limit";
+import { featurePricing } from "@/lib/server/campaigns";
 import { errorTranslator, resolveLocale } from "@/lib/server/locale";
 import { planPeopleSearch } from "@/lib/server/people/planner";
 import { uiError } from "@/lib/server/public-error";
@@ -20,6 +22,8 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: t("accountService") }, { status: 503 });
   }
   if (!session) return NextResponse.json({ error: t("signInToContinue") }, { status: 401 });
+  const limited = await aiRequestLimit(session.user, t);
+  if (limited) return limited;
 
   let body: unknown;
   try {
@@ -33,7 +37,8 @@ export async function POST(request: Request) {
 
   try {
     const plan = await planPeopleSearch(parsed.query, parsed.location, parsed.locale, session.user.id);
-    return withRefreshedSession(NextResponse.json({ plan, estimatedCredits: parsed.count * CREDITS_PER_PERSON }), session.token);
+    const { cost } = await featurePricing("people_search", CREDITS_PER_PERSON);
+    return withRefreshedSession(NextResponse.json({ plan, estimatedCredits: cost(parsed.count) }), session.token);
   } catch (error) {
     const sensitive = sensitiveSegmentResponse(error, t);
     if (sensitive) return withRefreshedSession(sensitive, session.token);

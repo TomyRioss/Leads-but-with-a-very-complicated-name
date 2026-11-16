@@ -12,6 +12,32 @@
     "mentionLoading": "Buscando leads…",
     "mentionEmpty": "No encontramos leads que coincidan.",
     "mentionLead": "Lead de tu cuenta",
+    "mentionRecent": "Contactados recientemente",
+    "mentionKeys": "Enter elige · Esc cierra",
+    "mentionBatch": "Lote {date}",
+    "mentionButton": "Mencionar un lead",
+    "leadsSidebar": {
+      "title": "Lead Suite",
+      "close": "Cerrar Lead Suite",
+      "search": "Buscar leads",
+      "views": {
+        "saved": "Guardados",
+        "recent": "Recientes",
+        "contacted": "Contactados"
+      },
+      "hint": "Tocá o arrastrá un lead al chat para mencionarlo.",
+      "empty": {
+        "saved": "Todavía no guardaste leads. Tocá la estrella para tenerlos a mano.",
+        "recent": "Todavía no generaste leads. Pedile a Leadtita una búsqueda.",
+        "contacted": "Todavía no registraste contactos."
+      },
+      "emptySearch": "Ningún lead coincide.",
+      "error": "No se pudieron cargar los leads.",
+      "mention": "Mencionar a {lead} en el chat",
+      "save": "Guardar {lead}",
+      "unsave": "Quitar {lead} de guardados",
+      "viewAll": "Ver todos en Lead Suite"
+    },
     "modeLabel": "Modo",
     "modeTitle": "Elegí cómo ayudarte",
     "modeHelp": "Elegí el enfoque para esta conversación.",
@@ -21,6 +47,32 @@
       "seller": "Ofertas, mensajes y objeciones.",
       "generator": "Buscar y calificar prospectos.",
       "planner": "Prioridades y próximos pasos."
+    },
+    "permissions": {
+      "label": "Permisos:",
+      "title": "¿Cuánto puede hacer solo?",
+      "help": "Elegí qué acciones ejecuta Leadtita sin pedirte confirmación.",
+      "options": {
+        "skip": "Omitir",
+        "ask": "Preguntar",
+        "danger": "Peligro"
+      },
+      "hints": {
+        "skip": "Solo pregunta antes de enviar.",
+        "ask": "Confirma cada acción.",
+        "danger": "Todo sin preguntar, salvo envíos a varios leads."
+      },
+      "running": "Lo hago ahora.",
+      "danger": {
+        "title": "Activar modo Peligro",
+        "intro": "Leadtita va a ejecutar todas las acciones sin pedirte confirmación.",
+        "risk1": "Envía mails sueltos apenas los redacta. Los envíos a varios leads (mail o WhatsApp) siempre te los muestra para revisar.",
+        "risk2": "Puede gastar todos tus créditos en búsquedas sin preguntarte.",
+        "risk3": "Borra contactos y agenda reuniones directamente. Lo enviado o borrado no se puede deshacer.",
+        "dontShow": "No volver a mostrar",
+        "cancel": "Cancelar",
+        "confirm": "Activar Peligro"
+      }
     },
     "salesTitle": "Canales de venta",
     "salesHint": "Elegí un canal para enfocar la ayuda.",
@@ -34,6 +86,14 @@
     "salesGmailConnectHint": "Conectá Gmail para preparar y enviar correos desde tu cuenta.",
     "salesClear": "Sin canal preferido",
     "placeholder": "Pedile a Leadtita que busque, registre o redacte…",
+    "placeholderTips": [
+      "Tip: escribí @ para mencionar un lead",
+      "Tip: «¿qué hago hoy?» te arma el plan del día",
+      "Tip: arrastrá un CSV para cargar leads",
+      "Tip: pegá una captura de un chat para registrarlo",
+      "Tip: «buscame 20 cafés sin web en Rosario»",
+      "Tip: Shift+Enter agrega una línea"
+    ],
     "hint": "Enter envía, Shift+Enter agrega una línea.",
     "send": "Enviar",
     "sending": "Enviando…",
@@ -51,6 +111,12 @@
     "contextFull": {
       "title": "Esta conversación se hizo muy larga para Leadtita.",
       "body": "Empezá un chat nuevo para seguir: tus leads y contactos no se pierden."
+    },
+    "aiLimit": {
+      "title": "Llegaste a los {limit} mensajes de IA gratis de hoy.",
+      "body": "Se renuevan a las 00:00 UTC. Con un plan no hay límite diario.",
+      "cta": "Ver planes",
+      "rate": "Muchos mensajes seguidos. Esperá un minuto y reintentá."
     },
     "chooseLead": "¿Cuál de estos leads es?",
     "pickReply": "Es {name}",
@@ -88,7 +154,6 @@
       "doubtful": "Revisá estas coincidencias"
     },
     "confirming": "Guardando…",
-    "confirmError": "No se pudo guardar. Probá de nuevo.",
     "cancelled": "No hice cambios. ¿Qué querés ajustar?",
     "done": {
       "record_contact": "Listo: registré el contacto con **{lead}**.",
@@ -113,21 +178,18 @@
       "gmail": "Gmail",
       "whatsapp": "WhatsApp",
       "today": "{used}/{limit} hoy",
-      "progress": "{channel}: {used} de {limit} mensajes enviados hoy"
+      "remaining": "{count, plural, =0 {Sin envíos restantes hoy} one {<n>#</n> restante hoy} other {<n>#</n> restantes hoy}}",
+      "sent": "{used} de {limit} enviados hoy",
+      "progress": "{channel}: {used} de {limit} mensajes enviados hoy",
+      "ai": "Mensajes IA",
+      "aiProgress": "Mensajes de IA: {used} de {limit} usados hoy",
+      "month": "{used}/{limit} este mes",
+      "monthRemaining": "{count, plural, =0 {Sin WhatsApp restantes este mes} one {<n>#</n> restante este mes} other {<n>#</n> restantes este mes}}",
+      "monthSent": "{used} de {limit} usados este mes (incluye en cola y programados)",
+      "monthProgress": "{channel}: {used} de {limit} mensajes usados este mes"
     },
     "pageTitle": "Leadtita",
     "pageIntroTitle": "¿En qué te ayudo hoy?",
-    "pageIntro": "Escribime como le hablarías a un compañero. Antes de guardar algo o gastar créditos te pido confirmación.",
-    "pageExample1": "Ayer le escribí a Inmobiliaria Sur por WhatsApp ofreciéndole una web nueva.",
-    "pageExampleLabel1": "Registrar contacto",
-    "pageExample2": "¿Cómo vengo con el seguimiento? Dame feedback.",
-    "pageExampleLabel2": "Feedback",
-    "pageExample3": "Armame un mensaje para Café Central ofreciéndole más reservas online.",
-    "pageExampleLabel3": "Mensaje recomendado",
-    "pageExample4": "Cargá un lead: Ferretería San Martín, Rosario, 341 555-0123.",
-    "pageExampleLabel4": "Cargar lead",
-    "pageExample5": "Buscame 10 inmobiliarias en Córdoba, Argentina.",
-    "pageExampleLabel5": "Generar leads",
     "creditsMax": "Hasta {count} créditos",
     "free": "Gratis",
     "chargedOnlyDelivered": "Solo se cobran los resultados entregados.",
@@ -144,7 +206,16 @@
       "missingWhatsapp": "Agregá un teléfono con WhatsApp al lead antes de enviar.",
       "missingEmail": "Agregá un email válido al lead antes de enviar.",
       "confirmPrompt": "Revisá el mensaje y confirmá el envío a {lead} por {channel}.",
-      "error": "No pudimos preparar el envío. Revisá la conexión e intentá de nuevo."
+      "connect": "Ir a Integraciones",
+      "errors": {
+        "generic": "No pudimos preparar el envío. Intentá de nuevo.",
+        "needs_gmail": "Conectá Gmail para enviar este mail.",
+        "needs_whatsapp": "Conectá WhatsApp para enviar este mensaje.",
+        "recipient_missing": "El lead no tiene un destinatario válido. Agregalo y reintentá.",
+        "lead_not_found": "No encontramos este lead en tu cuenta.",
+        "unauthorized": "Tu sesión venció. Recargá la página e ingresá de nuevo.",
+        "offline": "Sin conexión a internet. Revisá tu red y reintentá."
+      }
     },
     "attach": "Adjuntar archivos",
     "attachHint": "Adjuntá imágenes, PDF, Markdown o CSV (hasta 5, 10 MB c/u, CSV hasta 2.000 filas). También podés arrastrarlos o pegar una captura.",
@@ -171,7 +242,8 @@
       "size": "Supera 10 MB.",
       "empty": "Sin contenido legible.",
       "extract": "No se pudo leer.",
-      "rate": "Demasiados archivos seguidos, esperá unos minutos."
+      "rate": "Demasiados archivos seguidos, esperá unos minutos.",
+      "aiDaily": "Límite diario de IA alcanzado."
     },
     "targets": {
       "manual": "Lote Manual",
@@ -284,6 +356,7 @@
     },
     "placeholderShort": "Pedile algo a Leadtita…",
     "newChat": "Nuevo chat",
+    "tour": "Ver tutorial",
     "untitled": "Conversación sin título",
     "statusExpired": "Vencida — pedila de nuevo",
     "history": {
@@ -299,16 +372,25 @@
       "confirmDeleteSelected": "¿Borrar {count, plural, one {# conversación} other {# conversaciones}}?",
       "deleting": "Borrando…",
       "deleteError": "No se pudieron borrar los chats. Probá de nuevo.",
-      "empty": "Todavía no hay conversaciones guardadas."
+      "empty": "Todavía no hay conversaciones",
+      "emptyHint": "Tus chats con Leadtita se guardan solos y aparecen acá para retomarlos.",
+      "groups": {
+        "today": "Hoy",
+        "yesterday": "Ayer",
+        "week": "Últimos 7 días",
+        "older": "Anteriores"
+      }
     },
     "attachMenu": {
       "upload": "Subir archivo",
       "uploadHint": "Imagen, PDF, Markdown o CSV",
       "drive": "Desde Google Drive",
-      "driveHint": "Sheets, Docs y archivos conectados"
+      "driveHint": "Se adjunta solo a este mensaje",
+      "attachTitle": "Adjuntar",
+      "connectors": "Conectores",
+      "connectorsHint": "Drive, Gmail, Calendar y WhatsApp"
     },
     "drive": {
-      "useTitle": "Adjuntar al chat",
       "read": "Leí «{name}» de Google Drive",
       "errors": {
         "not_connected": "Conectá Google Drive primero.",
@@ -331,7 +413,7 @@
       "batchNote": "Se envían de a uno, cada {seconds} segundos, desde tu Gmail."
     },
     "whatsappCard": {
-      "batchNote": "Se envían de a uno, cada {min}–{max} s, máx. {daily} por día."
+      "batchNote": "Se envían de a uno, cada {min}–{max} s. Cupo: {monthly} WhatsApp por mes (los programados también cuentan)."
     },
     "meetingCard": {
       "title": "Título",
@@ -349,6 +431,165 @@
     "dropzone": {
       "title": "Soltá los archivos para adjuntarlos",
       "types": "Imágenes, PDF, Markdown o CSV · hasta 5, 10 MB c/u"
+    },
+    "salesMissing": "Hay canales sin conectar",
+    "salesNeedsConnect": "{channel} todavía no está conectado. Conectalo para que Leadtita pueda enviar por ahí.",
+    "sendErrors": {
+      "error": "No se pudo enviar el mensaje.",
+      "session": "Tu sesión venció. Recargá la página e ingresá de nuevo.",
+      "rate": "Muchos pedidos seguidos. Esperá un momento y reintentá.",
+      "service": "Leadtita no está disponible en este momento. Probá en unos minutos.",
+      "offline": "Sin conexión a internet. Revisá tu red y reintentá.",
+      "busy": "Leadtita todavía está respondiendo tu mensaje anterior. Esperá unos segundos y reintentá."
+    },
+    "confirmErrors": {
+      "generic": "No se pudo completar la acción. Probá de nuevo.",
+      "noCredits": "No tenés créditos suficientes: esta acción necesita {required, plural, one {# crédito} other {# créditos}} y tenés {available}.",
+      "creditBusy": "Ya hay otra búsqueda en curso en tu cuenta. Esperá a que termine y reintentá.",
+      "gmailQuota": "Llegaste al límite diario de envíos de Gmail. Probá mañana.",
+      "whatsappUnavailable": "El servicio de WhatsApp no responde. Probá en unos minutos.",
+      "invalid": "Hay datos inválidos en la tarjeta. Revisalos y reintentá.",
+      "session": "Tu sesión venció. Recargá la página e ingresá de nuevo.",
+      "rate": "Muchos pedidos seguidos. Esperá un momento y reintentá.",
+      "service": "Leadtita no está disponible en este momento. Probá en unos minutos.",
+      "offline": "Sin conexión a internet. Revisá tu red y reintentá.",
+      "invalidSendAt": "La fecha programada ya pasó o es inválida. Elegí otra.",
+      "scheduleLimit": "Llegaste a los 10 programados del mes de tu cuenta sin plan. Cancelá alguno o pasate a un plan.",
+      "whatsappMonthlyLimit": "No te alcanza el cupo mensual de WhatsApp (100 por mes, incluye los programados). Quitá destinatarios o esperá al mes que viene."
+    },
+    "creditWarning": {
+      "none": "No tenés créditos para esta búsqueda.",
+      "low": "Esta búsqueda puede usar hasta {required} créditos y tenés {available}."
+    },
+    "buyCredits": "Cargar créditos",
+    "batchReview": {
+      "selected": "{count} de {total} destinatarios",
+      "expandAll": "Ver todos los mensajes",
+      "collapseAll": "Ocultar mensajes",
+      "show": "Ver mensaje",
+      "hide": "Ocultar",
+      "include": "Incluir a {name} en el envío",
+      "excluded": "No se envía",
+      "edited": "Editado",
+      "subject": "Asunto",
+      "message": "Mensaje",
+      "emptyEmail": "Completá el asunto y el mensaje.",
+      "emptyText": "El mensaje no puede quedar vacío.",
+      "noneSelected": "Elegí al menos un destinatario.",
+      "acknowledge": "Revisé los {count} destinatarios y sus mensajes.",
+      "send": "{count, plural, =0 {Enviar} one {Enviar # mensaje} other {Enviar # mensajes}}"
+    },
+    "salesDisconnect": "Desconectar",
+    "salesDisconnectYes": "Sí, desconectar",
+    "salesDisconnectNo": "Cancelar",
+    "salesDisconnectError": "No se pudo desconectar. Probá de nuevo.",
+    "salesDisconnectAsk": {
+      "whatsapp": "¿Desconectar WhatsApp?",
+      "gmail": "¿Desconectar Google? También se desconectan Drive y Calendar."
+    },
+    "shortcuts": {
+      "email": {
+        "label": "Contactar por mail",
+        "prompt": "Armame un mail para contactar a uno de mis leads que todavía no contacté."
+      },
+      "whatsapp": {
+        "label": "Contactar por WhatsApp",
+        "prompt": "Armame un WhatsApp para contactar a uno de mis leads que todavía no contacté."
+      },
+      "search": {
+        "label": "Buscar leads",
+        "prompt": "Buscame leads nuevos para lo que vendo."
+      },
+      "today": {
+        "label": "¿Qué puedo hacer hoy?",
+        "prompt": "Armame el plan de hoy con mis leads: a quién contactar y qué hacer primero."
+      }
+    },
+    "schedule": {
+      "label": "Cuándo enviar",
+      "now": "Enviar ahora",
+      "later": "Programar",
+      "when": "Fecha y hora",
+      "invalid": "Elegí una fecha futura (hasta 90 días).",
+      "confirm": "{count, plural, one {Programar envío} other {Programar # mensajes}}",
+      "done": "Listo: {count, plural, one {programé # mensaje} other {programé # mensajes}} para el {date}. Lo ves y lo editás en Programados."
+    },
+    "scheduled": {
+      "button": "Programados",
+      "failedCount": "{count, plural, one {# falló} other {# fallaron}}",
+      "title": "Programados",
+      "intro": "Mails y WhatsApp que Leadtita envía en la fecha que elegiste. Podés editarlos, reprogramarlos o cancelarlos antes de que salgan.",
+      "close": "Cerrar",
+      "loading": "Cargando programados…",
+      "loadError": "No pudimos cargar tus programados.",
+      "reload": "Reintentar",
+      "pending": "Pendientes ({count})",
+      "history": "Recientes",
+      "empty": "No tenés envíos programados. Creá uno con «Nuevo programado» o pedíselo a Leadtita: «Mandale un mail a Café Central en 2 horas».",
+      "sendAt": "Se envía el {date}",
+      "sentAt": "Enviado el {date}",
+      "status": {
+        "scheduled": "Programado",
+        "sending": "Enviando…",
+        "sent": "{channel, select, whatsapp {En cola de WhatsApp} other {Enviado}}",
+        "failed": "Falló",
+        "cancelled": "Cancelado"
+      },
+      "reasons": {
+        "gmail_daily_limit": "Se alcanzó el límite diario de Gmail. Reprogramalo para otro día.",
+        "needs_gmail": "Gmail no está conectado. Conectalo y reintentá.",
+        "needs_whatsapp": "WhatsApp no está vinculado. Vinculalo y reintentá.",
+        "invalid_number": "El número no tiene WhatsApp o es inválido.",
+        "send_failed": "No se pudo enviar. Revisalo y reintentá.",
+        "interrupted": "El envío se interrumpió y no sabemos si salió. Revisá antes de reintentar."
+      },
+      "fields": {
+        "sendAt": "Fecha y hora",
+        "subject": "Asunto",
+        "body": "Mensaje"
+      },
+      "edit": "Editar",
+      "retry": "Reprogramar",
+      "save": "Guardar cambios",
+      "saveRetry": "Reprogramar envío",
+      "discard": "Descartar",
+      "cancel": "Cancelar envío",
+      "cancelTitle": "Cancelar envío",
+      "cancelBody": "No se va a enviar este mensaje. No se puede deshacer.",
+      "cancelConfirm": "Sí, cancelar",
+      "keep": "No, mantener",
+      "errors": {
+        "invalid_send_at": "Elegí una fecha futura (hasta 90 días).",
+        "invalid": "Completá el mensaje (y el asunto en los mails).",
+        "not_editable": "Este envío ya salió o se canceló.",
+        "not_found": "Este envío ya no existe.",
+        "generic": "No pudimos guardar el cambio. Probá de nuevo.",
+        "needs_gmail": "Conectá Gmail para programar mails.",
+        "needs_whatsapp": "Vinculá WhatsApp para programar mensajes.",
+        "schedule_limit": "Llegaste a los 10 programados del mes (cuenta sin plan). Cancelá alguno o pasate a un plan.",
+        "whatsapp_monthly_limit": "No te queda cupo mensual de WhatsApp (100 por mes, incluye los programados)."
+      },
+      "new": "Nuevo programado",
+      "freeLeft": "{count, plural, =0 {Usaste los {limit} programados del mes de tu cuenta sin plan.} one {Te queda # programado este mes (cuenta sin plan).} other {Te quedan # programados este mes (cuenta sin plan).}}",
+      "form": {
+        "title": "Nuevo programado",
+        "channel": "Canal",
+        "lead": "Lead",
+        "leadPlaceholder": "Buscá un lead por nombre",
+        "searching": "Buscando leads…",
+        "results": "Leads encontrados",
+        "noResults": "No encontramos leads con ese nombre.",
+        "changeLead": "Cambiar",
+        "sendAt": "Fecha y hora",
+        "subject": "Asunto",
+        "body": "Mensaje",
+        "hintEmail": "Se envía desde tu Gmail al email del lead.",
+        "hintWhatsapp": "Se envía desde tu WhatsApp al número del lead y usa 1 de tus 100 WhatsApp del mes.",
+        "missingEmail": "Este lead no tiene un email válido. Agregalo y volvé a intentar.",
+        "missingWhatsapp": "Este lead no tiene un número de WhatsApp válido. Agregalo y volvé a intentar.",
+        "submit": "Programar",
+        "cancel": "Cancelar"
+      }
     }
   }
 }

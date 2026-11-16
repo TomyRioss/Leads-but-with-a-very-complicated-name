@@ -1,10 +1,12 @@
 import { NextResponse } from "next/server";
 import { requireOwner } from "@/lib/server/owner";
-import { errorResponse, filterString, listRecords, pocketBaseNotReady } from "../_shared";
+import { errorResponse, filterString, listRecords, pocketBaseNotReady, resolveSort } from "../_shared";
 import { errorTranslator } from "@/lib/server/locale";
 
 // Values of the lead_batches.status select (pb_migrations/1762471200_create_lead_collections.js).
 const statuses = ["running", "completed", "partial", "failed"];
+// UI column → PocketBase sort. User (relation) and keywords (JSON) are not sortable.
+const sortColumns = { createdAt: "created_at", area: "country,province,district", requested: "requested_count", status: "status" };
 type Row = {
   id: string;
   user?: string;
@@ -45,7 +47,7 @@ export async function GET(request: Request) {
       page: positiveInt(params.get("page"), 1, 100_000),
       perPage: positiveInt(params.get("perPage"), 25, 100),
       // lead_batches has no `created` autodate: created_at is the date field.
-      sort: "-created_at",
+      sort: resolveSort(params.get("sort"), sortColumns, "-created_at"),
       expand: "user",
       fields: "id,user,keywords,country,province,district,requested_count,result_count,status,created_at,expand.user.id,expand.user.email",
       ...(filters.length ? { filter: filters.join(" && ") } : {}),

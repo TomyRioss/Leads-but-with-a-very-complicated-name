@@ -106,10 +106,14 @@ async function pdfText(bytes: Uint8Array) {
 
 const DRIVE = "https://www.googleapis.com/drive/v3/files";
 
-export async function readDriveFile(userId: string, fileId: string): Promise<DriveFileContent> {
+/**
+ * `picked`: the user just chose this file in Picker to attach it to one message (nothing stored on the account).
+ * Google's drive.file scope already limits the token to files the user picked; the agent's tools pass `picked: false`
+ * and keep the extra check against the account's legacy connected list.
+ */
+export async function readDriveFile(userId: string, fileId: string, { picked = false } = {}): Promise<DriveFileContent> {
   if (!/^[A-Za-z0-9_-]{1,200}$/.test(fileId)) throw new GoogleDriveError("not_found", "Invalid file id.");
-  // With drive.file Google already limits us to Picker-chosen files; we also require the file to be connected here.
-  if (!isGoogleDriveFullAccess() && !(await listFiles(userId)).some((file) => file.id === fileId)) {
+  if (!picked && !isGoogleDriveFullAccess() && !(await listFiles(userId)).some((file) => file.id === fileId)) {
     throw new GoogleDriveError("not_found", "File is not connected.");
   }
   const token = await getValidAccessToken(userId);

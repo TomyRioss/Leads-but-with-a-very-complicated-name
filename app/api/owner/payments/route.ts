@@ -1,10 +1,12 @@
 import { NextResponse } from "next/server";
 import { requireOwner } from "@/lib/server/owner";
-import { errorResponse, filterString, listRecords, pocketBaseNotReady } from "../_shared";
+import { errorResponse, filterString, listRecords, pocketBaseNotReady, resolveSort } from "../_shared";
 import { errorTranslator } from "@/lib/server/locale";
 
 // Payment statuses ("processing" while crediting, "processed" once credited).
 const statuses = ["processing", "processed", "approved", "pending", "rejected", "failed", "canceled", "cancelled", "refunded"];
+// UI column → PocketBase sort (the user email lives in a relation and is not sortable).
+const sortColumns = { created: "created", status: "status", amount: "amount_ars", credits: "credits", balanceBefore: "balance_before", paymentId: "payment_id" };
 type Row = {
   id: string;
   payment_id: string;
@@ -38,7 +40,7 @@ export async function GET(request: Request) {
     const result = await listRecords<Row>("subscription_payments", {
       page: positiveInt(params.get("page"), 1, 100_000),
       perPage: positiveInt(params.get("perPage"), 25, 100),
-      sort: "-created",
+      sort: resolveSort(params.get("sort"), sortColumns, "-created"),
       expand: "user",
       fields: "id,payment_id,status,amount_ars,credits,balance_before,subscription,user,created,expand.user.id,expand.user.email",
       ...(filters.length ? { filter: filters.join(" && ") } : {}),

@@ -1,0 +1,105 @@
+/* Leadtita Staff: full-height page variant of the Leadtita chat (classes from lead-suite/chat-panel.css) for the owner panel.
+   Same reading column as /leadtita (760px): log, error and composer share one gutter so everything lines up. */
+.ls-chat.ls-chat--staff {
+  --staff-gutter: max(16px, calc((100% - 760px) / 2));
+  /* The campaign banner is hidden on /owner; the var keeps this correct if that ever changes. */
+  height: calc(100dvh - var(--campaign-banner-h, 0px));
+  min-height: 0;
+  max-height: none;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  background: var(--ash-50);
+}
+/* .ls-chat sets display:flex, which would otherwise beat the hidden attribute. */
+.ls-chat.ls-chat--staff[hidden] { display: none; }
+
+.staff-chat__head {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 10px;
+  min-height: 56px;
+  padding: 6px 8px 6px 20px;
+}
+.staff-chat__title { margin: 0; color: var(--ink); font-size: 15px; font-weight: 680; letter-spacing: -0.015em; line-height: 1.2; }
+.staff-chat__badge {
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: var(--ash-950);
+  color: var(--lime);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+.staff-chat__new { margin-left: auto; }
+
+.ls-chat--staff .ls-chat__log { padding: 8px var(--staff-gutter) 32px; }
+.ls-chat--staff .ls-chat__log--empty { justify-content: safe center; }
+.ls-chat--staff .ls-chat__log:focus-visible { outline: 2px solid var(--lime-dark); outline-offset: -2px; }
+.ls-chat--staff .ls-chat__error { margin: 0 var(--staff-gutter) 8px; }
+.ls-chat--staff .ls-chat__form { padding: 12px var(--staff-gutter) 20px; }
+
+/* Empty state: brand mark, question and what Staff can do, centered; suggestions below. */
+.ls-chat--staff .staff-chat__intro {
+  container-type: inline-size;
+  display: flex;
+  max-width: none;
+  flex-direction: column;
+  align-items: center;
+  padding: 24px 0 8px;
+  text-align: center;
+}
+.ls-chat--staff .staff-chat__hero-mark { width: 52px; height: 52px; margin-bottom: 16px; border-radius: 15px; }
+.ls-chat--staff .staff-chat__hero-mark .brand-mark { font-size: 22px; }
+.ls-chat--staff .staff-chat__intro .ls-chat__intro-title { font-size: 1.5rem; font-weight: 680; letter-spacing: -0.035em; text-wrap: balance; }
+.ls-chat--staff .staff-chat__intro .ls-chat__intro-text { max-width: 62ch; margin-top: 8px; text-wrap: pretty; }
+
+/* Suggestions: one row each when narrow, three cards side by side when the column has room. */
+.ls-chat--staff .staff-chat__examples { display: grid; width: 100%; grid-template-columns: minmax(0, 1fr); gap: 8px; margin-top: 28px; text-align: left; }
+.staff-chat__examples li { display: flex; min-width: 0; }
+.ls-chat--staff .staff-chat__examples button { align-items: center; }
+.ls-chat--staff .staff-chat__examples .ls-chat__example-go { margin-top: 0; }
+.ls-chat--staff .staff-chat__examples .ls-chat__example-text { color: var(--ash-800); font-size: 13.5px; text-wrap: pretty; }
+@container (min-width: 600px) {
+  .ls-chat--staff .staff-chat__examples { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+  .ls-chat--staff .staff-chat__examples button {
+    grid-template-columns: auto 1fr;
+    grid-template-areas: "icon go" "body body";
+    align-content: start;
+    align-items: start;
+    row-gap: 14px;
+    height: 100%;
+    padding: 14px;
+  }
+  .staff-chat__examples .ls-chat__example-icon { grid-area: icon; }
+  .staff-chat__examples .ls-chat__example-go { grid-area: go; justify-self: end; }
+  .staff-chat__examples .ls-chat__example-body { grid-area: body; }
+}
+
+/* Plain textarea (no mention mirror): show its own text. */
+.ls-chat--staff .ls-chat__composer textarea { color: var(--ink); -webkit-text-fill-color: var(--ink); }
+.ls-chat--staff .ls-chat__facts dd svg { flex: none; align-self: center; color: var(--ash-500); }
+.ls-chat--staff .ls-chat__action { max-width: 560px; }
+
+/* Below md the owner top bar already names the section: the chat fills the space under it (main is a flex column)
+   and only "New chat" stays, floating in the corner like /leadtita. */
+@media (max-width: 47.99rem) {
+  .ls-chat.ls-chat--staff { height: auto; flex: 1 1 auto; }
+  .staff-chat__head { position: absolute; z-index: 3; top: 6px; right: 6px; min-height: 0; padding: 0; }
+  .staff-chat__title, .staff-chat__badge { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .ls-chat--staff .ls-chat__log { padding-top: 56px; }
+}
+@media (max-width: 640px) {
+  .staff-chat__new span { display: none; }
+  .ls-chat--staff .ls-chat__log { padding-inline: 12px; padding-bottom: 24px; }
+  .ls-chat--staff .ls-chat__error { margin-inline: 12px; }
+  .ls-chat--staff .ls-chat__form { padding: 8px 12px 12px; }
+  .ls-chat--staff .staff-chat__intro { padding-top: 8px; }
+  .ls-chat--staff .staff-chat__hero-mark { width: 44px; height: 44px; margin-bottom: 12px; border-radius: 13px; }
+  .ls-chat--staff .staff-chat__hero-mark .brand-mark { font-size: 19px; }
+  .ls-chat--staff .staff-chat__intro .ls-chat__intro-title { font-size: 1.3rem; }
+  .ls-chat--staff .staff-chat__examples { margin-top: 20px; }
+}

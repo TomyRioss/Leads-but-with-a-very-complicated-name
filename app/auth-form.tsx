@@ -10,12 +10,14 @@ import PhoneInput from "react-phone-number-input";
 import es from "react-phone-number-input/locale/es.json";
 import en from "react-phone-number-input/locale/en.json";
 import { BrandMark } from "./brand-logo";
+import { TurnstileField, type TurnstileFieldHandle } from "./turnstile-field";
 import { Link } from "@/i18n/navigation";
 import "./auth-steps.css";
 import "./auth-layout.css";
 import { invalidateSession } from "@/lib/client/session";
 
-type AuthFormProps = { onAuthenticated: () => void; initialError?: string; initialMode?: "login" | "register" };
+/** `paths`: on /login and /register, switching modes also swaps the URL (no reload). Omitted on the /buscar gate. */
+type AuthFormProps = { onAuthenticated: () => void; initialError?: string; initialMode?: "login" | "register"; paths?: Record<"login" | "register", string> };
 type VerifyStepState = { email: string; sent: boolean; fromLogin: boolean };
 
 const resendCooldownSeconds = 60;
@@ -297,7 +299,7 @@ function takeSignupEmail() {
   return signupEmail;
 }
 
-export function AuthForm({ onAuthenticated, initialError = "", initialMode = "login" }: AuthFormProps) {
+export function AuthForm({ onAuthenticated, initialError = "", initialMode = "login", paths }: AuthFormProps) {
   const t = useTranslations("Auth");
   const locale = useLocale();
   const localizedError = (message: string) => {
@@ -329,10 +331,12 @@ export function AuthForm({ onAuthenticated, initialError = "", initialMode = "lo
   const [verifyStep, setVerifyStep] = useState<VerifyStepState | null>(null);
   const [busy, setBusy] = useState(false);
   const [phoneStep] = useState(() => typeof window !== "undefined" && new URLSearchParams(window.location.search).get("authStep") === "phone");
+  const captchaRef = useRef<TurnstileFieldHandle>(null);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError("");
+    const captcha = new FormData(event.currentTarget).get("cf-turnstile-response");
 
     if (mode === "register") {
       if (!phone || !isValidPhoneNumber(phone)) {
@@ -353,13 +357,18 @@ export function AuthForm({ onAuthenticated, initialError = "", initialMode = "lo
       }
     }
 
+    if (typeof captcha !== "string" || !captcha) {
+      setError(t("captchaRequired"));
+      return;
+    }
+
     setBusy(true);
     try {
       invalidateSession();
       const response = await fetch(`/api/auth/${mode === "register" ? "register" : "login"}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(mode === "register" ? { email, phone, password, passwordConfirm, locale } : { email, password }),
+        body: JSON.stringify(mode === "register" ? { email, phone, password, passwordConfirm, locale, captcha } : { email, password, captcha }),
       });
       invalidateSession(); // new cookie: never reuse the previous session
       const payload = await response.json();
@@ -379,20 +388,28 @@ export function AuthForm({ onAuthenticated, initialError = "", initialMode = "lo
       onAuthenticated();
     } catch (submitError) {
       setError(localizedError(submitError instanceof Error ? submitError.message : t("connectionFailed")));
+      captchaRef.current?.reset(); // Turnstile tokens are single-use
     } finally {
       setBusy(false);
     }
   }
 
+  function changeMode(nextMode: "login" | "register") {
+    setMode(nextMode);
+    if (!paths) return;
+    window.history.replaceState(null, "", paths[nextMode]);
+    document.title = t(nextMode === "register" ? "registerTitle" : "loginTitle");
+  }
+
   function switchMode() {
     setError("");
-    setMode(mode === "register" ? "login" : "register");
+    changeMode(mode === "register" ? "login" : "register");
   }
 
   function backToForm(nextMode: "login" | "register") {
     setVerifyStep(null);
     setError("");
-    setMode(nextMode);
+    changeMode(nextMode);
     requestAnimationFrame(() => document.getElementById("auth-title")?.focus());
   }
 
@@ -496,6 +513,7 @@ export function AuthForm({ onAuthenticated, initialError = "", initialMode = "lo
                 {passwordConfirm && password !== passwordConfirm && <span className="field-help auth-inline-error" id="password-confirm-error" role="status">{t("passwordMismatch")}</span>}
               </label>
             )}
+            <TurnstileField ref={captchaRef} locale={locale} />
             {error && <p className="auth-error" role="alert">{error}</p>}
             <button className="primary-button auth-submit" type="submit" disabled={busy}>
               {busy ? t("connecting") : mode === "register" ? t("createAccount") : t("signIn")}

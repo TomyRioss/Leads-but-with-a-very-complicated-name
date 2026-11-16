@@ -6,8 +6,9 @@ import { useLocale, useTranslations } from "next-intl";
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import {
   cardClass, errorBox, ghostButton, isUnauthorized, mutedText, ownerFetch, rightCell, sectionHead, sectionTitle, stateBox, tableClass, tableWrap,
-  tdClass, thClass, theadClass, titleDot, trClass, useOwnerFormat,
+  sortTheadClass, tdClass, titleDot, trClass, useOwnerFormat,
 } from "../ui";
+import { SortableTh } from "./sortable-th";
 
 type Days = 7 | 30 | 90;
 type Traffic =
@@ -299,15 +300,28 @@ function SpendTable({ title, nameLabel, usdLabel, callsLabel, rows, usd, number,
   number: (value: number) => string;
   empty?: string;
 }) {
+  // The server already returns every row (highest spend first); sorting here only reorders that complete list.
+  const [sort, setSort] = useState("-usd");
+  const desc = sort.startsWith("-");
+  const key = (desc ? sort.slice(1) : sort) as "name" | "usd" | "calls";
+  const sorted = key === "usd" && desc ? rows : [...rows].sort((a, b) =>
+    (desc ? -1 : 1) * (key === "name" ? a.name.localeCompare(b.name, undefined, { sensitivity: "base" }) : a[key] - b[key]));
+  const sorting = { sort, onSort: setSort };
   return (
     <section className="grid min-w-0 gap-2" aria-label={title}>
       <h2 className="m-0 text-[13px] font-semibold">{title}</h2>
       {rows.length === 0 ? <p className={`${cardClass} ${mutedText}`}>{empty}</p> : (
         <div className={tableWrap}>
           <table className={tableClass}>
-            <thead className={theadClass}><tr><th className={thClass} scope="col">{nameLabel}</th><th className={`${thClass} text-right!`} scope="col">{usdLabel}</th><th className={`${thClass} text-right!`} scope="col">{callsLabel}</th></tr></thead>
+            <thead className={sortTheadClass}>
+              <tr>
+                <SortableTh {...sorting} column="name" label={nameLabel} />
+                <SortableTh {...sorting} column="usd" kind="number" label={usdLabel} />
+                <SortableTh {...sorting} column="calls" kind="number" label={callsLabel} />
+              </tr>
+            </thead>
             <tbody>
-              {rows.map((row) => (
+              {sorted.map((row) => (
                 <tr className={trClass} key={row.key}>
                   <td className={`${tdClass} break-all font-medium`} data-label={nameLabel}>{row.name}</td>
                   <td className={`${tdClass} ${rightCell}`} data-label={usdLabel}>{usd(row.usd)}</td>

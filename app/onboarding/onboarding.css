@@ -46,6 +46,11 @@
 .onboarding-button.is-primary:hover:not(:disabled) { background: var(--lime-dark); }
 .onboarding-button:disabled { opacity: .45; cursor: not-allowed; }
 
+/* Sin ancla visible (no hay posición calculada): centrada. */
+@media (min-width: 641px) {
+  .onboarding-card:not([style]) { top: 50%; left: 50%; transform: translate(-50%, -50%); }
+}
+
 @media (max-width: 640px) {
   .onboarding-card { top: auto; right: 12px; bottom: max(12px, env(safe-area-inset-bottom)); left: 12px; width: auto; }
   .onboarding-button { min-height: 44px; flex: 1; }

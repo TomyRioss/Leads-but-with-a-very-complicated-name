@@ -6,6 +6,7 @@ import { uiError } from "@/lib/server/public-error";
 import { errorTranslator, resolveLocale } from "@/lib/server/locale";
 import { DEFAULT_TIME_ZONE, isValidTimeZone, parseChatMessages, runLeadSuiteChat } from "@/lib/server/lead-suite-agent";
 import { claimChatTurn, finishChatTurn, type ChatTurnOutcome } from "@/lib/server/leadtita-chat-turns";
+import { aiRequestLimit } from "@/lib/server/ai-daily-limit";
 
 export const maxDuration = 300;
 // Attachment contexts (CSV rows up to 2,000 per file) travel with the conversation.
@@ -26,8 +27,10 @@ export async function POST(request: Request) {
   const apiKey = process.env.OPENROUTER_API_KEY;
   if (!isPocketBaseConfigured()) return NextResponse.json({ error: uiError(t("pocketbaseNotConfigured"), t("generic")) }, { status: 503 });
   if (!apiKey) return NextResponse.json({ error: uiError(t("openRouterKeyMissing"), t("generic")) }, { status: 503 });
+  const limited = await aiRequestLimit(session.user, t);
+  if (limited) return limited;
 
-  let body: { conversationId?: unknown; turnId?: unknown; messages?: unknown; timeZone?: unknown; mode?: unknown; salesChannel?: unknown };
+  let body: { conversationId?: unknown; turnId?: unknown; messages?: unknown; timeZone?: unknown; mode?: unknown; salesChannel?: unknown; permission?: unknown };
   try {
     const raw = await request.text();
     if (raw.length > MAX_BODY_BYTES) return NextResponse.json({ error: t("invalidRequestBody"), code: CONTEXT_FULL }, { status: 413 });
@@ -45,7 +48,8 @@ export async function POST(request: Request) {
   const timeZone = body?.timeZone === undefined ? DEFAULT_TIME_ZONE : typeof body.timeZone === "string" && body.timeZone.length <= 64 && isValidTimeZone(body.timeZone) ? body.timeZone : null;
   const mode = body?.mode === undefined ? "seller" : body.mode;
   const salesChannel = body?.salesChannel === undefined ? null : body.salesChannel;
-  if (!messages || !timeZone || !["seller", "generator", "planner"].includes(String(mode)) || !(salesChannel === null || salesChannel === "whatsapp" || salesChannel === "gmail")) {
+  const permission = body?.permission === undefined ? "ask" : body.permission;
+  if (!messages || !timeZone || !["seller", "generator", "planner"].includes(String(mode)) || !(salesChannel === null || salesChannel === "whatsapp" || salesChannel === "gmail") || !(permission === "ask" || permission === "skip" || permission === "danger")) {
     return NextResponse.json({ error: t("invalidRequestBody") }, { status: 400 });
   }
 
@@ -78,6 +82,7 @@ export async function POST(request: Request) {
             locale,
             mode: mode as "seller" | "generator" | "planner",
             salesChannel,
+            permission,
             signal: request.signal,
             internalCall: { origin: new URL(request.url).origin, cookie: request.headers.get("cookie") ?? "", locale },
             onToolProgress: (event) => send("progress", event),

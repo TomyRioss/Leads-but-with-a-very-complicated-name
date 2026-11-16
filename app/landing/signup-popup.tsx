@@ -9,7 +9,7 @@ import { getSession } from "@/lib/client/session";
 import "./signup-popup.css";
 
 // ponytail: mismo valor que signupCredits en app/api/auth/{register,google/callback}; son server-only y no exportan.
-const WELCOME_CREDITS = 240;
+const WELCOME_CREDITS = 50;
 const WELCOME_LEADS = WELCOME_CREDITS / 2; // 2 créditos por lead
 const SEEN_KEY = "leadta:signup-popup-seen";
 /** Lo lee el formulario de registro para precargar el email. */
@@ -84,7 +84,7 @@ export function SignupPopup() {
     const value = email.trim().toLowerCase();
     try { sessionStorage.setItem(SIGNUP_EMAIL_KEY, value); } catch { /* el formulario queda vacío */ }
     close();
-    router.push("/buscar?signup=1");
+    router.push("/register");
   }
 
   if (!open) return null;

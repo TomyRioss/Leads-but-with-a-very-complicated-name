@@ -38,7 +38,7 @@ export const config = Object.freeze({
   callbackUrl,
   port: int('PORT', 8787, 1, 65535),
   dataDir: path.resolve(process.env.DATA_DIR || '/data'),
-  dailyLimit: 40,
+  monthlyLimit: 100, // same as the app's WHATSAPP_MONTHLY_LIMIT
   minDelayMs: minDelay * 1000,
   maxDelayMs: maxDelay * 1000,
   timeZone: 'America/Argentina/Buenos_Aires',

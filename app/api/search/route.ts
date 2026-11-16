@@ -3,18 +3,29 @@ import { createHash } from "node:crypto";
 import { getCurrentUser, withRefreshedSession } from "@/lib/server/auth";
 import { createLeadRecords, isPocketBaseConfigured, pocketBaseFetch } from "@/lib/server/pocketbase";
 import { CREDITS_PER_LEAD, CreditOperationBusyError, InsufficientCreditsError, reserveLeadCredits } from "@/lib/server/credits";
+import { featurePricing } from "@/lib/server/campaigns";
 import { uiError } from "@/lib/server/public-error";
 import { isDevOnlyEnabled } from "@/lib/env-features";
 import { errorTranslator, resolveLocale } from "@/lib/server/locale";
-import { planRandomSearch, remainingCallTimeoutMs, splitEvenly, RANDOM_LOCATION_COUNTRIES, type RandomSearchSlot } from "@/lib/search-random-location";
+import { countriesLabel, planRandomSearch, remainingCallTimeoutMs, splitEvenly, MAX_SEARCH_COUNTRIES, RANDOM_LOCATION_COUNTRIES, type RandomSearchSlot } from "@/lib/search-random-location";
 import { cleanWebsiteUrl } from "@/lib/url-display";
+import { parseCardKey } from "@/lib/people";
+import { resolveLocation, type LocationResolution, type ResolvedLocation } from "@/lib/server/geography";
 
 export const maxDuration = 300;
 
 const actorId = "tBH60CegtoC2QNtaR";
 const allowedCounts = new Set([5, 10, 25, 50, 75, 100, 125, 150]);
 const randomConcurrency = 5;
+// Filter retry: ask for 4x the places (max 100) once when filters left the search short; only if time remains.
+const filterRetryLimit = (limit: number) => Math.min(100, Math.max(limit * 4, 10));
+const FILTER_RETRY_BEFORE_MS = 120_000;
 const allowSmallBatches = isDevOnlyEnabled("small_batches");
+const locationErrorKeys: Record<Extract<LocationResolution, { ok: false }>["field"], string> = {
+  country: "geoInvalidCountry",
+  province: "geoStateNotInCountry",
+  district: "searchCountryRequired",
+};
 
 type ActorPlace = Record<string, unknown>;
 type SearchFilters = {
@@ -228,6 +239,8 @@ export async function POST(request: Request) {
   let body: {
     keywords?: unknown;
     country?: unknown;
+    countries?: unknown;
+    cardKey?: unknown;
     province?: unknown;
     district?: unknown;
     random?: unknown;
@@ -247,12 +260,20 @@ export async function POST(request: Request) {
   // Ubicación aleatoria: el cliente solo manda el flag; el reparto entre países se calcula acá.
   const random = body.random === true;
   const locale = resolveLocale(request);
+  // Varios países: mismo reparto que el modo aleatorio, con la lista del usuario y sin provincia/ciudad.
+  const chosenCountries = !random && Array.isArray(body.countries)
+    ? [...new Set(body.countries.filter((value): value is string => typeof value === "string").map((value) => value.trim()).filter(Boolean))]
+    : [];
+  const multiCountry = chosenCountries.length > 1;
+  const spreadCountries: readonly string[] | null = random ? RANDOM_LOCATION_COUNTRIES : multiCountry ? chosenCountries : null;
   const country = random
     ? (locale === "en" ? `Random location · ${RANDOM_LOCATION_COUNTRIES.length} countries` : `Ubicación aleatoria · ${RANDOM_LOCATION_COUNTRIES.length} países`)
-    : typeof body.country === "string" ? body.country.trim() : "";
-  const province = !random && typeof body.province === "string" ? body.province.trim() : "";
-  const district = !random && typeof body.district === "string" ? body.district.trim() : "";
+    : multiCountry ? countriesLabel(chosenCountries)
+    : chosenCountries[0] ?? (typeof body.country === "string" ? body.country.trim() : "");
+  const province = !spreadCountries && typeof body.province === "string" ? body.province.trim() : "";
+  const district = !spreadCountries && typeof body.district === "string" ? body.district.trim() : "";
   const count = typeof body.count === "number" ? body.count : Number(body.count);
+  const cardKey = parseCardKey(body.cardKey);
   const rawFilters = body.filters && typeof body.filters === "object" && !Array.isArray(body.filters)
     ? body.filters as Record<string, unknown>
     : {};
@@ -277,11 +298,14 @@ export async function POST(request: Request) {
     email: filterChoice(rawFilters.email) ? rawFilters.email ?? "any" : "any",
     skipClosed: rawFilters.skipClosed === true,
   };
+  const filtered = filters.minReviews !== undefined || filters.maxReviews !== undefined || filters.minRating !== undefined ||
+    filters.website !== "any" || filters.phone !== "any" || filters.email !== "any";
 
   if (keywords.length === 0 || keywords.length > 10 || keywords.some((keyword) => keyword.length > 120)) {
     return NextResponse.json({ error: t("searchKeywords") }, { status: 400 });
   }
-  if (!country || country.length > 100 || province.length > 100 || district.length > 100) {
+  if (!country || country.length > 100 || province.length > 100 || district.length > 100 ||
+      chosenCountries.length > MAX_SEARCH_COUNTRIES || chosenCountries.some((value) => value.length > 100)) {
     return NextResponse.json({ error: t("searchCountryRequired") }, { status: 400 });
   }
   if (!allowedCounts.has(count) && !(count === 1 || (allowSmallBatches && count === 2))) {
@@ -297,7 +321,42 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: t("searchFilters") }, { status: 400 });
   }
 
-  const location = [district, province, country].filter(Boolean).join(", ");
+  // Ubicación validada contra el dataset de /api/geography (nombres o códigos): a Apify solo llegan nombres canónicos,
+  // nunca texto libre que el actor ignore y termine buscando en cualquier país.
+  const countryCodeByName = new Map<string, string>();
+  let target: Omit<ResolvedLocation, "countryCode"> = { country, province, district };
+  if (!random) {
+    let resolutions: LocationResolution[];
+    try {
+      resolutions = await Promise.all(multiCountry
+        ? chosenCountries.map((value) => resolveLocation(value, "", ""))
+        : [resolveLocation(country, province, district)]);
+      // Only the country is strict: Leadtita passes free-text places (neighbourhoods, a city as province).
+      // An unknown province/district travels as typed; the countryCode filter below still drops other countries.
+      const single = resolutions[0];
+      if (!multiCountry && !single.ok && single.field !== "country") {
+        const fallback = await resolveLocation(country, single.field === "district" ? province : "", "");
+        if (fallback.ok) {
+          const known = fallback.location;
+          resolutions = [{ ok: true, location: { ...known, province: known.province || province, district } }];
+        }
+      }
+    } catch (error) {
+      console.error("Geography lookup failed:", error instanceof Error ? error.message : "unknown");
+      return NextResponse.json({ error: t("geoLoadFailed") }, { status: 503 });
+    }
+    for (const resolution of resolutions) {
+      if (!resolution.ok) return NextResponse.json({ error: t(locationErrorKeys[resolution.field]) }, { status: 400 });
+      countryCodeByName.set(resolution.location.country, resolution.location.countryCode);
+      target = resolution.location;
+    }
+    if (multiCountry) target = { country: countriesLabel([...countryCodeByName.keys()]), province: "", district: "" };
+  }
+  const searchCountries: readonly string[] | null = random ? RANDOM_LOCATION_COUNTRIES : multiCountry ? [...countryCodeByName.keys()] : null;
+  // Fuera del modo aleatorio se descartan lugares de otro país (si el actor informa `countryCode`): no se guardan ni se cobran.
+  const expectedCountryCode = (searchCountry: string) => random ? "" : countryCodeByName.get(searchCountry) ?? "";
+
+  const location = [target.district, target.province, target.country].filter(Boolean).join(", ");
   const monitorFor = (place: string) => {
     const normalizedLocation = place.normalize("NFKD").replace(/\p{Diacritic}/gu, "").replace(/\s+/g, " ").trim().toLowerCase();
     return `leadta-${createHash("sha256").update([session.user.id, normalizedLocation, "es"].join("|")).digest("hex").slice(0, 24)}`;
@@ -316,19 +375,22 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: t("searchFirstOnly") }, { status: 400 });
       }
     }
-    creditReservation = await reserveLeadCredits(session.user.id, count);
+    // Campaign discount read once: the same rate reserves `count` and charges what gets persisted.
+    const { cost } = await featurePricing("lead_search", CREDITS_PER_LEAD);
+    creditReservation = await reserveLeadCredits(session.user.id, count, cost);
     const batch = await pocketBaseFetch<{ id: string }>("/api/collections/lead_batches/records", {
       method: "POST",
       body: JSON.stringify({
         keywords,
-        country,
-        province,
-        district,
+        country: target.country,
+        province: target.province,
+        district: target.district,
         user: session.user.id,
         requested_count: count,
         result_count: 0,
         status: "running",
         created_at: new Date().toISOString(),
+        ...(cardKey ? { card_key: cardKey } : {}),
       }),
     });
     currentBatchId = batch.id;
@@ -336,9 +398,11 @@ export async function POST(request: Request) {
     const leads = new Map<string, ReturnType<typeof mapPlace>>();
     let actorError = "";
 
-    const addPlaces = (places: ActorPlace[]) => {
-      for (const place of places) {
-        const mapped = mapPlace(place);
+    const addPlaces = (places: ActorPlace[], countryCode: string) => {
+      for (const actorPlace of places) {
+        const placeCountry = asText(actorPlace.countryCode).toUpperCase();
+        if (countryCode && placeCountry && placeCountry !== countryCode) continue;
+        const mapped = mapPlace(actorPlace);
         if (!mapped.name) continue;
         if (filters.email === "without" && mapped.email) continue;
         leads.set(mapped.source_key, mapped);
@@ -346,7 +410,7 @@ export async function POST(request: Request) {
       }
     };
 
-    if (random) {
+    if (searchCountries) {
       const runSlots = (slots: RandomSearchSlot[]) => mapLimited(slots, randomConcurrency, async (slot) => {
         // Deadline global: sin tiempo suficiente la búsqueda se omite y solo se cobra lo que se guarde.
         const timeoutMs = remainingCallTimeoutMs(Date.now() - startedAt);
@@ -359,9 +423,9 @@ export async function POST(request: Request) {
           return { slot, places: [] as ActorPlace[], failed: true };
         }
       });
-      const plan = planRandomSearch(count, keywords, Math.floor(Math.random() * RANDOM_LOCATION_COUNTRIES.length));
+      const plan = planRandomSearch(count, keywords, Math.floor(Math.random() * searchCountries.length), searchCountries);
       const firstPass = await runSlots(plan);
-      for (const { places } of firstPass) addPlaces(places);
+      for (const { slot, places } of firstPass) addPlaces(places, expectedCountryCode(slot.country));
 
       // Si faltan resultados, se pide más solo a los países/keywords que devolvieron todo lo pedido (todavía tienen), sin pasar de `count`.
       const missing = count - leads.size;
@@ -369,7 +433,14 @@ export async function POST(request: Request) {
       if (missing > 0 && saturated.length > 0 && remainingCallTimeoutMs(Date.now() - startedAt) > 0) {
         const extras = splitEvenly(Math.min(missing, saturated.length * 5), saturated.length);
         const secondPass = await runSlots(saturated.flatMap(({ slot }, index) => extras[index] > 0 ? [{ ...slot, limit: slot.limit + extras[index] }] : []));
-        for (const { places } of secondPass) addPlaces(places);
+        for (const { slot, places } of secondPass) addPlaces(places, expectedCountryCode(slot.country));
+      }
+
+      // Con filtros, una búsqueda chica puede volver vacía o corta porque se descartó casi todo: un reintento con más lugares.
+      const short = firstPass.filter(({ slot, places, failed }) => !failed && places.length < slot.limit);
+      if (filtered && leads.size < count && short.length > 0 && remainingCallTimeoutMs(Date.now() - startedAt) > 0) {
+        const retry = await runSlots(short.map(({ slot }) => ({ ...slot, limit: filterRetryLimit(slot.limit) })));
+        for (const { slot, places } of retry) addPlaces(places, expectedCountryCode(slot.country));
       }
     } else {
       for (const keyword of keywords) {
@@ -378,10 +449,24 @@ export async function POST(request: Request) {
 
         try {
           const places = await actorSearch(token, keyword, location, remaining, monitorName, filters);
-          addPlaces(places);
+          addPlaces(places, expectedCountryCode(target.country));
         } catch (error) {
           actorError = uiError(error instanceof Error ? error.message : t("searchApifyFailed"), t("generic"));
           break;
+        }
+      }
+
+      // Con filtros, si faltan resultados: un reintento por keyword pidiendo más lugares (los repetidos se deduplican).
+      if (filtered && !actorError && leads.size < count && Date.now() - startedAt < FILTER_RETRY_BEFORE_MS) {
+        for (const keyword of keywords) {
+          const remaining = count - leads.size;
+          if (remaining <= 0) break;
+          try {
+            addPlaces(await actorSearch(token, keyword, location, filterRetryLimit(remaining), monitorName, filters), expectedCountryCode(target.country));
+          } catch (error) {
+            actorError = uiError(error instanceof Error ? error.message : t("searchApifyFailed"), t("generic"));
+            break;
+          }
         }
       }
     }
@@ -433,7 +518,7 @@ export async function POST(request: Request) {
         leads: saved.items,
         status,
         credits,
-        creditsUsed: persistedCount * CREDITS_PER_LEAD,
+        creditsUsed: cost(persistedCount),
         warning: [actorError, persistenceError].filter(Boolean).join(" ") || undefined,
         shortfall,
       }),
@@ -459,7 +544,7 @@ export async function POST(request: Request) {
       }
     }
     if (error instanceof InsufficientCreditsError) {
-      return NextResponse.json({ error: t("insufficientCredits", { required: error.required, available: error.available }), credits: error.available }, { status: 402 });
+      return NextResponse.json({ error: t("insufficientCredits", { required: error.required, available: error.available }), credits: error.available, required: error.required }, { status: 402 });
     }
     if (error instanceof CreditOperationBusyError) {
       return NextResponse.json({ error: t("creditBusy") }, { status: 409 });

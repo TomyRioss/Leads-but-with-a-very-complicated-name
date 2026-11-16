@@ -1,9 +1,11 @@
 import { NextResponse } from "next/server";
 import { requireOwner } from "@/lib/server/owner";
-import { errorResponse, filterString, listRecords, pocketBaseNotReady, type SubscriptionRecord } from "../_shared";
+import { errorResponse, filterString, listRecords, pocketBaseNotReady, resolveSort, type SubscriptionRecord } from "../_shared";
 import { errorTranslator } from "@/lib/server/locale";
 
 const statuses = ["authorized", "paused", "pending", "canceled", "cancelled", "rejected", "creating"];
+// UI column → PocketBase sort (the user email lives in a relation and is not sortable).
+const sortColumns = { created: "created", plan: "plan_id", status: "status", price: "price_ars", monthlyCredits: "monthly_credits" };
 type Row = SubscriptionRecord & { expand?: { user?: { id: string; email: string } } };
 
 function positiveInt(value: string | null, fallback: number, max: number) {
@@ -26,7 +28,7 @@ export async function GET(request: Request) {
     const result = await listRecords<Row>("subscriptions", {
       page: positiveInt(params.get("page"), 1, 100_000),
       perPage: positiveInt(params.get("perPage"), 25, 100),
-      sort: "-created",
+      sort: resolveSort(params.get("sort"), sortColumns, "-created"),
       expand: "user",
       fields: "id,user,plan_id,status,price_ars,monthly_credits,external_reference,created,expand.user.id,expand.user.email",
       ...(filters.length ? { filter: filters.join(" && ") } : {}),

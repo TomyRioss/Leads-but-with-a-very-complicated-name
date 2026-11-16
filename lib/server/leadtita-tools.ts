@@ -1,7 +1,10 @@
 import { CREDITS_PER_PERSON } from "@/lib/people";
+import { countriesLabel, MAX_SEARCH_COUNTRIES } from "@/lib/search-random-location";
 import { isDevFeatureEnabled } from "@/lib/env-features";
 import { isContactStatus, normalizeChannel, normalizeForMatch, rankLeadsByText, type ContactStatus, type LeadMatch } from "@/lib/lead-suite";
-import { CREDITS_PER_LEAD, CREDITS_PER_PAIN_ANALYSIS } from "@/lib/server/credits";
+import { CREDITS_PER_LEAD, CREDITS_PER_PAIN_ANALYSIS, CreditOperationBusyError, InsufficientCreditsError } from "@/lib/server/credits";
+import { featurePricing } from "@/lib/server/campaigns";
+import type { CampaignFeature } from "@/lib/campaigns";
 import {
   addManualLead,
   findDuplicateContact,
@@ -17,6 +20,7 @@ import { ATTACHMENT_LIMITS, attachmentPromptBlock, driveToContext, type Attachme
 import { getConnection, GoogleNotConnectedError, hasCalendar, hasGmail, isGoogleDriveFullAccess } from "@/lib/server/google-connections";
 import { isValidEmail as isValidGmailAddress, sendGmail, sendGmailBatch } from "@/lib/server/google-gmail";
 import { reserveGmailDailyUsage } from "@/lib/server/gmail-daily-usage";
+import { parseSendAt } from "@/lib/server/scheduled-messages";
 import { createCalendarEvent } from "@/lib/server/google-calendar";
 import { GoogleDriveError, readDriveFile, searchDriveFiles } from "@/lib/server/google-drive";
 import { createLeadRecords, pocketBaseFetch } from "@/lib/server/pocketbase";
@@ -70,6 +74,11 @@ const MAX_PEOPLE = 25;
 /** Dev feature `people_search`: off in production, so Leadtita neither offers nor runs people tools. */
 const peopleSearchEnabled = isDevFeatureEnabled("people_search");
 
+/** Optional "send later" on send cards: the card preselects "Programar" at this time (the user can change it). */
+const sendAtSchema = { type: "string", maxLength: 40, description: "Only when the user asks to send LATER (e.g. 'in 2 hours', 'tomorrow at 9'): ISO 8601 with offset, computed from the current time in the user's time zone. Omit to send on confirm." };
+/** Valid future sendAt from the model, as card extra. */
+const sendAtExtra = (value: unknown): Record<string, string> => { const when = parseSendAt(value); return when ? { sendAt: when } : {}; };
+
 const fn = (name: string, description: string, properties: Record<string, unknown>, required: string[]) => ({
   type: "function",
   function: { name, description, parameters: { type: "object", additionalProperties: false, properties, required } },
@@ -95,6 +104,7 @@ export const leadtitaTools: ReturnType<typeof fn>[] = [
     keywords: { type: "array", minItems: 1, maxItems: 5, items: { type: "string", minLength: 2, maxLength: 120 }, description: "Every business type the user named, plus 2-4 local-language variants of the SAME type when it is ambiguous or niche. Never different business types." },
     label: { type: "string", minLength: 2, maxLength: 120, description: "What is being searched as the user would say it, plural and in their language, WITHOUT the location (e.g. \"inmobiliarias\", not \"inmobiliarias en Córdoba\"). Shown in the card title before the location." },
     country: { type: "string", minLength: 2, maxLength: 100 }, province: text(100), district: text(100),
+    countries: { type: "array", minItems: 2, maxItems: MAX_SEARCH_COUNTRIES, items: { type: "string", minLength: 2, maxLength: 100 }, description: "Only when the user names 2+ countries: all of them (country = the first). Leads are split evenly across them; province/district are ignored." },
     count: { type: "integer", enum: BUSINESS_SEARCH_COUNTS, description: "Exactly what the user asked for (closest allowed size if not allowed). Never more to filter afterwards: filters below are applied by the search itself." },
     minReviews: { type: "integer", minimum: 0, description: "At least N reviews." },
     maxReviews: { type: "integer", minimum: 0, description: "At most N reviews (\"fewer than 500\" = 499)." },
@@ -116,7 +126,7 @@ const LEADTITA_BASE_PROMPT = [
   "FEEDBACK: call followup_feedback, then give 2-4 short, concrete recommendations as a bullet list (who to follow up first, best channel, reply rate). No generic advice.",
   `MESSAGES: for a specific lead call lead_brief. If it has analyzed pains or proposals, draft 1-2 messages and show them with suggest_messages (WhatsApp by default; email adds a subject). Tone: first person, warm and close, rioplatense voseo in Spanish, 3-5 short sentences, open with the business name and one concrete detail, talk about the client's result not the technical task, no jargon, never invent facts, end with one low-commitment question. If it has no analyzed pains, call propose_analyze_pains right away instead of inventing problems. ${CREDITS_PER_PAIN_ANALYSIS === 0 ? "The server runs this analysis automatically at no credit cost; then draft from its results." : "The user must confirm its paid proposal before analysis; after confirmation, draft from the new analysis."}`,
   "LOAD LEADS: to add a lead manually use propose_add_lead with what the user gave; ask only for the name if missing.",
-  `GENERATE LEADS: businesses → propose_search_businesses (keywords: every business type the user named; for an ambiguous or niche type add 2-4 useful local-language variants of that same type, e.g. "distribuidora de insumos", "mayorista de insumos para comercios"; never other business types; always pass province/district when the user names a city or province; count = exactly what the user asked, one of ${BUSINESS_SEARCH_COUNTS.join(", ")} (closest size otherwise, say so); country required, ask if missing). Pass the user's conditions as the real filters (minReviews, maxReviews, minRating, website/phone/email with|without; closed businesses are always skipped); never raise the count to filter later. If a condition has no filter (e.g. by social network or by age of the business), say in one line that the search can't filter by it and propose without it.`,
+  `GENERATE LEADS: businesses → propose_search_businesses (keywords: every business type the user named; for an ambiguous or niche type add 2-4 useful local-language variants of that same type, e.g. "distribuidora de insumos", "mayorista de insumos para comercios"; never other business types; always pass province/district when the user names a city or province; count = exactly what the user asked, one of ${BUSINESS_SEARCH_COUNTS.join(", ")} (closest size otherwise, say so); country required, ask if missing; several countries → pass them all in countries, no province/district). Pass the user's conditions as the real filters (minReviews, maxReviews, minRating, website/phone/email with|without; closed businesses are always skipped); never raise the count to filter later. If a condition has no filter (e.g. by social network or by age of the business), say in one line that the search can't filter by it and propose without it.`,
   "COMMERCIAL PROFILE: the user's saved service and usual sectors are in USER PROFILE below. Before proposing a lead search, if the service is empty, ask ONE short question about what service they offer (offer 2-3 likely options as a list if the conversation lets you infer them); when they answer, call update_commercial_profile, then continue with the search. If they don't want to say, continue without it and don't ask again. When the user mentions the sectors they usually sell to, call update_commercial_profile with commercialSectors. Use the sectors to suggest business types and keywords when the user asks for leads without naming a type, and the service to pick the analysis focus.",
   ...(peopleSearchEnabled ? [` People/independent professionals → propose_search_people (count 1-${MAX_PEOPLE}).`] : []),
   " Never start a search without the card; only delivered results are charged.",
@@ -198,7 +208,7 @@ export async function runLeadtitaTool(h: LeadtitaHelpers, name: string, args: Re
     const lead = h.leadByRef(args.leadRef);
     if (!lead) return { error: "Unknown leadRef." };
     const focus = str(args.focus, 300);
-    return h.propose({ kind: "analyze_pains", leadId: lead.id, leadName: lead.name, data: {}, extra: { batchId: lead.batchId, credits: CREDITS_PER_PAIN_ANALYSIS, ...(focus ? { focus } : {}) } });
+    return h.propose({ kind: "analyze_pains", leadId: lead.id, leadName: lead.name, data: {}, extra: { batchId: lead.batchId, ...(await cardPricing("pain_analysis", CREDITS_PER_PAIN_ANALYSIS, 1)), ...(focus ? { focus } : {}) } });
   }
 
   if (name === "propose_add_lead") {
@@ -210,7 +220,7 @@ export async function runLeadtitaTool(h: LeadtitaHelpers, name: string, args: Re
   if (name === "propose_search_businesses") {
     const extra = businessSearchExtra(args);
     if (!extra) return { error: `Invalid search: 1-5 keywords, a country and count ${BUSINESS_SEARCH_COUNTS.join("/")}.` };
-    return h.propose({ kind: "search_businesses", leadId: "", leadName: "", data: {}, extra });
+    return h.propose({ kind: "search_businesses", leadId: "", leadName: "", data: {}, extra: { ...extra, ...(await cardPricing("lead_search", CREDITS_PER_LEAD, extra.count)) } });
   }
 
   if (name === "update_commercial_profile") {
@@ -223,10 +233,17 @@ export async function runLeadtitaTool(h: LeadtitaHelpers, name: string, args: Re
     if (!peopleSearchEnabled) return undefined;
     const extra = peopleSearchExtra(args);
     if (!extra) return { error: `Invalid search: query 3-300 chars and count 1-${MAX_PEOPLE}.` };
-    return h.propose({ kind: "search_people", leadId: "", leadName: "", data: {}, extra });
+    return h.propose({ kind: "search_people", leadId: "", leadName: "", data: {}, extra: { ...extra, ...(await cardPricing("people_search", CREDITS_PER_PERSON, extra.count)) } });
   }
 
   return undefined;
+}
+
+/** Card cost at the live campaign rate (what /api/* will charge); `discountPercent` only when a discount applies. */
+async function cardPricing(feature: CampaignFeature, unitCost: number, units: number) {
+  if (unitCost === 0) return { credits: 0 };
+  const { percent, cost } = await featurePricing(feature, unitCost);
+  return { credits: cost(units), ...(percent > 0 ? { discountPercent: percent } : {}) };
 }
 
 // ---------- Validation (runs at proposal and again at confirmation) ----------
@@ -244,12 +261,15 @@ function businessSearchExtra(raw: Record<string, unknown>) {
   const country = str(raw.country, 100);
   const count = Number(raw.count);
   if (!keywords.length || !country || !(BUSINESS_SEARCH_COUNTS as readonly number[]).includes(count)) return null;
-  const province = str(raw.province, 100);
-  const district = str(raw.district, 100);
+  // Multipaís: `countries` viaja separado por KEYWORD_SEPARATOR; `country` queda como nombre legible para la tarjeta.
+  const countries = [...new Set([country, ...(Array.isArray(raw.countries) ? raw.countries : []).map((value) => str(value, 100))].filter(Boolean))].slice(0, MAX_SEARCH_COUNTRIES);
+  const multi = countries.length > 1;
+  const province = multi ? "" : str(raw.province, 100);
+  const district = multi ? "" : str(raw.district, 100);
   const filters = businessFilters(raw);
   if (!filters) return null;
-  const label = labelWithoutPlace(str(raw.label, 120), [district, province, country]);
-  return { keywords: keywords.join(KEYWORD_SEPARATOR), ...(label ? { label } : {}), country, ...(province ? { province } : {}), ...(district ? { district } : {}), count, ...filters, credits: count * CREDITS_PER_LEAD };
+  const label = labelWithoutPlace(str(raw.label, 120), [district, province, ...countries]);
+  return { keywords: keywords.join(KEYWORD_SEPARATOR), ...(label ? { label } : {}), country: multi ? countriesLabel(countries) : country, ...(multi ? { countries: countries.join(KEYWORD_SEPARATOR) } : {}), ...(province ? { province } : {}), ...(district ? { district } : {}), count, ...filters };
 }
 
 const normalizePlace = (value: string) => value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
@@ -295,7 +315,7 @@ function peopleSearchExtra(raw: Record<string, unknown>) {
   const count = Number(raw.count);
   if (query.length < 3 || !Number.isInteger(count) || count < 1 || count > MAX_PEOPLE) return null;
   const location = str(raw.location, 160);
-  return { query, ...(location ? { location } : {}), count, credits: count * CREDITS_PER_PERSON };
+  return { query, ...(location ? { location } : {}), count };
 }
 
 function commercialProfileExtra(raw: Record<string, unknown>) {
@@ -357,6 +377,9 @@ async function callOwnApi(call: InternalCall, path: string, body: unknown) {
     cache: "no-store",
   });
   const payload = await response.json().catch(() => ({})) as Record<string, unknown>;
+  // Credit failures keep their type so the confirm route can tell the user what happened.
+  if (response.status === 402) throw new InsufficientCreditsError(Number(payload.credits ?? 0), Number(payload.required ?? 0));
+  if (response.status === 409) throw new CreditOperationBusyError();
   if (!response.ok) throw new Error(typeof payload.error === "string" ? payload.error : `Request failed (${response.status}).`);
   return payload;
 }
@@ -365,6 +388,8 @@ async function callOwnApi(call: InternalCall, path: string, body: unknown) {
 export async function applyLeadtitaChange(userId: string, payload: PendingPayload, call: InternalCall): Promise<ConfirmedChange | null> {
   const extra = payload.extra ?? {};
   const since = new Date(payload.iat).toISOString();
+  // Fingerprint of this exact signed card: a replay of it finds its own batch, a sibling card doesn't.
+  const cardKey = createHash("sha256").update(JSON.stringify(payload)).digest("hex").slice(0, 32);
 
   if (payload.kind === "import_leads" || payload.kind === "import_contacts") return applyImport(userId, payload);
   if (payload.kind === "send_email" || payload.kind === "send_email_batch" || payload.kind === "create_meeting") return applyGoogleAction(userId, payload);
@@ -396,11 +421,12 @@ export async function applyLeadtitaChange(userId: string, payload: PendingPayloa
   if (payload.kind === "search_businesses") {
     const keywords = splitKeywords(extra.keywords);
     const count = Number(extra.count);
-    // Replay guard: same search already launched after this card was issued. Concurrent replays hit the credit lock (409).
-    const previous = await findRecentBatch(userId, { sinceIso: since, requestedCount: count, kind: "business", keyword: keywords[0] });
-    if (previous) return { kind: payload.kind, leadName: "", summary: { batchId: previous.id, delivered: previous.result_count ?? 0, charged: (previous.result_count ?? 0) * CREDITS_PER_LEAD, replayed: true } };
+    // Replay guard: this card already launched its search. Concurrent replays hit the credit lock (409).
+    const previous = await findRecentBatch(userId, { sinceIso: since, cardKey });
+    if (previous) return { kind: payload.kind, leadName: "", summary: { batchId: previous.id, delivered: previous.result_count ?? 0, charged: (await featurePricing("lead_search", CREDITS_PER_LEAD)).cost(previous.result_count ?? 0), replayed: true } };
     const filters = Object.fromEntries(BUSINESS_FILTER_KEYS.filter((key) => extra[key] !== undefined).map((key) => [key, key === "skipClosed" ? true : extra[key]]));
-    const result = await callOwnApi(call, "/api/search", { keywords, country: extra.country, province: extra.province ?? "", district: extra.district ?? "", count, filters });
+    const countries = extra.countries ? String(extra.countries).split(KEYWORD_SEPARATOR).filter(Boolean) : undefined;
+    const result = await callOwnApi(call, "/api/search", { keywords, country: extra.country, ...(countries ? { countries } : {}), province: extra.province ?? "", district: extra.district ?? "", count, filters, cardKey });
     const delivered = Array.isArray(result.leads) ? result.leads.length : 0;
     return { kind: payload.kind, leadName: "", summary: { batchId: String(result.batchId ?? ""), delivered, charged: Number(result.creditsUsed ?? delivered * CREDITS_PER_LEAD), preview: previewLeads(result.leads) } };
   }
@@ -408,9 +434,9 @@ export async function applyLeadtitaChange(userId: string, payload: PendingPayloa
   if (payload.kind === "search_people" && peopleSearchEnabled) {
     const count = Number(extra.count);
     const query = String(extra.query ?? "");
-    const previous = await findRecentBatch(userId, { sinceIso: since, requestedCount: count, kind: "person", query });
-    if (previous) return { kind: payload.kind, leadName: "", summary: { batchId: previous.id, delivered: previous.result_count ?? 0, charged: (previous.result_count ?? 0) * CREDITS_PER_PERSON, replayed: true } };
-    const result = await callOwnApi(call, "/api/people/search", { query, location: extra.location ?? "", count, locale: call.locale, includeMeta: true });
+    const previous = await findRecentBatch(userId, { sinceIso: since, cardKey });
+    if (previous) return { kind: payload.kind, leadName: "", summary: { batchId: previous.id, delivered: previous.result_count ?? 0, charged: (await featurePricing("people_search", CREDITS_PER_PERSON)).cost(previous.result_count ?? 0), replayed: true } };
+    const result = await callOwnApi(call, "/api/people/search", { query, location: extra.location ?? "", count, locale: call.locale, includeMeta: true, cardKey });
     return { kind: payload.kind, leadName: "", summary: { batchId: String(result.batchId ?? ""), delivered: Number(result.delivered ?? 0), charged: Number(result.charged ?? 0), preview: previewLeads(result.leads) } };
   }
 
@@ -643,7 +669,7 @@ export async function applyImport(userId: string, payload: PendingPayload): Prom
 // ---------- Google Drive (connected files; whole Drive only with GOOGLE_DRIVE_FULL_ACCESS) ----------
 
 export const driveTools = [
-  fn("list_google_files", "List the Google Drive files the user connected to Leadtita (D refs). If Drive isn't connected, the app shows a connect button.", {}, []),
+  fn("list_google_files", "Check whether Google Drive is connected. Drive files are not stored on the account: the user attaches them to a single message with \"+ > Google Drive\". If Drive isn't connected, the app shows a connect button.", {}, []),
   fn("read_google_file", "Read a connected Google Drive file (Sheet/CSV as a table, Doc/PDF/Markdown as text). It becomes an attachment you can import with propose_import_leads / propose_import_contacts (pass its name as attachment).", { fileRef: { type: "string", pattern: "^D\\d{1,3}$" } }, ["fileRef"]),
   fn("search_google_drive", "Find Google Drive files by name. Searches the whole Drive only when full access is enabled; otherwise only the connected files.", { query: { type: "string", minLength: 1, maxLength: 100 } }, ["query"]),
 ];
@@ -658,8 +684,8 @@ async function runDriveTool(h: LeadtitaHelpers, name: string, args: Record<strin
     const connection = await getConnection(h.userId);
     if (!connection) throw new GoogleNotConnectedError();
     if (name === "list_google_files") {
-      if (!connection.files.length) return { connected: true, files: [], note: "No files connected yet: tell the user to add them with \"+ > Google Drive\"." };
-      return { connected: true, email: connection.googleEmail, files: connection.files.slice(0, 50).map((file) => fileLine(h, file)) };
+      // Per-message attachments only: nothing kept on the account to list (an attached file is already in this turn).
+      return { connected: true, email: connection.googleEmail, files: [], note: "Drive files aren't kept on the account: ask the user to attach the file to their message with \"+ > Google Drive\"." };
     }
     if (name === "search_google_drive") {
       const query = str(args.query, 100);
@@ -691,10 +717,11 @@ const MEETING_DURATIONS = [15, 30, 45, 60, 90, 120] as const;
 
 export const googleActionTools = [
   fn("propose_send_email", "Propose sending ONE email from the user's Gmail to a lead (draft: subject + body; the user can edit it on the card). Uses the lead's email unless `to` is given. Logged in Lead Suite when sent.", {
-    leadRef: leadRefSchema, subject: { type: "string", minLength: 1, maxLength: 200 }, body: { type: "string", minLength: 1, maxLength: 5000 }, to: text(254),
+    leadRef: leadRefSchema, subject: { type: "string", minLength: 1, maxLength: 200 }, body: { type: "string", minLength: 1, maxLength: 5000 }, to: text(254), sendAt: sendAtSchema,
   }, ["leadRef", "subject", "body"]),
   fn("propose_send_email_batch", `Propose sending up to ${EMAIL_BATCH_MAX} personalized emails (one per lead) in one confirmation; they go out one by one, spaced out. Leads without an email are skipped.`, {
     items: { type: "array", minItems: 2, maxItems: EMAIL_BATCH_MAX, items: { type: "object", additionalProperties: false, properties: { leadRef: leadRefSchema, subject: { type: "string", minLength: 1, maxLength: 200 }, body: { type: "string", minLength: 1, maxLength: 5000 } }, required: ["leadRef", "subject", "body"] } },
+    sendAt: sendAtSchema,
   }, ["items"]),
   fn("propose_create_meeting", "Propose creating a Google Calendar event for a meeting with a lead (editable on the card). start = ISO 8601 with offset in the user's time zone. Optionally add a Meet link and invite the lead's email. Logged in Lead Suite as status meeting.", {
     leadRef: leadRefSchema,
@@ -706,7 +733,7 @@ export const googleActionTools = [
   }, ["leadRef", "start"]),
 ];
 
-export const GOOGLE_ACTIONS_PROMPT = "EMAIL & MEETINGS: to send an email use propose_send_email (draft in the lead's language, same tone rules as MESSAGES, call lead_brief first for pains/proposals); several leads → propose_send_email_batch. To schedule a meeting use propose_create_meeting (ask the date/time if missing; default 30 minutes). Nothing is sent or scheduled until the user confirms the card. If Gmail or Calendar isn't connected, say so in one line; the app shows the connect button.";
+export const GOOGLE_ACTIONS_PROMPT = "EMAIL & MEETINGS: to send an email use propose_send_email (draft in the lead's language, same tone rules as MESSAGES, call lead_brief first for pains/proposals); several leads → propose_send_email_batch. To schedule a meeting use propose_create_meeting (ask the date/time if missing; default 30 minutes). Nothing is sent or scheduled until the user confirms the card. To send LATER ('in 2 hours', 'tomorrow at 9'), pass sendAt on the send tool: the message goes to the user's 'Programados' queue and is sent at that time. If Gmail or Calendar isn't connected, say so in one line; the app shows the connect button.";
 
 type GoogleHelpers = Pick<LeadtitaHelpers, "userId" | "leadByRef" | "propose" | "push" | "timeZone">;
 const emailOk = (value: string) => isValidGmailAddress(value);
@@ -736,7 +763,7 @@ export async function proposeGoogleAction(h: GoogleHelpers, name: string, args: 
     const subject = str(args.subject, 200);
     const body = str(args.body, 5000);
     if (!subject || !body) return { error: "subject and body are required." };
-    const proposed = h.propose({ kind: "send_email", leadId: lead.id, leadName: lead.name, data: {}, extra: { to, subject, body } });
+    const proposed = h.propose({ kind: "send_email", leadId: lead.id, leadName: lead.name, data: {}, extra: { to, subject, body, ...sendAtExtra(args.sendAt) } });
     return connected ? proposed : { ...(proposed as object), note: "Gmail isn't connected: the card shows the draft and a connect button. Say so in one line." };
   }
 
@@ -756,7 +783,7 @@ export async function proposeGoogleAction(h: GoogleHelpers, name: string, args: 
     }
     if (!rows.length) return { error: "None of these leads has a valid email.", skipped };
     return {
-      ...(h.propose({ kind: "send_email_batch", leadId: "", leadName: "", data: {}, extra: { count: rows.length, skipped: skipped.length, preview: rows.map((row) => `${row.leadName} · ${row.subject}`).join("\n") }, rows }) as object),
+      ...(h.propose({ kind: "send_email_batch", leadId: "", leadName: "", data: {}, extra: { count: rows.length, skipped: skipped.length, preview: rows.map((row) => `${row.leadName} · ${row.subject}`).join("\n"), ...sendAtExtra(args.sendAt) }, rows }) as object),
       ...(skipped.length ? { skippedWithoutEmail: skipped } : {}),
       ...(connected ? {} : { note: "Gmail isn't connected: the card shows the drafts and a connect button. Say so in one line." }),
     };
@@ -803,6 +830,36 @@ export function withGoogleEdits(payload: PendingPayload, edits: unknown): Pendin
   return null;
 }
 
+/**
+ * Reviewed batch send: the user may drop recipients and edit each message on the card.
+ * Only a non-empty subset of the signed rows is accepted (no new recipients, no changed destinations);
+ * edited texts get the same limits as the proposal.
+ */
+export function withBatchReview(payload: PendingPayload, review: unknown): PendingPayload | null {
+  if (review === undefined) return payload;
+  const isEmail = payload.kind === "send_email_batch";
+  if ((!isEmail && payload.kind !== "send_whatsapp_batch") || !Array.isArray(review) || review.length > EMAIL_BATCH_MAX + WHATSAPP_BATCH_MAX) return null;
+  const signed = new Map((payload.rows ?? []).map((row) => [row.leadId, row]));
+  const rows: Record<string, string>[] = [];
+  for (const raw of review) {
+    const item = raw && typeof raw === "object" ? raw as Record<string, unknown> : {};
+    const row = typeof item.leadId === "string" ? signed.get(item.leadId) : undefined;
+    if (!row || rows.some((kept) => kept.leadId === row.leadId)) return null;
+    if (isEmail) {
+      const subject = str(item.subject, 200);
+      const body = str(item.body, 5000);
+      if (!subject || !body) return null;
+      rows.push({ ...row, subject, body });
+    } else {
+      const text = str(item.text, WHATSAPP_TEXT_MAX);
+      if (!text) return null;
+      rows.push({ ...row, text });
+    }
+  }
+  if (!rows.length) return null;
+  return { ...payload, rows, extra: { ...payload.extra, count: rows.length } };
+}
+
 export function revalidateGoogleAction(payload: PendingPayload) {
   const extra = payload.extra ?? {};
   if (payload.kind === "send_email") return /^[a-zA-Z0-9]{15}$/.test(payload.leadId) && emailOk(String(extra.to ?? "")) && Boolean(extra.subject) && Boolean(extra.body);
@@ -815,6 +872,11 @@ export function revalidateGoogleAction(payload: PendingPayload) {
 }
 
 const emailLog = (subject: string, body: string) => `${subject}\n\n${body}`.slice(0, 4000);
+
+async function emailedSince(userId: string, leadId: string, sinceIso: string) {
+  const { items } = await listLeadContacts(userId, { leadId, from: sinceIso, perPage: 20 });
+  return items.some((contact) => contact.channel === "email");
+}
 
 /** Replay guard: the same email (or meeting) was already logged for this lead after the card was issued. */
 async function alreadyLogged(userId: string, leadId: string, sinceIso: string, message: string, status?: string) {
@@ -847,8 +909,9 @@ export async function applyGoogleAction(userId: string, payload: PendingPayload)
     const rows = payload.rows ?? [];
     const pending: Record<string, string>[] = [];
     let replayed = 0;
+    // One email per lead per card: texts can be edited on review, so a replay is detected by any email logged since the card.
     for (const row of rows) {
-      if (await alreadyLogged(userId, row.leadId, since, emailLog(row.subject, row.body))) replayed++;
+      if (await emailedSince(userId, row.leadId, since)) replayed++;
       else pending.push(row);
     }
     // Spaced out to stay far from Gmail limits; ≤10 × 20 s fits the route's maxDuration.
@@ -896,8 +959,9 @@ const whatsAppEnabled = isWhatsAppConfigured();
 const PHONE_DIGITS = /^\d{8,15}$/;
 
 export const whatsAppTools = whatsAppEnabled ? [
-  fn("propose_send_whatsapp_batch", `Propose sending WhatsApp messages from the user's linked WhatsApp, one per lead (1-${WHATSAPP_BATCH_MAX}), in one confirmation. They are queued and go out one by one, spaced out, with a daily cap. Leads without a valid international phone are skipped.`, {
+  fn("propose_send_whatsapp_batch", `Propose sending WhatsApp messages from the user's linked WhatsApp, one per lead (1-${WHATSAPP_BATCH_MAX}), in one confirmation. They are queued and go out one by one, spaced out, within a monthly quota of 100 WhatsApp messages (scheduled ones count). Leads without a valid international phone are skipped.`, {
     items: { type: "array", minItems: 1, maxItems: WHATSAPP_BATCH_MAX, items: { type: "object", additionalProperties: false, properties: { leadRef: leadRefSchema, text: { type: "string", minLength: 1, maxLength: WHATSAPP_TEXT_MAX } }, required: ["leadRef", "text"] } },
+    sendAt: sendAtSchema,
   }, ["items"]),
 ] : [];
 
@@ -923,7 +987,7 @@ async function proposeWhatsApp(h: LeadtitaHelpers, args: Record<string, unknown>
   }
   if (!rows.length) return { error: "None of these leads has a valid international phone number for WhatsApp.", skipped };
   return {
-    ...(h.propose({ kind: "send_whatsapp_batch", leadId: "", leadName: "", data: {}, extra: { count: rows.length, skipped: skipped.length, preview: rows.map((row) => `${row.leadName} · ${firstWords(row.text)}`).join("\n") }, rows }) as object),
+    ...(h.propose({ kind: "send_whatsapp_batch", leadId: "", leadName: "", data: {}, extra: { count: rows.length, skipped: skipped.length, preview: rows.map((row) => `${row.leadName} · ${firstWords(row.text)}`).join("\n"), ...sendAtExtra(args.sendAt) }, rows }) as object),
     ...(skipped.length ? { skippedWithoutPhone: skipped } : {}),
     ...(connected ? {} : { note: "WhatsApp isn't linked: the card shows the messages and a QR to link it. Say so in one line." }),
   };
@@ -934,10 +998,10 @@ function revalidateWhatsApp(payload: PendingPayload) {
   return rows.length > 0 && rows.length <= WHATSAPP_BATCH_MAX && rows.every((row) => /^[a-zA-Z0-9]{15}$/.test(row.leadId ?? "") && PHONE_DIGITS.test(row.phone ?? "") && Boolean(row.text) && row.text.length <= WHATSAPP_TEXT_MAX);
 }
 
-/** Idempotent: each message's ref comes from the signed card, so a replayed card comes back from the worker as duplicates. */
+/** Idempotent: one message per lead per signed card (text excluded, it can be edited on review), so a replay comes back as duplicates. */
 async function applyWhatsApp(userId: string, payload: PendingPayload): Promise<ConfirmedChange> {
   const items = (payload.rows ?? []).map((row) => ({
-    ref: createHash("sha256").update(`${userId}:${payload.iat}:${row.leadId}:${row.text}`).digest("hex").slice(0, 40),
+    ref: createHash("sha256").update(`${userId}:${payload.iat}:${row.leadId}`).digest("hex").slice(0, 40),
     leadId: row.leadId,
     phone: row.phone,
     text: row.text,

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
-import { FileSpreadsheet, FileText, LoaderCircle, Plus, RefreshCw, Unplug, X } from "lucide-react";
+import { LoaderCircle, Plus, RefreshCw, Unplug } from "lucide-react";
 import { SiGmail, SiGooglecalendar, SiGoogledrive } from "react-icons/si";
 import "./google-drive-connect.css";
 
@@ -37,7 +37,7 @@ function connectHrefFor(feature: GoogleFeatureName, returnTo: ReturnPath, locale
 const featureIcons = { drive: SiGoogledrive, gmail: SiGmail, calendar: SiGooglecalendar } as const;
 
 // Tipos mínimos de Google Picker (script oficial, cargado bajo demanda).
-type PickerDoc = { id: string };
+type PickerDoc = { id: string; name?: string; mimeType?: string; url?: string };
 type PickerData = { action: string; docs?: PickerDoc[] };
 type PickerBuilder = {
   addView(view: unknown): PickerBuilder; enableFeature(feature: unknown): PickerBuilder; setAppId(id: string): PickerBuilder;
@@ -73,36 +73,29 @@ function loadPicker(): Promise<GooglePicker> {
   return pickerScript;
 }
 
-const isSheet = (mime: string) => mime === "application/vnd.google-apps.spreadsheet" || mime === "text/csv";
-
 /**
- * Tarjeta de Google Drive: conectar, estado, Picker y archivos conectados. Reutilizable (página /integraciones y el "+" de Leadtita).
- * `returnTo`: adónde vuelve el OAuth (/leadtita o /integraciones). `onFilesChange`: avisa la lista vigente de archivos.
+ * Tarjeta de Google Drive: conectar, estado y Picker. Reutilizable (página /integraciones y el "+" de Leadtita).
+ * Los archivos elegidos NO se guardan en la cuenta: `onPicked` los recibe para adjuntarlos a un solo mensaje.
+ * Sin `onPicked` (Integraciones) no hay Picker: solo conexión y un aviso de que se adjuntan desde el chat.
  */
-export function GoogleDriveConnect({ returnTo = "/integraciones", onFilesChange, onPicked, compact = false }: { returnTo?: "/integraciones" | "/leadtita"; onFilesChange?: (files: ConnectedDriveFile[]) => void; onPicked?: (files: ConnectedDriveFile[]) => void; compact?: boolean }) {
+export function GoogleDriveConnect({ returnTo = "/integraciones", onPicked, compact = false }: { returnTo?: "/integraciones" | "/leadtita"; onPicked?: (files: ConnectedDriveFile[]) => void; compact?: boolean }) {
   const t = useTranslations("integrations");
   const locale = useLocale();
   const [status, setStatus] = useState<Status | null>(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState<"" | "picker" | "disconnect" | string>("");
   const [confirmDisconnect, setConfirmDisconnect] = useState(false);
-  const onFilesRef = useRef(onFilesChange);
   const onPickedRef = useRef(onPicked);
-  useEffect(() => { onFilesRef.current = onFilesChange; onPickedRef.current = onPicked; });
-
-  const apply = useCallback((next: Status) => {
-    setStatus(next);
-    onFilesRef.current?.(next.files);
-  }, []);
+  useEffect(() => { onPickedRef.current = onPicked; });
 
   const load = useCallback(async () => {
     setError("");
     try {
-      apply(await fetchGoogleStatus());
+      setStatus(await fetchGoogleStatus());
     } catch {
       setError(t("loadError"));
     }
-  }, [apply, t]);
+  }, [t]);
 
   // eslint-disable-next-line react-hooks/set-state-in-effect -- carga inicial del estado
   useEffect(() => { void load(); }, [load]);
@@ -135,7 +128,10 @@ export function GoogleDriveConnect({ returnTo = "/integraciones", onFilesChange,
         .setDeveloperKey(pickerKey)
         .setLocale(document.documentElement.lang || "es")
         .setCallback((data) => {
-          if (data.action === picker.Action.PICKED && data.docs?.length) void addPicked(data.docs.map((doc) => doc.id));
+          // Per-message attachments: nothing is stored on the account; the chat reads each file once.
+          if (data.action === picker.Action.PICKED && data.docs?.length) {
+            onPickedRef.current?.(data.docs.slice(0, 20).map((doc) => ({ id: doc.id, name: doc.name ?? doc.id, mimeType: doc.mimeType ?? "", url: doc.url ?? "" })));
+          }
         })
         .build()
         .setVisible(true);
@@ -146,36 +142,7 @@ export function GoogleDriveConnect({ returnTo = "/integraciones", onFilesChange,
     }
   }
 
-  async function addPicked(ids: string[]) {
-    setBusy("picker");
-    try {
-      const response = await fetch("/api/integrations/google/files", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ids: ids.slice(0, 20) }) });
-      const payload = await response.json().catch(() => ({})) as { files?: ConnectedDriveFile[]; rejected?: number };
-      if (!response.ok || !payload.files) throw new Error(String(response.status));
-      if (status) apply({ ...status, files: payload.files });
-      onPickedRef.current?.(payload.files.filter((file) => ids.includes(file.id)));
-      if (payload.rejected) setError(t("someRejected", { count: payload.rejected }));
-    } catch {
-      setError(t("addError"));
-    } finally {
-      setBusy("");
-    }
-  }
 
-  async function removeFile(file: ConnectedDriveFile) {
-    setBusy(file.id);
-    setError("");
-    try {
-      const response = await fetch(`/api/integrations/google/files/${encodeURIComponent(file.id)}`, { method: "DELETE" });
-      const payload = await response.json().catch(() => ({})) as { files?: ConnectedDriveFile[] };
-      if (!response.ok || !payload.files) throw new Error(String(response.status));
-      if (status) apply({ ...status, files: payload.files });
-    } catch {
-      setError(t("removeError"));
-    } finally {
-      setBusy("");
-    }
-  }
 
   async function disconnect() {
     setBusy("disconnect");
@@ -224,26 +191,14 @@ export function GoogleDriveConnect({ returnTo = "/integraciones", onFilesChange,
 
       {status?.configured && status.connected && (
         <>
-          <div className="gdrive-actions">
-            <button type="button" className="gdrive-primary" disabled={busy === "picker" || !pickerKey || !appId} onClick={() => void openPicker()}>
-              {busy === "picker" ? <LoaderCircle className="gdrive-spin" size={16} aria-hidden="true" /> : <Plus size={16} aria-hidden="true" />} {t("pickFiles")}
-            </button>
-            {(!pickerKey || !appId) && <p className="gdrive-hint">{t("pickerNotConfigured")}</p>}
-          </div>
-
-          {status.files.length ? (
-            <ul className="gdrive-files" aria-label={t("filesLabel")}>
-              {status.files.map((file) => (
-                <li key={file.id}>
-                  {isSheet(file.mimeType) ? <FileSpreadsheet size={16} aria-hidden="true" /> : <FileText size={16} aria-hidden="true" />}
-                  {file.url ? <a href={file.url} target="_blank" rel="noopener noreferrer">{file.name}</a> : <span>{file.name}</span>}
-                  <button type="button" className="gdrive-icon-button" disabled={busy === file.id} onClick={() => void removeFile(file)} aria-label={t("removeFile", { name: file.name })}>
-                    {busy === file.id ? <LoaderCircle className="gdrive-spin" size={14} aria-hidden="true" /> : <X size={14} aria-hidden="true" />}
-                  </button>
-                </li>
-              ))}
-            </ul>
-          ) : <p className="gdrive-state">{t("noFiles")}</p>}
+          {onPicked ? (
+            <div className="gdrive-actions">
+              <button type="button" className="gdrive-primary" disabled={busy === "picker" || !pickerKey || !appId} onClick={() => void openPicker()}>
+                {busy === "picker" ? <LoaderCircle className="gdrive-spin" size={16} aria-hidden="true" /> : <Plus size={16} aria-hidden="true" />} {t("pickFiles")}
+              </button>
+              {(!pickerKey || !appId) && <p className="gdrive-hint">{t("pickerNotConfigured")}</p>}
+            </div>
+          ) : <p className="gdrive-state">{t("attachFromChat")}</p>}
 
           {confirmDisconnect ? (
             <div className="gdrive-confirm" role="group" aria-label={t("disconnectTitle")}>
@@ -358,7 +313,7 @@ export function GoogleFeatureCard({ feature, returnTo = "/integraciones" }: { fe
       ) : (
         <>
           <p className="gdrive-hint">{t(`features.${feature}.hint`)}</p>
-          <button type="button" className="gdrive-link gdrive-disconnect" onClick={() => setConfirm(true)}><Unplug size={14} aria-hidden="true" /> {t("disconnect")}</button>
+          <button type="button" className="gdrive-link gdrive-disconnect" onClick={() => setConfirm(true)}><Unplug size={14} aria-hidden="true" /> {t(`features.${feature}.disconnect`)}</button>
         </>
       ))}
     </section>

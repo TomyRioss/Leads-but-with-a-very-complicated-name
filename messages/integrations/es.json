@@ -3,7 +3,7 @@
     "metaTitle": "Integraciones | Leadta",
     "title": "Integraciones",
     "lede": "Conectá tus herramientas para que Leadtita trabaje con tus propios datos.",
-    "description": "Elegí planillas, documentos, CSV o PDF de tu Drive y Leadtita los lee cuando se lo pidas.",
+    "description": "Adjuntá planillas, documentos, CSV o PDF de tu Drive a un mensaje y Leadtita los lee en ese momento.",
     "connectedAs": "Conectado como {email}",
     "connected": "Conectado",
     "loading": "Revisando tu conexión…",
@@ -16,12 +16,6 @@
     "pickFiles": "Elegir archivos",
     "pickerNotConfigured": "El selector de archivos todavía no está configurado.",
     "pickerError": "No pudimos abrir el selector de Google. Probá de nuevo.",
-    "filesLabel": "Archivos conectados",
-    "noFiles": "Todavía no elegiste archivos. Sumá una planilla o un documento para empezar.",
-    "removeFile": "Quitar {name}",
-    "removeError": "No pudimos quitar el archivo.",
-    "addError": "No pudimos agregar esos archivos.",
-    "someRejected": "{count, plural, one {# archivo no se pudo agregar} other {# archivos no se pudieron agregar}}: revisá que tengas acceso y que sea planilla, documento, CSV o PDF.",
     "disconnect": "Desconectar Google",
     "disconnectTitle": "Desconectar Google",
     "disconnectBody": "Se desconectan Drive, Gmail y Calendar juntos: Leadtita deja de usarlos y revocamos el acceso en Google. Podés volver a conectar cuando quieras.",
@@ -40,13 +34,15 @@
         "title": "Gmail",
         "connect": "Conectar Gmail",
         "description": "Leadtita envía desde tu cuenta los mails que vos confirmás.",
-        "hint": "Permiso solo para enviar: nunca leemos tu casilla."
+        "hint": "Permiso solo para enviar: nunca leemos tu casilla.",
+        "disconnect": "Desconectar Google (también Drive y Calendar)"
       },
       "calendar": {
         "title": "Google Calendar",
         "connect": "Conectar Calendar",
         "description": "Leadtita agenda reuniones con tus leads en tu calendario principal.",
-        "hint": "Permiso para crear y editar eventos; no leemos el resto de tu calendario."
+        "hint": "Permiso para crear y editar eventos; no leemos el resto de tu calendario.",
+        "disconnect": "Desconectar Google (también Drive y Gmail)"
       }
     },
     "whatsapp": {
@@ -67,13 +63,11 @@
       },
       "expired": "El código venció.",
       "newCode": "Generar otro código",
-      "sentTodayLabel": "Hoy",
-      "sentToday": "{sent}/{limit} enviados",
       "queuedLabel": "En cola",
       "queued": "{count, plural, one {# mensaje} other {# mensajes}}",
       "disconnect": "Desconectar",
       "disconnecting": "Desconectando…",
-      "risk": "Conexión no oficial: WhatsApp puede restringir números que mandan muchos mensajes a gente que no los tiene agendados. Leadtita espacia los envíos y pone un tope diario.",
+      "risk": "Conexión no oficial: WhatsApp puede restringir números que mandan muchos mensajes a gente que no los tiene agendados. Leadtita espacia los envíos y pone un tope de 100 por mes.",
       "states": {
         "disconnected": "WhatsApp sin vincular.",
         "connecting": "Preparando la vinculación…",
@@ -85,7 +79,23 @@
         "worker": "El servicio de WhatsApp no responde. Probá en un rato.",
         "connect": "No pudimos iniciar la vinculación. Probá de nuevo.",
         "disconnect": "No pudimos desconectar. Probá de nuevo."
-      }
-    }
+      },
+      "expiresIn": "El código vence en {time}",
+      "disconnectTitle": "Desconectar WhatsApp",
+      "disconnectBody": "Leadtita deja de enviar por WhatsApp y se cancelan los mensajes en cola. Para volver a usarlo vas a tener que escanear un código nuevo.",
+      "disconnectConfirm": "Sí, desconectar",
+      "cancel": "Cancelar",
+      "sentMonthLabel": "Este mes",
+      "sentMonth": "{sent}/{limit} enviados"
+    },
+    "setup": {
+      "title": "Conectá tus canales",
+      "lede": "Leadtita envía por WhatsApp y Gmail los mensajes que vos confirmás. Conectalos ahora y ya queda todo listo.",
+      "continue": "Continuar sin conectar",
+      "done": "Ir a Leadtita",
+      "never": "No volver a mostrar"
+    },
+    "dialogClose": "Cerrar",
+    "attachFromChat": "Los archivos de Drive se adjuntan a un mensaje desde el chat de Leadtita (+ → Google Drive). No se guardan en tu cuenta."
   }
 }

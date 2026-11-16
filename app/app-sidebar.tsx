@@ -2,12 +2,14 @@
 
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useLocale, useTranslations } from "next-intl";
-import { ChevronDown, Gift, Headset, History, LayoutDashboard, LogOut, Menu, MessageSquare, Plug, PanelLeftClose, PanelLeftOpen, Search, Sparkles, Stars, UserSearch, X } from "lucide-react";
+import { ChevronDown, Headset, History, LayoutDashboard, LogOut, Menu, MessageSquare, Plug, PanelLeftClose, PanelLeftOpen, Search, Sparkles, Stars, UserSearch, X } from "lucide-react";
 import { BrandLogo, BrandMark } from "@/app/brand-logo";
 import { LanguageSwitcher } from "@/app/language-switcher";
 import { FeedbackDialog } from "@/app/feedback-dialog";
+import { CreditsDialog } from "@/app/credits-dialog";
+import { IntegrationsDialog, OPEN_INTEGRATIONS_EVENT } from "@/app/integrations-dialog";
 import { OPEN_FEEDBACK_EVENT, type FeedbackPrefill } from "@/app/error-report";
-import { ReferralDialog } from "@/app/referral-dialog";
+import { WhatsNewDialog } from "@/app/whats-new-dialog";
 import { Link } from "@/i18n/navigation";
 import { Popover, usePopover } from "@/app/ui/popover";
 
@@ -16,6 +18,8 @@ type AppSidebarProps = {
   /** null while the session loads: renders a same-size skeleton for account and credits. */
   user: { email: string; credits: number } | null;
   onSignOut: () => void | Promise<void>;
+  /** false holds the WhatsApp + Gmail announcement (e.g. /buscar until it knows the user won't be redirected). */
+  announce?: boolean;
 };
 
 const COLLAPSED_KEY = "leadta.sideNavCollapsed";
@@ -44,20 +48,20 @@ function writeCollapsed(next: boolean) {
   collapseListeners.forEach((listener) => listener());
 }
 
-type EnvFlags = { devFeatures: string[]; devOnly: boolean };
-const PROD_FLAGS: EnvFlags = { devFeatures: [], devOnly: false };
+type EnvFlags = { devFeatures: string[] };
+const PROD_FLAGS: EnvFlags = { devFeatures: [] };
 // ponytail: one /api/status request per page load, shared by every sidebar mount.
 let envFlagsRequest: Promise<EnvFlags> | null = null;
 function loadEnvFlags() {
   envFlagsRequest ??= fetch("/api/status", { cache: "no-store" })
     .then((response) => response.json())
-    .then((status) => ({ devFeatures: Array.isArray(status.devFeatures) ? status.devFeatures : [], devOnly: status.devOnly === true }))
+    .then((status) => ({ devFeatures: Array.isArray(status.devFeatures) ? status.devFeatures : [] }))
     .catch(() => PROD_FLAGS);
   return envFlagsRequest;
 }
 
-/** Sidebar único de la app con sesión: colapsa en móvil, cierra con Escape o clic fuera. Incluye el diálogo de referidos. */
-export function AppSidebar({ active, user, onSignOut }: AppSidebarProps) {
+/** Sidebar único de la app con sesión: colapsa en móvil, cierra con Escape o clic fuera. */
+export function AppSidebar({ active, user, onSignOut, announce = true }: AppSidebarProps) {
   const t = useTranslations("UI");
   const s = useTranslations("Search");
   const locale = useLocale();
@@ -65,8 +69,15 @@ export function AppSidebar({ active, user, onSignOut }: AppSidebarProps) {
   // null on the server and during hydration: the boot marker drives CSS until React reads storage right after.
   const collapsed = useSyncExternalStore<boolean | null>(subscribeCollapsed, readCollapsed, () => null);
   const [renderBoot] = useState(() => !hydrated);
-  const [referralOpen, setReferralOpen] = useState(false);
   const [feedbackOpen, setFeedbackOpen] = useState(false);
+  const [creditsOpen, setCreditsOpen] = useState(false);
+  const [integrationsOpen, setIntegrationsOpen] = useState(false);
+  // The chat's "+" menu opens the same modal through this event.
+  useEffect(() => {
+    const onOpen = () => setIntegrationsOpen(true);
+    window.addEventListener(OPEN_INTEGRATIONS_EVENT, onOpen);
+    return () => window.removeEventListener(OPEN_INTEGRATIONS_EVENT, onOpen);
+  }, []);
   const [feedbackPrefill, setFeedbackPrefill] = useState<FeedbackPrefill | null>(null);
   const [envFlags, setEnvFlags] = useState<EnvFlags>(PROD_FLAGS);
 
@@ -173,16 +184,10 @@ export function AppSidebar({ active, user, onSignOut }: AppSidebarProps) {
                   <History className="menu-icon" size={18} strokeWidth={1.8} aria-hidden="true" />
                   <span>{t("t_302027905c")}</span>
                 </Link>
-                <Link role="menuitem" className="side-nav-item" href="/integraciones" aria-current={active === "integrations" ? "page" : undefined} onClick={close}>
+                <button type="button" role="menuitem" className="side-nav-item" aria-haspopup="dialog" aria-current={active === "integrations" ? "page" : undefined} onClick={() => { close(); setIntegrationsOpen(true); }}>
                   <Plug className="menu-icon" size={18} strokeWidth={1.8} aria-hidden="true" />
                   <span>{s("navIntegrations")}</span>
-                </Link>
-                {envFlags.devOnly && (
-                  <button role="menuitem" type="button" className="side-nav-item" aria-haspopup="dialog" onClick={() => { close(); setReferralOpen(true); }}>
-                    <Gift className="menu-icon" size={18} strokeWidth={1.8} aria-hidden="true" />
-                    <span>{s("recommendLeadta")}</span>
-                  </button>
-                )}
+                </button>
                 <a role="menuitem" className="side-nav-item" href={`https://wa.me/5491134083140?text=${encodeURIComponent(s("salesSupportMessage"))}`} target="_blank" rel="noopener noreferrer" onClick={close}>
                   <Headset className="menu-icon" size={18} strokeWidth={1.8} aria-hidden="true" />
                   <span>{s("salesSupport")}</span>
@@ -193,11 +198,11 @@ export function AppSidebar({ active, user, onSignOut }: AppSidebarProps) {
           <ul className="side-nav-list">
             <li>
               {user ? (
-              <Link className="side-nav-item side-nav-credits" href="/pricing" aria-label={s("creditsAria", { credits: user.credits })} title={s("creditsTitle")} onClick={close}>
+              <button type="button" className="side-nav-item side-nav-credits" aria-haspopup="dialog" aria-label={s("creditsAria", { credits: user.credits })} title={s("creditsTitle")} onClick={() => { close(); setCreditsOpen(true); }}>
                 <Stars className="menu-icon" size={18} strokeWidth={1.8} aria-hidden="true" />
                 <span className="side-nav-credits-value"><strong>{user.credits.toLocaleString(locale === "es" ? "es-AR" : "en-US")}</strong> {t("t_bcc0da40b3")}</span>
                 <span className="credits-add-sign" aria-hidden="true">+</span>
-              </Link>
+              </button>
               ) : <span className="side-nav-item side-nav-credits side-nav-skeleton" aria-hidden="true" />}
             </li>
             <li>
@@ -242,8 +247,11 @@ export function AppSidebar({ active, user, onSignOut }: AppSidebarProps) {
           </div>
         </div>
       </nav>
-      <ReferralDialog open={referralOpen} onClose={() => setReferralOpen(false)} />
       <FeedbackDialog open={feedbackOpen} prefill={feedbackPrefill} onClose={() => setFeedbackOpen(false)} />
+      <CreditsDialog open={creditsOpen} onClose={() => setCreditsOpen(false)} />
+      <IntegrationsDialog open={integrationsOpen} onClose={() => setIntegrationsOpen(false)} returnTo={active === "leadtita" ? "/leadtita" : "/integraciones"} />
+      {/* Not on /leadtita: the CTA points there and new users get the Leadtita tour on that page. */}
+      <WhatsNewDialog email={!announce || active === "leadtita" ? null : user?.email ?? null} />
     </>
   );
 }

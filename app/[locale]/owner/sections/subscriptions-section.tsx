@@ -4,10 +4,11 @@ import { useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import {
   confirmBox, dangerButton, errorBox, ghostButton, isUnauthorized, mutedText, type OnAction,
-  okBox, ownerFetch, primaryButton, rightCell, smallButton, stateBox, statusPill, tableClass, tableWrap, tdClass,
-  theadClass, thClass, trClass, useFocusTrap, useOwnerFormat, useOwnerList,
+  okBox, ownerFetch, primaryButton, rightCell, smallButton, sortTheadClass, stateBox, statusPill, tableClass, tableWrap, tdClass,
+  thClass, trClass, useFocusTrap, useOwnerFormat, useOwnerList,
 } from "../ui";
 import { ListToolbar, Pager } from "./list-controls";
+import { SortableTh } from "./sortable-th";
 
 type Subscription = {
   id: string;
@@ -30,8 +31,9 @@ export default function SubscriptionsSection({ onUnauthorized, onAction }: { onU
   const common = useTranslations("Owner.common");
   const { formatArs, formatDate, formatNumber, planName, statusLabel, errorText } = useOwnerFormat();
   const statusOptions = statusValues.map((value) => ({ value, label: statusLabel(value) }));
-  const list = useOwnerList<Subscription>("/api/owner/subscriptions", t("loadError"), onUnauthorized);
+  const list = useOwnerList<Subscription>("/api/owner/subscriptions", t("loadError"), onUnauthorized, "status", "-created");
   const { data, loading, error, reload } = list;
+  const sorting = { sort: list.sort, onSort: list.setSort };
   const [pending, setPending] = useState<Pending | null>(null);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<{ kind: "ok" | "error"; text: string } | null>(null);
@@ -92,14 +94,14 @@ export default function SubscriptionsSection({ onUnauthorized, onAction }: { onU
       )}
       <div className={`${tableWrap}${loading ? " opacity-60 transition-opacity" : ""}`} aria-busy={loading}>
         <table className={tableClass}>
-          <thead className={theadClass}>
+          <thead className={sortTheadClass}>
             <tr>
-              <th className={thClass} scope="col">{common("created")}</th>
+              <SortableTh {...sorting} column="created" kind="date" label={common("created")} />
               <th className={thClass} scope="col">{common("user")}</th>
-              <th className={thClass} scope="col">{common("plan")}</th>
-              <th className={thClass} scope="col">{common("status")}</th>
-              <th className={`${thClass} ${rightCell}`} scope="col">{t("price")}</th>
-              <th className={`${thClass} ${rightCell}`} scope="col">{t("monthlyCredits")}</th>
+              <SortableTh {...sorting} column="plan" label={common("plan")} />
+              <SortableTh {...sorting} column="status" label={common("status")} />
+              <SortableTh {...sorting} column="price" kind="number" label={t("price")} />
+              <SortableTh {...sorting} column="monthlyCredits" kind="number" label={t("monthlyCredits")} />
               <th className={thClass} scope="col">{common("actions")}</th>
             </tr>
           </thead>

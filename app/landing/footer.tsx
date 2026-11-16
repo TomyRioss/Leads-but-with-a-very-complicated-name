@@ -12,8 +12,8 @@ export async function LandingFooter() {
         <nav className="lp-footer-links" aria-label={t("aria")}>
           <Link href="/pricing">{t("plans")}</Link>
           <Link href="/blog">{t("blog")}</Link>
-          <Link href="/buscar">{t("login")}</Link>
-          <Link href="/buscar?signup=1">{t("signup")}</Link>
+          <Link href="/login">{t("login")}</Link>
+          <Link href="/register">{t("signup")}</Link>
           <Link href="/terminos">{legal("terms")}</Link>
           <Link href="/privacidad">{legal("privacy")}</Link>
         </nav>

@@ -2,9 +2,11 @@ import { NextResponse } from "next/server";
 import { getCurrentUser, withRefreshedSession } from "@/lib/server/auth";
 import { getCommercialProfile } from "@/lib/server/user-profile";
 import { CreditOperationBusyError, CREDITS_PER_PAIN_ANALYSIS, InsufficientCreditsError, reserveCreditAmount } from "@/lib/server/credits";
+import { featurePricing } from "@/lib/server/campaigns";
 import { freeLimit, reserveFreeUsage, type FreeUsageReservation } from "@/lib/server/usage-limits";
 import { isPocketBaseConfigured, pocketBaseFetch } from "@/lib/server/pocketbase";
 import { recordAiUsage } from "@/lib/server/ai-usage";
+import { aiRequestLimit } from "@/lib/server/ai-daily-limit";
 import { uiError } from "@/lib/server/public-error";
 import { isDevOnlyEnabled } from "@/lib/env-features";
 import { getSocialProfileUrl, type AnalysisDetail, type AnalysisEvidence, type Lead, type LeadReview, type SocialNetwork } from "@/lib/types";
@@ -620,6 +622,9 @@ export async function POST(request: Request) {
   if (!session) return NextResponse.json({ error: t("signInToAnalyze") }, { status: 401 });
   if (!isPocketBaseConfigured()) return NextResponse.json({ error: uiError(t("pocketbaseNotConfigured"), t("generic")) }, { status: 503 });
   if (!process.env.OPENROUTER_API_KEY) return NextResponse.json({ error: uiError(t("openRouterKeyMissing"), t("generic")) }, { status: 503 });
+  // Per-minute cap only: free accounts already have lifetime analysis caps, and Leadtita runs analyses inside a chat turn.
+  const limited = await aiRequestLimit(session.user, t, { daily: false });
+  if (limited) return limited;
 
   let body: { batchId?: unknown; action?: unknown; leadId?: unknown; socialNetworks?: unknown; focus?: unknown };
   try {
@@ -645,6 +650,7 @@ export async function POST(request: Request) {
   }
 
   let creditReservation: Awaited<ReturnType<typeof reserveCreditAmount>> | null = null;
+  let painCost = (units: number) => units * CREDITS_PER_PAIN_ANALYSIS;
   let usageReservation: FreeUsageReservation | null = null;
   const completedPainAnalyses = new Set<string>();
   const completedEnrichments = new Set<string>();
@@ -701,7 +707,9 @@ export async function POST(request: Request) {
       ? analysisTargets.filter((lead) => (sourcesByLead.get(lead.id)?.length ?? 0) > 0)
       : [];
     if (painTargets.length > 0 && CREDITS_PER_PAIN_ANALYSIS > 0) {
-      creditReservation = await reserveCreditAmount(session.user.id, painTargets.length * CREDITS_PER_PAIN_ANALYSIS);
+      // Campaign discount read once: the same rate reserves and charges.
+      painCost = (await featurePricing("pain_analysis", CREDITS_PER_PAIN_ANALYSIS)).cost;
+      creditReservation = await reserveCreditAmount(session.user.id, painCost(painTargets.length));
     }
     const updated = new Map<string, Lead>();
     const failures: { id: string; message: string }[] = [];
@@ -851,7 +859,7 @@ export async function POST(request: Request) {
     await usageReservation?.settle(completedCount()).catch(() => undefined);
     let credits: number | undefined;
     if (creditReservation) {
-      credits = await creditReservation.settle(completedPainAnalyses.size * CREDITS_PER_PAIN_ANALYSIS);
+      credits = await creditReservation.settle(painCost(completedPainAnalyses.size));
       await creditReservation.release().catch(() => undefined);
       creditReservation = null;
     }
@@ -879,7 +887,7 @@ export async function POST(request: Request) {
       creditReservation = null;
     }
     if (error instanceof InsufficientCreditsError) {
-      return withRefreshedSession(NextResponse.json({ error: t("insufficientCredits", { required: error.required, available: error.available }), credits: error.available }, { status: 402 }), session.token);
+      return withRefreshedSession(NextResponse.json({ error: t("insufficientCredits", { required: error.required, available: error.available }), credits: error.available, required: error.required }, { status: 402 }), session.token);
     }
     if (error instanceof CreditOperationBusyError) {
       return withRefreshedSession(NextResponse.json({ error: t("creditBusy"), credits }, { status: 409 }), session.token);

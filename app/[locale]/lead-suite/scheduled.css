@@ -1,0 +1,92 @@
+/* "Programados": selector Enviar ahora / Programar en tarjetas, botón bajo los contadores y modal de gestión. */
+
+/* Los contadores pasan a dos filas: medidores arriba, "Programados" abajo; el log deja lugar para ambas. */
+.ls-chat__quotas { flex-wrap: wrap; row-gap: 8px; }
+.ls-chat.has-quotas .ls-chat__log { padding-top: 96px; }
+.leadtita-main .ls-chat.has-quotas .ls-chat__log { padding-top: 96px; }
+
+.ls-scheduled-button { display: inline-flex; min-height: 28px; flex-basis: auto; align-items: center; gap: 6px; padding: 0 10px; border: 1px solid var(--line); border-radius: 999px; background: var(--paper); color: var(--ash-800); font: inherit; font-size: 12px; font-weight: 650; cursor: pointer; }
+.ls-scheduled-row { display: flex; flex-basis: 100%; } /* own row under the meters */
+.ls-scheduled-button:hover { border-color: var(--ash-300); background: var(--ash-50); color: var(--ink); }
+.ls-scheduled-button:focus-visible { outline: 2px solid var(--ash-950); outline-offset: 2px; }
+.ls-scheduled-button__count { min-width: 18px; padding: 0 5px; border-radius: 999px; background: var(--lime); color: var(--ash-950); font-size: 11px; font-weight: 700; line-height: 18px; text-align: center; font-variant-numeric: tabular-nums; }
+.ls-scheduled-button__failed { color: var(--ink); font-size: 11px; font-weight: 650; text-decoration: underline; text-decoration-color: var(--ash-400); text-underline-offset: 2px; }
+
+/* Selector en la tarjeta */
+.ls-schedule { display: grid; gap: 8px; }
+.ls-schedule__modes { display: inline-flex; width: fit-content; padding: 3px; border: 1px solid var(--line); border-radius: 10px; background: var(--ash-50); }
+.ls-schedule__modes button { display: inline-flex; min-height: 32px; align-items: center; gap: 6px; padding: 0 12px; border: 0; border-radius: 8px; background: transparent; color: var(--ash-700); font: inherit; font-size: 12.5px; font-weight: 650; cursor: pointer; }
+.ls-schedule__modes button[aria-pressed="true"] { background: var(--paper); color: var(--ink); box-shadow: 0 1px 2px color-mix(in srgb, var(--ash-950) 12%, transparent); }
+.ls-schedule__modes button:disabled { cursor: not-allowed; opacity: 0.55; }
+.ls-schedule__when { display: grid; gap: 4px; }
+.ls-schedule__when label { color: var(--muted); font-size: 12px; font-weight: 650; }
+.ls-schedule__when input { width: fit-content; max-width: 100%; min-height: 38px; padding: 0 10px; border: 1px solid var(--ash-300); border-radius: 8px; background: var(--paper); color: var(--ink); font: inherit; font-size: 13px; }
+.ls-schedule__when input[aria-invalid="true"] { border-color: var(--ash-950); }
+.ls-schedule__error { margin: 0; color: var(--ink); font-size: 12.5px; font-weight: 600; }
+.ls-schedule :is(button, input):focus-visible { outline: 2px solid var(--ash-950); outline-offset: 2px; }
+
+/* Modal */
+.ls-scheduled-dialog { width: min(620px, calc(100vw - 32px)); }
+.ls-scheduled__section { margin: 4px 0 8px; color: var(--ash-700); font-size: 12px; font-weight: 700; letter-spacing: 0.03em; text-transform: uppercase; }
+.ls-scheduled__list { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.ls-scheduled__item { display: grid; gap: 6px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--paper); }
+.ls-scheduled__item.is-failed { border-color: var(--ash-950); }
+.ls-scheduled__item:is(.is-sent, .is-cancelled) { background: var(--ash-50); }
+.ls-scheduled__item.is-cancelled :is(.ls-scheduled__who, .ls-scheduled__preview) { opacity: 0.6; }
+.ls-scheduled__head { display: flex; align-items: center; gap: 10px; }
+.ls-scheduled__channel { display: inline-grid; width: 28px; height: 28px; flex: none; place-items: center; border-radius: 8px; background: var(--ash-100); }
+.ls-scheduled__channel.is-whatsapp { color: var(--whatsapp, #25d366); }
+.ls-scheduled__channel.is-email { color: #ea4335; }
+.ls-scheduled__who { display: grid; min-width: 0; flex: 1; }
+.ls-scheduled__who strong { overflow: hidden; font-size: 13.5px; font-weight: 650; text-overflow: ellipsis; white-space: nowrap; }
+.ls-scheduled__who span { overflow: hidden; color: var(--muted); font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+.ls-scheduled__status { flex: none; padding: 2px 9px; border-radius: 999px; background: var(--ash-150); color: var(--ash-800); font-size: 11px; font-weight: 700; }
+.is-scheduled .ls-scheduled__status { background: var(--lime); color: var(--ash-950); }
+.is-failed .ls-scheduled__status { background: var(--ash-950); color: var(--paper); }
+.ls-scheduled__when { margin: 0; color: var(--ash-800); font-size: 12.5px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.ls-scheduled__preview { display: -webkit-box; margin: 0; overflow: hidden; color: var(--ash-800); font-size: 12.5px; line-height: 1.45; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow-wrap: anywhere; white-space: pre-line; }
+.ls-scheduled__form { display: grid; gap: 8px; }
+.ls-scheduled__form label { display: grid; gap: 4px; }
+.ls-scheduled__form label span { color: var(--muted); font-size: 12px; font-weight: 650; }
+.ls-scheduled__form :is(input, textarea) { width: 100%; padding: 8px 10px; border: 1px solid var(--ash-300); border-radius: 8px; background: var(--paper); color: var(--ink); font: inherit; font-size: 13px; line-height: 1.5; }
+.ls-scheduled__form input[type="datetime-local"] { width: fit-content; max-width: 100%; }
+.ls-scheduled__form textarea { resize: vertical; }
+.ls-scheduled__actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.ls-scheduled__primary, .ls-scheduled__secondary, .ls-scheduled__danger { display: inline-flex; min-height: 36px; align-items: center; gap: 6px; padding: 0 12px; border: 1px solid var(--ash-300); border-radius: 9px; background: var(--paper); color: var(--ink); font: inherit; font-size: 12.5px; font-weight: 650; cursor: pointer; }
+.ls-scheduled__primary { border-color: var(--lime); background: var(--lime); color: var(--ash-950); }
+.ls-scheduled__primary:hover:not(:disabled) { border-color: var(--lime-dark); background: var(--lime-dark); }
+.ls-scheduled__danger { border-color: var(--ash-950); background: var(--ash-950); color: var(--paper); }
+.ls-scheduled__secondary:hover:not(:disabled) { background: var(--ash-50); }
+.ls-scheduled__link { display: inline-flex; min-height: 36px; align-items: center; gap: 5px; padding: 0 4px; border: 0; background: transparent; color: var(--ash-700); font: inherit; font-size: 12.5px; font-weight: 600; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+.ls-scheduled__link:hover { color: var(--ink); }
+:is(.ls-scheduled__primary, .ls-scheduled__secondary, .ls-scheduled__danger):disabled { cursor: not-allowed; opacity: 0.55; }
+.ls-scheduled__confirm { display: grid; gap: 8px; padding: 10px 12px; border: 1px solid var(--ash-950); border-radius: 10px; }
+.ls-scheduled__confirm p { margin: 0; font-size: 12.5px; }
+.ls-scheduled__error { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 0; color: var(--ink); font-size: 12.5px; font-weight: 600; }
+.ls-scheduled__state { display: flex; align-items: center; gap: 8px; margin: 0; color: var(--muted); font-size: 13px; line-height: 1.45; }
+.ls-scheduled-dialog :is(button, input, textarea):focus-visible { outline: 2px solid var(--ash-950); outline-offset: 2px; }
+@media (max-width: 640px) {
+  .ls-scheduled-button { min-height: 26px; padding: 0 8px; }
+}
+
+/* Nuevo programado (manual) */
+.ls-scheduled__quota { margin: -4px 0 0; color: var(--ash-800); font-size: 12.5px; font-weight: 600; }
+.ls-scheduled__new { width: fit-content; }
+.ls-scheduled__new-form { padding: 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--ash-50); }
+.ls-scheduled__new-form .ls-scheduled__section { margin: 0; }
+.ls-scheduled__new-form .ls-schedule__modes svg { flex: none; }
+.ls-scheduled__lead { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--paper); }
+.ls-scheduled__lead span { display: grid; min-width: 0; color: var(--muted); font-size: 12px; }
+.ls-scheduled__lead strong { color: var(--ink); font-size: 13.5px; font-weight: 650; }
+.ls-scheduled__search { display: grid; gap: 6px; }
+.ls-scheduled__search-input { display: flex; align-items: center; gap: 8px; padding: 0 10px; border: 1px solid var(--ash-300); border-radius: 8px; background: var(--paper); }
+.ls-scheduled__search-input svg { flex: none; color: var(--ash-600); }
+.ls-scheduled__form .ls-scheduled__search-input input { min-height: 38px; padding: 0; border: 0; background: transparent; }
+.ls-scheduled__search-input:focus-within { outline: 2px solid var(--ash-950); outline-offset: 2px; }
+.ls-scheduled-dialog .ls-scheduled__search-input input:focus-visible { outline: none; }
+.ls-scheduled__results { display: grid; gap: 4px; margin: 0; padding: 0; list-style: none; }
+.ls-scheduled__results button { display: grid; width: 100%; min-height: 44px; padding: 6px 10px; border: 1px solid var(--line); border-radius: 9px; background: var(--paper); color: var(--ink); font: inherit; text-align: left; cursor: pointer; }
+.ls-scheduled__results button:hover { border-color: var(--ash-300); background: var(--ash-100); }
+.ls-scheduled__results strong { font-size: 13px; font-weight: 650; }
+.ls-scheduled__results span { color: var(--muted); font-size: 12px; }
+.ls-scheduled__hint { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.45; }

@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
-import { CREDITS_PER_PERSON, type PeopleSearchResponse } from "@/lib/people";
+import { CREDITS_PER_PERSON, type PeopleSearchResponse, parseCardKey } from "@/lib/people";
 import { getCurrentUser, withRefreshedSession } from "@/lib/server/auth";
+import { aiRequestLimit } from "@/lib/server/ai-daily-limit";
+import { featurePricing } from "@/lib/server/campaigns";
 import { CreditOperationBusyError, InsufficientCreditsError, reserveCreditAmount, settleCredits } from "@/lib/server/credits";
 import { errorTranslator, resolveLocale } from "@/lib/server/locale";
 import { PeopleSearchAbortedError, runPeopleSearch } from "@/lib/server/people/search";
@@ -23,6 +25,8 @@ export async function POST(request: Request) {
   }
   if (!session) return NextResponse.json({ error: t("signInToSearch") }, { status: 401 });
   if (!isPocketBaseConfigured()) return NextResponse.json({ error: uiError(t("pocketbaseNotConfigured"), t("generic")) }, { status: 503 });
+  const limited = await aiRequestLimit(session.user, t);
+  if (limited) return limited;
 
   let body: unknown;
   try {
@@ -30,16 +34,19 @@ export async function POST(request: Request) {
   } catch {
     return NextResponse.json({ error: t("invalidRequestBody") }, { status: 400 });
   }
-  const parsed = parsePeopleRequest(body, resolveLocale(request), t, true);
-  if (parsed instanceof NextResponse) return parsed;
+  const parsedRequest = parsePeopleRequest(body, resolveLocale(request), t, true);
+  if (parsedRequest instanceof NextResponse) return parsedRequest;
+  const parsed = { ...parsedRequest, cardKey: parseCardKey((body as { cardKey?: unknown } | null)?.cardKey) };
 
-  const reserved = parsed.count * CREDITS_PER_PERSON;
+  // Campaign discount read once: the same rate reserves and charges.
+  const { cost } = await featurePricing("people_search", CREDITS_PER_PERSON);
+  const reserved = cost(parsed.count);
   let reservation: Awaited<ReturnType<typeof reserveCreditAmount>> | null = null;
   try {
     reservation = await reserveCreditAmount(session.user.id, reserved);
     const result = await runPeopleSearch(session.user.id, parsed, request.signal);
-    // Charge only people delivered with contact (4 each); the rest of the reservation goes back.
-    const { charged, refund } = settleCredits(reserved, result.leads.length * CREDITS_PER_PERSON);
+    // Charge only people delivered with contact; the rest of the reservation goes back.
+    const { charged, refund } = settleCredits(reserved, cost(result.leads.length));
     const credits = await reservation.settle(charged);
     const response: PeopleSearchResponse & { credits: number; failedSources: string[] } = {
       batchId: result.batchId,
@@ -55,7 +62,7 @@ export async function POST(request: Request) {
   } catch (error) {
     // Nothing delivered: release() below refunds the whole reservation exactly once.
     if (error instanceof InsufficientCreditsError) {
-      return NextResponse.json({ error: t("insufficientCredits", { required: error.required, available: error.available }), credits: error.available }, { status: 402 });
+      return NextResponse.json({ error: t("insufficientCredits", { required: error.required, available: error.available }), credits: error.available, required: error.required }, { status: 402 });
     }
     if (error instanceof CreditOperationBusyError) return NextResponse.json({ error: t("creditBusy") }, { status: 409 });
     const sensitive = sensitiveSegmentResponse(error, t);

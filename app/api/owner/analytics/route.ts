@@ -157,14 +157,13 @@ export async function GET(request: Request) {
   const since = `"${pocketBaseDate(new Date(Date.now() - days * dayMs))}"`;
   try {
     // Independent sources in parallel; PostHog failures never fail the response.
-    const [traffic, ai, batches, contacts, reports, googleConnections, referrals, newUsers] = await Promise.all([
+    const [traffic, ai, batches, contacts, reports, googleConnections, newUsers] = await Promise.all([
       loadTraffic(days),
       loadAi(days, since),
       listAllRecords<BatchRow>("lead_batches", { filter: `created_at >= ${since}`, fields: "kind,result_count" }),
       optionalCount("lead_contacts", `created >= ${since}`),
       optionalCount("lead_suite_reports", `created >= ${since}`),
       optionalCount("google_connections", `created >= ${since}`),
-      optionalCount("referrals", `created >= ${since}`),
       countRecords("users", `created >= ${since}`),
     ]);
 
@@ -179,7 +178,7 @@ export async function GET(request: Request) {
     }
 
     const features: Feature[] = [business, people, { id: "signups", count: newUsers }];
-    const optional: [string, number | null][] = [["lead_contacts", contacts], ["weekly_reports", reports], ["google_connections", googleConnections], ["referrals", referrals]];
+    const optional: [string, number | null][] = [["lead_contacts", contacts], ["weekly_reports", reports], ["google_connections", googleConnections]];
     for (const [id, count] of optional) if (count !== null) features.push({ id, count });
     if (ai.available) for (const row of ai.byFeature) features.push({ id: `ai.${row.feature}`, count: row.calls, usd: row.usd });
     features.sort((a, b) => b.count - a.count || a.id.localeCompare(b.id));

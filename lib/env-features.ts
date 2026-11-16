@@ -26,11 +26,10 @@ export function enabledDevFeatures(): DevFeature[] {
 /**
  * Dev only: herramientas de desarrollo que nunca salen a producción.
  * - small_batches: lotes de 1–2 resultados.
- * - referrals: "Recomendar Leadta" en el menú de cuenta.
  * - analysis_diagnostics: panel de diagnóstico + limitaciones del análisis.
  * - technical_errors: detalle técnico en mensajes de error.
  */
-export const DEV_ONLY = ["small_batches", "referrals", "analysis_diagnostics", "technical_errors"] as const;
+export const DEV_ONLY = ["small_batches", "analysis_diagnostics", "technical_errors"] as const;
 export type DevOnly = (typeof DEV_ONLY)[number];
 
 // ponytail: todas las dev only comparten el mismo gate; el nombre documenta el uso.

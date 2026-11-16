@@ -5,10 +5,11 @@ import { Trash2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import {
   confirmBox, dangerButton, errorBox, ghostButton, mutedText, okBox, ownerFetch, rightCell,
-  smallButton, stateBox, statusPill, tableClass, tableWrap, tdClass, theadClass, thClass, trClass,
+  smallButton, sortTheadClass, stateBox, statusPill, tableClass, tableWrap, tdClass, thClass, trClass,
   isUnauthorized, useFocusTrap, useOwnerFormat, useOwnerList, type OnAction,
 } from "../ui";
 import { ListToolbar, Pager } from "./list-controls";
+import { SortableTh } from "./sortable-th";
 
 type Batch = {
   id: string;
@@ -32,8 +33,9 @@ export default function SearchesSection({ onUnauthorized, onAction }: { onUnauth
   const common = useTranslations("Owner.common");
   const { formatDate, formatNumber, statusLabel, errorText } = useOwnerFormat();
   const statusOptions = statusValues.map((value) => ({ value, label: statusLabel(value) }));
-  const list = useOwnerList<Batch>("/api/owner/batches", t("loadError"), onUnauthorized);
+  const list = useOwnerList<Batch>("/api/owner/batches", t("loadError"), onUnauthorized, "status", "-createdAt");
   const { data, loading, error, reload } = list;
+  const sorting = { sort: list.sort, onSort: list.setSort };
   const [target, setTarget] = useState<Batch | null>(null);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<{ kind: "ok" | "error"; text: string } | null>(null);
@@ -82,14 +84,14 @@ export default function SearchesSection({ onUnauthorized, onAction }: { onUnauth
       )}
       <div className={`${tableWrap}${loading ? " opacity-60 transition-opacity" : ""}`} aria-busy={loading}>
         <table className={tableClass}>
-          <thead className={theadClass}>
+          <thead className={sortTheadClass}>
             <tr>
-              <th className={thClass} scope="col">{common("date")}</th>
+              <SortableTh {...sorting} column="createdAt" kind="date" label={common("date")} />
               <th className={thClass} scope="col">{common("user")}</th>
               <th className={thClass} scope="col">{t("industry")}</th>
-              <th className={thClass} scope="col">{t("area")}</th>
-              <th className={`${thClass} ${rightCell}`} scope="col">{t("requestedResults")}</th>
-              <th className={thClass} scope="col">{common("status")}</th>
+              <SortableTh {...sorting} column="area" label={t("area")} />
+              <SortableTh {...sorting} column="requested" kind="number" label={t("requestedResults")} />
+              <SortableTh {...sorting} column="status" label={common("status")} />
               <th className={thClass} scope="col"><span className="sr-only">{common("actions")}</span></th>
             </tr>
           </thead>

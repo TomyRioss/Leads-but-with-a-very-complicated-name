@@ -92,7 +92,7 @@ export async function isConversationInactive(userId: string, clientId: string): 
 
 /** Insert or replace by (user, client_id). One retry covers two tabs creating the same conversation at once. */
 export async function upsertConversation(userId: string, conversation: StoredServerConversation): Promise<boolean> {
-  const body = JSON.stringify({
+  const fields = {
     user: userId,
     client_id: conversation.id,
     title: conversation.title,
@@ -100,12 +100,15 @@ export async function upsertConversation(userId: string, conversation: StoredSer
     extra: conversation.extra ?? {},
     message_count: conversation.messages.length,
     last_message_at: pbDate(conversation.updatedAt),
-  });
+  };
+  const body = JSON.stringify(fields);
+  const createBody = JSON.stringify({ ...fields, is_active: true });
   for (let attempt = 0; ; attempt++) {
     const existing = await findRow(userId, conversation.id, "id,is_active");
     if (existing?.is_active === false) return false;
     try {
-      await pocketBaseFetch(existing ? recordPath(existing.id) : records, { method: existing ? "PATCH" : "POST", body });
+      // is_active is a required bool in PocketBase (required bool = must be true): a create without it fails validation.
+      await pocketBaseFetch(existing ? recordPath(existing.id) : records, { method: existing ? "PATCH" : "POST", body: existing ? body : createBody });
       return true;
     } catch (error) {
       // Unique (user, client_id) violation: the row appeared between find and create; retry as an update.

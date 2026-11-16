@@ -8,7 +8,7 @@ import "./google-drive-connect.css";
 import "./whatsapp-connect.css";
 
 type WaState = "disconnected" | "connecting" | "qr" | "connected";
-type Status = { configured: boolean; status: WaState; qrDataUrl: string | null; phone: string | null; sentToday: number; dailyLimit: number; queued: number };
+type Status = { configured: boolean; status: WaState; qrDataUrl: string | null; phone: string | null; sentThisMonth: number; monthlyLimit: number; queued: number };
 type ErrorKind = "" | "load" | "worker" | "connect" | "disconnect";
 
 const BASE = "/api/integrations/whatsapp";
@@ -38,6 +38,8 @@ export function WhatsAppConnectCard({ compact = false }: { compact?: boolean }) 
   const [error, setError] = useState<ErrorKind>("");
   const [busy, setBusy] = useState<"" | "connect" | "disconnect">("");
   const [expired, setExpired] = useState(false);
+  const [confirmDisconnect, setConfirmDisconnect] = useState(false);
+  const [remainingMs, setRemainingMs] = useState(POLL_MAX_MS);
   const inFlight = useRef<AbortController | null>(null);
   const mounted = useRef(true);
   const pollStart = useRef(0);
@@ -115,6 +117,14 @@ export function WhatsAppConnectCard({ compact = false }: { compact?: boolean }) 
       document.removeEventListener("visibilitychange", onVisibility);
     };
   }, [polling, load]);
+  // Visible countdown until polling gives up and the code is shown as expired.
+  useEffect(() => {
+    if (!polling) return;
+    const tick = () => setRemainingMs(Math.max(0, POLL_MAX_MS - (Date.now() - (pollStart.current || Date.now()))));
+    tick();
+    const timer = window.setInterval(tick, 1000);
+    return () => window.clearInterval(timer);
+  }, [polling]);
 
   async function connect() {
     restoreFocusAfterConnect.current = true;
@@ -138,6 +148,7 @@ export function WhatsAppConnectCard({ compact = false }: { compact?: boolean }) 
     try {
       const result = await call<{ status: WaState }>("disconnect", "POST");
       if (!result) return;
+      setConfirmDisconnect(false);
       setStatus((current) => (current ? { ...current, status: "disconnected", qrDataUrl: null, phone: null } : current));
       window.dispatchEvent(new Event(STATUS_EVENT));
     } catch (cause) {
@@ -213,18 +224,31 @@ export function WhatsAppConnectCard({ compact = false }: { compact?: boolean }) 
             <li>{t("steps.link")}</li>
             <li>{t("steps.scan")}</li>
           </ol>
+          {state === "qr" && status?.qrDataUrl && (
+            <p className="wa-expiry">{t("expiresIn", { time: `${Math.floor(remainingMs / 60_000)}:${String(Math.floor(remainingMs / 1000) % 60).padStart(2, "0")}` })}</p>
+          )}
         </div>
       ))}
 
       {state === "connected" && status && (
         <>
           <dl className="wa-stats">
-            <div><dt>{t("sentTodayLabel")}</dt><dd>{t("sentToday", { sent: status.sentToday, limit: status.dailyLimit })}</dd></div>
+            <div><dt>{t("sentMonthLabel")}</dt><dd>{t("sentMonth", { sent: status.sentThisMonth, limit: status.monthlyLimit })}</dd></div>
             <div><dt>{t("queuedLabel")}</dt><dd>{t("queued", { count: status.queued })}</dd></div>
           </dl>
-          <button type="button" className="gdrive-link gdrive-disconnect" disabled={busy !== ""} onClick={() => void disconnect()}>
-            {busy === "disconnect" ? <LoaderCircle className="gdrive-spin" size={14} aria-hidden="true" /> : <Unplug size={14} aria-hidden="true" />} {busy === "disconnect" ? t("disconnecting") : t("disconnect")}
-          </button>
+          {confirmDisconnect ? (
+            <div className="gdrive-confirm" role="group" aria-label={t("disconnectTitle")}>
+              <p>{t("disconnectBody")}</p>
+              <div>
+                <button type="button" className="gdrive-danger" disabled={busy !== ""} onClick={() => void disconnect()}>{busy === "disconnect" ? t("disconnecting") : t("disconnectConfirm")}</button>
+                <button type="button" className="gdrive-secondary" disabled={busy !== ""} onClick={() => setConfirmDisconnect(false)}>{t("cancel")}</button>
+              </div>
+            </div>
+          ) : (
+            <button type="button" className="gdrive-link gdrive-disconnect" disabled={busy !== ""} onClick={() => setConfirmDisconnect(true)}>
+              <Unplug size={14} aria-hidden="true" /> {t("disconnect")}
+            </button>
+          )}
         </>
       )}
 

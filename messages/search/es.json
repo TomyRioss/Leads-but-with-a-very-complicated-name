@@ -6,8 +6,6 @@
     "accountMenu": "Menú de cuenta",
     "salesSupport": "Soporte de ventas",
     "salesSupportMessage": "Hola, necesito ayuda con ventas en Leadta.",
-    "recommendLeadta": "Recomendá Leadta",
-    "recommendMessage": "Te recomiendo Leadta para encontrar negocios locales.",
     "keywordsPlaceholder": "Ej.: estudios contables\ninmobiliarias",
     "keywordCount": "{count, plural, one {# keyword} other {# keywords}}",
     "countryAria": "País obligatorio",
@@ -171,7 +169,11 @@
     "deleteLeadsFailed": "No se pudieron eliminar los leads. Intentá de nuevo.",
     "pageTitle": "Encontrá tus próximos clientes",
     "pageSubtitle": "Elegí rubro y zona: Leadta trae los negocios con sus datos de contacto.",
-    "resultsTitle": "Tus leads"
+    "resultsTitle": "Tus leads",
+    "countryAddAnother": "Agregar otro país",
+    "countriesSelected": "Países elegidos",
+    "countryRemove": "Quitar {country}",
+    "countriesHelp": "Con varios países se busca en todo cada país y los leads se reparten parejo entre ellos."
   },
   "Feedback": {
     "title": "Comentarios",

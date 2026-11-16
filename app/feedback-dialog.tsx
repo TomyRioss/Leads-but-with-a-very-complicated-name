@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { Bug, CheckCircle2, LoaderCircle, MessageSquare, X } from "lucide-react";
 import { errorReportEnabled, openErrorReport, type ErrorReportContext, type FeedbackPrefill } from "./error-report";
-import "./referral-dialog.css";
+import "./modal-dialog.css";
 import "./feedback-dialog.css";
 
 // Últimos errores de la página, para adjuntarlos al reporte. Se registra una sola vez por pestaña.
@@ -103,12 +103,12 @@ export function FeedbackDialog({ open, onClose, prefill }: { open: boolean; onCl
   const sending = status === "sending";
 
   return (
-    <dialog ref={dialogRef} className="referral-dialog feedback-dialog" aria-labelledby="feedback-title" onClose={handleClose} onClick={(event) => { if (event.target === event.currentTarget) handleClose(); }}>
-      <div className="referral-body">
-        <div className="referral-head">
-          <span className="referral-icon" aria-hidden="true"><MessageSquare size={18} strokeWidth={1.8} /></span>
+    <dialog ref={dialogRef} className="modal-dialog feedback-dialog" aria-labelledby="feedback-title" onClose={handleClose} onClick={(event) => { if (event.target === event.currentTarget) handleClose(); }}>
+      <div className="modal-body">
+        <div className="modal-head">
+          <span className="modal-icon" aria-hidden="true"><MessageSquare size={18} strokeWidth={1.8} /></span>
           <h2 id="feedback-title">{t("title")}<span className="brand-dot" aria-hidden="true">.</span></h2>
-          <button type="button" className="referral-close" onClick={handleClose} aria-label={t("close")}><X size={18} aria-hidden="true" /></button>
+          <button type="button" className="modal-close" onClick={handleClose} aria-label={t("close")}><X size={18} aria-hidden="true" /></button>
         </div>
         {status === "sent" ? (
           <div className="feedback-sent" role="status">
@@ -118,9 +118,9 @@ export function FeedbackDialog({ open, onClose, prefill }: { open: boolean; onCl
           </div>
         ) : (
           <form className="feedback-form" onSubmit={submit} noValidate>
-            <p className="referral-intro">{t("intro")}</p>
+            <p className="modal-intro">{t("intro")}</p>
             <fieldset className="feedback-kind">
-              <legend className="referral-label">{t("kindLabel")}</legend>
+              <legend className="modal-label">{t("kindLabel")}</legend>
               <label className="feedback-kind-option">
                 <input type="radio" name="feedback-kind" value="comment" checked={kind === "comment"} onChange={() => setKind("comment")} disabled={sending} />
                 <MessageSquare size={16} strokeWidth={1.8} aria-hidden="true" /> {t("kindComment")}
@@ -131,7 +131,7 @@ export function FeedbackDialog({ open, onClose, prefill }: { open: boolean; onCl
               </label>
             </fieldset>
             <label className="feedback-message">
-              <span className="referral-label">{kind === "bug" ? t("messageLabelBug") : t("messageLabel")}</span>
+              <span className="modal-label">{kind === "bug" ? t("messageLabelBug") : t("messageLabel")}</span>
               <textarea
                 value={message}
                 onChange={(event) => setMessage(event.target.value)}
@@ -144,9 +144,9 @@ export function FeedbackDialog({ open, onClose, prefill }: { open: boolean; onCl
                 aria-describedby="feedback-hint"
               />
             </label>
-            <p className="referral-status" id="feedback-hint" role={error ? "alert" : undefined}>{error || t("hint")}</p>
+            <p className="modal-status" id="feedback-hint" role={error ? "alert" : undefined}>{error || t("hint")}</p>
             <button type="submit" className="primary-button feedback-submit" disabled={sending}>
-              {sending && <LoaderCircle className="referral-spin" size={16} aria-hidden="true" />}
+              {sending && <LoaderCircle className="modal-spin" size={16} aria-hidden="true" />}
               {sending ? t("sending") : t("send")}
             </button>
           </form>

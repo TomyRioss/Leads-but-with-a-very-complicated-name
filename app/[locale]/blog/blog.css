@@ -64,7 +64,7 @@
 @media (min-width: 1100px) { .blog-article-layout.has-toc { grid-template-columns: 240px minmax(0, 68ch); gap: 64px; } }
 
 .blog-toc { align-self: start; padding: 18px 20px; border: 1px solid var(--line); border-radius: 14px; background: var(--paper); }
-@media (min-width: 1100px) { .blog-toc { position: sticky; top: 104px; } }
+@media (min-width: 1100px) { .blog-toc { position: sticky; top: calc(104px + var(--campaign-banner-h, 0px)); } }
 .blog-toc p { margin: 0 0 10px; color: var(--muted); font-size: 12px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; }
 .blog-toc ol { display: grid; gap: 4px; margin: 0; padding: 0; list-style: none; }
 .blog-toc a { display: block; padding: 5px 0; color: var(--ash-700); font-size: 14px; line-height: 1.35; text-decoration: none; }

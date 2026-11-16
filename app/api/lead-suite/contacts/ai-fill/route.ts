@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { errorTranslator } from "@/lib/server/locale";
 import { uiError } from "@/lib/server/public-error";
 import { recordAiUsage } from "@/lib/server/ai-usage";
+import { aiRequestLimit } from "@/lib/server/ai-daily-limit";
 import { CONTACT_CHANNELS, CONTACT_STATUSES } from "@/lib/lead-suite";
 import { parseContactFields, requireUser, type ContactFields } from "../validate";
 
@@ -55,6 +56,8 @@ export async function POST(request: Request) {
   }
   const apiKey = process.env.OPENROUTER_API_KEY;
   if (!apiKey) return NextResponse.json({ error: uiError(t("openRouterKeyMissing"), t("generic")) }, { status: 503 });
+  const limited = await aiRequestLimit({ id: auth.userId, role: auth.role }, t);
+  if (limited) return limited;
   if (!allow(auth.userId)) return NextResponse.json({ error: t("generic") }, { status: 429 });
 
   const leadName = typeof body?.leadName === "string" ? body.leadName.slice(0, 120) : "";

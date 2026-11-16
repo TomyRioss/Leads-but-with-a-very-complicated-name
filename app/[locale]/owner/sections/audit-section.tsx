@@ -1,10 +1,11 @@
 "use client";
 
 import {
-  auditActions, errorBox, stateBox, tableClass, tableWrap, tdClass, theadClass,
+  auditActions, errorBox, sortTheadClass, stateBox, tableClass, tableWrap, tdClass,
   thClass, trClass, useOwnerFormat, useOwnerList,
 } from "../ui";
 import { ListToolbar, Pager } from "./list-controls";
+import { SortableTh } from "./sortable-th";
 import { useTranslations } from "next-intl";
 
 type AuditItem = {
@@ -25,8 +26,9 @@ export default function AuditSection({ onUnauthorized }: { onUnauthorized: () =>
   const common = useTranslations("Owner.common");
   const { actionLabel, describeDetails, formatDateTime } = useOwnerFormat();
   const actionOptions = auditActions.map((value) => ({ value, label: actionLabel(value) }));
-  const list = useOwnerList<AuditItem>("/api/owner/audit", t("loadError"), onUnauthorized, "action");
+  const list = useOwnerList<AuditItem>("/api/owner/audit", t("loadError"), onUnauthorized, "action", "-created");
   const { data, loading, error } = list;
+  const sorting = { sort: list.sort, onSort: list.setSort };
 
   return (
     <section aria-label={t("title")}>
@@ -34,14 +36,14 @@ export default function AuditSection({ onUnauthorized }: { onUnauthorized: () =>
       {error && <p className={errorBox} role="alert">{error}</p>}
       <div className={`${tableWrap}${loading ? " opacity-60 transition-opacity" : ""}`} aria-busy={loading}>
         <table className={tableClass}>
-          <thead className={theadClass}>
+          <thead className={sortTheadClass}>
             <tr>
-              <th className={thClass} scope="col">{t("dateTime")}</th>
-              <th className={thClass} scope="col">{t("who")}</th>
-              <th className={thClass} scope="col">{t("action")}</th>
-              <th className={thClass} scope="col">{t("target")}</th>
+              <SortableTh {...sorting} column="created" kind="date" label={t("dateTime")} />
+              <SortableTh {...sorting} column="actor" label={t("who")} />
+              <SortableTh {...sorting} column="action" label={t("action")} />
+              <SortableTh {...sorting} column="target" label={t("target")} />
               <th className={thClass} scope="col">{t("detail")}</th>
-              <th className={thClass} scope="col">{t("ip")}</th>
+              <SortableTh {...sorting} column="ip" label={t("ip")} />
             </tr>
           </thead>
           <tbody>

@@ -57,7 +57,7 @@ function makeWriter(file, getData) {
 
 /**
  * state = {
- *   users: { [userId]: { queue: Item[], sentRefs: string[], day: string, sentToday: number, nextAt: number } },
+ *   users: { [userId]: { queue: Item[], sentRefs: string[], month: string, sentMonth: number, nextAt: number } },
  *   callbacks: { id, payload, attempts, nextAt }[]
  * }
  */

@@ -15,6 +15,7 @@ import {
 import { PocketBaseRequestError } from "@/lib/server/pocketbase";
 import { errorTranslator, localeFrom } from "@/lib/server/locale";
 import { uiError } from "@/lib/server/public-error";
+import { aiRequestLimit } from "@/lib/server/ai-daily-limit";
 import type { LeadContact } from "@/lib/lead-suite";
 
 const DAY_MS = 86_400_000;
@@ -87,6 +88,9 @@ export async function GET(request: Request) {
   const slotKey = `${userId}:${day}`;
   let slot = refreshSlots.get(slotKey) ?? 0;
   if (params.get("refresh") === "1" && slot < MAX_REFRESHES_PER_DAY) {
+    // Only "Refresh" forces a model call; normal loads reuse the cached daily analysis and aren't AI requests.
+    const limited = await aiRequestLimit(session.user, t);
+    if (limited) return limited;
     slot += 1;
     refreshSlots.set(slotKey, slot);
   }

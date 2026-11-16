@@ -1,6 +1,6 @@
 .ls-shell { display: grid; grid-template-columns: minmax(0, 1fr) minmax(320px, 400px); min-height: 100dvh; background: var(--ash-100); color: var(--ink); }
 .ls-main { padding: 28px clamp(16px, 3vw, 36px); display: flex; flex-direction: column; gap: 20px; min-width: 0; }
-.ls-chat-slot { border-left: 1px solid var(--line); background: var(--ash-50); position: sticky; top: 0; height: 100dvh; min-width: 0; }
+.ls-chat-slot { border-left: 1px solid var(--line); background: var(--ash-50); position: sticky; top: var(--campaign-banner-h, 0px); height: calc(100dvh - var(--campaign-banner-h, 0px)); min-width: 0; }
 .ls-chat-body { height: 100%; min-height: 0; }
 .ls-chat-body > .ls-chat { height: 100%; max-height: none; border: 0; border-radius: 0; }
 .ls-header { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 12px; }
@@ -82,11 +82,11 @@
   .ls-shell:not(.is-chat-tab) .ls-chat-slot { display: none; }
   .ls-shell.is-chat-tab .ls-panels { display: none; }
   .ls-shell.is-chat-tab .ls-main { padding-bottom: 0; }
-  .ls-shell.is-chat-tab .ls-chat-slot { height: calc(100dvh - 160px); min-height: 480px; border-top: 0; }
+  .ls-shell.is-chat-tab .ls-chat-slot { height: calc(100dvh - 160px - var(--campaign-banner-h, 0px)); min-height: 480px; border-top: 0; }
 }
 @media (max-width: 640px) { .ls-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 
-/* Formulario "Cargar contacto" (diálogo sobre .referral-dialog). */
+/* Formulario "Cargar contacto" (diálogo sobre .modal-dialog). */
 .ls-contact-dialog { width: min(520px, calc(100vw - 32px)); }
 .ls-contact-lead { color: var(--ink); font-weight: 650; }
 .ls-contact-channels { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; padding: 0; border: 0; }
@@ -168,7 +168,7 @@
 
 /* "Modificar con IA": la IA solo rellena; los campos que cambió quedan resaltados hasta guardar. */
 .ls-ai-fill { display: grid; gap: 6px; padding: 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--ash-50); }
-.ls-ai-fill .referral-label { display: inline-flex; align-items: center; gap: 6px; }
+.ls-ai-fill .modal-label { display: inline-flex; align-items: center; gap: 6px; }
 .ls-ai-fill-row { display: flex; gap: 8px; }
 .ls-ai-fill-row input { flex: 1; min-width: 0; min-height: 44px; padding: 0 12px; border: 1px solid var(--line); border-radius: 7px; background: var(--paper); color: var(--ink); font: inherit; font-size: 14px; }
 .ls-ai-fill-row input:focus-visible { outline: 0; box-shadow: 0 0 0 3px color-mix(in srgb, var(--lime) 45%, transparent); }

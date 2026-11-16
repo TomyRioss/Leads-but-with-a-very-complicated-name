@@ -83,7 +83,7 @@ export async function reserveCreditAmount(userId: string, requestedCredits: numb
       : 0;
     if (credits < requestedCredits) throw new InsufficientCreditsError(credits, requestedCredits);
 
-    // Relative writes ("credits-"/"credits+"): lock-free increments (e.g. referral rewards) landing mid-operation are not overwritten.
+    // Relative writes ("credits-"/"credits+"): lock-free increments landing mid-operation are not overwritten.
     credits = await adjustCredits(userId, -requestedCredits, credits - requestedCredits);
   } catch (error) {
     await pocketBaseFetch(`/api/collections/credit_locks/records/${lock.id}`, { method: "DELETE" }).catch(() => undefined);
@@ -121,15 +121,16 @@ export function settleCredits(reservedCredits: number, deliveredCredits: number)
   return { charged, refund: reservedCredits - charged };
 }
 
-export async function reserveLeadCredits(userId: string, leadCount: number) {
-  const reservation = await reserveCreditAmount(userId, leadCount * CREDITS_PER_LEAD);
+/** `cost` prices N leads (e.g. featurePricing("lead_search", CREDITS_PER_LEAD).cost); the same one is used to reserve and settle. */
+export async function reserveLeadCredits(userId: string, leadCount: number, cost: (leads: number) => number = (leads) => leads * CREDITS_PER_LEAD) {
+  const reservation = await reserveCreditAmount(userId, cost(leadCount));
   return {
     get balance() {
       return reservation.balance;
     },
     settle(persistedLeads: number) {
       const chargedLeads = Math.min(leadCount, Math.max(0, Number.isFinite(persistedLeads) ? persistedLeads : 0));
-      return reservation.settle(chargedLeads * CREDITS_PER_LEAD);
+      return reservation.settle(cost(chargedLeads));
     },
     release: reservation.release,
   };

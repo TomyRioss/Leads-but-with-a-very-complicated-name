@@ -5,20 +5,23 @@ import dynamic from "next/dynamic";
 import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
-import { ChartLine, CreditCard, LayoutDashboard, Newspaper, LoaderCircle, LogOut, Menu, MessageSquare, Receipt, RefreshCw, Route, ScrollText, Search, Users, X } from "lucide-react";
+import { ChartLine, CreditCard, LayoutDashboard, Newspaper, LoaderCircle, LogOut, Megaphone, Menu, MessageSquare, Receipt, RefreshCw, Route, ScrollText, Search, Sparkles, Users, X } from "lucide-react";
 import { BrandLogo } from "@/app/brand-logo";
 import { LanguageSwitcher } from "@/app/language-switcher";
 import { ghostButton, iconButton, isUnauthorized, ownerFetch, stateBox, useFocusTrap, type OnAction } from "./ui";
 import { getSession, invalidateSession } from "@/lib/client/session";
+import StaffChat from "./staff/staff-chat";
 
-export type OwnerSectionKey = "resumen" | "analiticas" | "usuarios" | "suscripciones" | "pagos" | "busquedas" | "comentarios" | "blog" | "trazabilidad" | "auditoria";
+export type OwnerSectionKey = "staff" | "resumen" | "analiticas" | "usuarios" | "suscripciones" | "pagos" | "campanas" | "busquedas" | "comentarios" | "blog" | "trazabilidad" | "auditoria";
 
 const navItems: { key: OwnerSectionKey; label: string; icon: ComponentType<{ size?: number; className?: string; "aria-hidden"?: boolean }> }[] = [
+  { key: "staff", label: "navStaff", icon: Sparkles },
   { key: "resumen", label: "navSummary", icon: LayoutDashboard },
   { key: "analiticas", label: "navAnalytics", icon: ChartLine },
   { key: "usuarios", label: "navUsers", icon: Users },
   { key: "suscripciones", label: "navSubscriptions", icon: CreditCard },
   { key: "pagos", label: "navPayments", icon: Receipt },
+  { key: "campanas", label: "navCampaigns", icon: Megaphone },
   { key: "busquedas", label: "navSearches", icon: Search },
   { key: "comentarios", label: "navFeedback", icon: MessageSquare },
   { key: "blog", label: "navBlog", icon: Newspaper },
@@ -36,6 +39,7 @@ const AnalyticsSection = dynamic(() => import("./sections/analytics-section"), {
 const UsersSection = dynamic(() => import("./sections/users-section"), { loading: Loading });
 const SubscriptionsSection = dynamic(() => import("./sections/subscriptions-section"), { loading: Loading });
 const PaymentsSection = dynamic(() => import("./sections/payments-section"), { loading: Loading });
+const CampaignsSection = dynamic(() => import("./sections/campaigns-section"), { loading: Loading });
 const SearchesSection = dynamic(() => import("./sections/searches-section"), { loading: Loading });
 const FeedbackSection = dynamic(() => import("./sections/feedback-section"), { loading: Loading });
 const BlogSection = dynamic(() => import("./sections/blog-section"), { loading: Loading });
@@ -51,6 +55,8 @@ export default function OwnerPanel() {
   const [auth, setAuth] = useState<"loading" | "owner" | "error">("loading");
   const [attempt, setAttempt] = useState(0);
   const [section, setSection] = useState<OwnerSectionKey>(initialSection);
+  // Leadtita Staff mounts on first visit and then stays mounted (hidden) so its conversation survives navigation.
+  const [staffMounted, setStaffMounted] = useState(initialSection === "staff");
   const [email, setEmail] = useState("");
   const [menuOpen, setMenuOpen] = useState(false);
   const [toast, setToast] = useState<{ id: number; text: string } | null>(null);
@@ -100,6 +106,7 @@ export default function OwnerPanel() {
   function go(next: OwnerSectionKey) {
     setMenuOpen(false);
     setSection(next);
+    if (next === "staff") setStaffMounted(true);
     router.replace(`/owner?s=${next}`, { scroll: false });
     window.scrollTo(0, 0);
     mainRef.current?.focus({ preventScroll: true });
@@ -120,9 +127,10 @@ export default function OwnerPanel() {
 
   const sidebarOpen = menuOpen ? "max-md:visible max-md:translate-x-0" : "max-md:invisible max-md:-translate-x-full";
   const current = navItems.find((item) => item.key === section) ?? navItems[0];
+  const staffActive = auth === "owner" && section === "staff";
 
   return (
-    <div className="min-h-dvh bg-(--ash-100) text-(color:--ink) md:grid md:grid-cols-[224px_minmax(0,1fr)]">
+    <div className={`min-h-dvh bg-(--ash-100) text-(color:--ink) md:grid md:grid-cols-[224px_minmax(0,1fr)] ${staffActive ? "max-md:flex max-md:h-dvh max-md:flex-col" : ""}`}>
       <header className="sticky top-0 z-30 flex items-center gap-3 border-b border-(color:--line) bg-(--paper) px-4 py-3 md:hidden">
         <button ref={menuButtonRef} className={iconButton} type="button" onClick={() => setMenuOpen(true)} aria-label={t("shell.openMenu")} aria-expanded={menuOpen} aria-controls="owner-sidebar"><Menu size={18} aria-hidden="true" /></button>
         <span className="text-sm font-semibold">{t(`shell.${current.label}`)}</span>
@@ -150,15 +158,19 @@ export default function OwnerPanel() {
         <nav aria-label={t("shell.sectionsLabel")} className="grid gap-1">
           {navItems.map(({ key, label, icon: Icon }) => {
             const active = key === section;
+            const featured = key === "staff";
             return (
               <button
                 key={key}
                 type="button"
                 aria-current={active ? "page" : undefined}
                 onClick={() => go(key)}
-                className={`flex min-h-11 w-full cursor-pointer items-center gap-3 rounded-lg border-0 px-3 text-left text-[13px]! font-semibold! focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(color:--ash-950) ${active ? "bg-(--lime) text-(color:--ash-950)! hover:bg-(--lime-dark)" : "bg-transparent text-(color:--ash-800)! hover:bg-(--ash-100)"}`}
+                className={`flex min-h-11 w-full cursor-pointer items-center gap-3 rounded-lg px-3 text-left text-[13px]! font-semibold! focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(color:--ash-950) ${featured ? "mb-2 border border-(color:--lime-dark) pl-2" : "border-0"} ${active ? "bg-(--lime) text-(color:--ash-950)! hover:bg-(--lime-dark)" : featured ? "bg-(--lime)/20 text-(color:--ink)! hover:bg-(--lime)/40" : "bg-transparent text-(color:--ash-800)! hover:bg-(--ash-100)"}`}
               >
-                <Icon className="shrink-0" size={16} aria-hidden={true} />
+                {/* Leadtita Staff goes first and featured, like Leadtita in the customer sidebar (lime icon chip). */}
+                {featured
+                  ? <span className={`inline-grid size-[26px] shrink-0 place-items-center rounded-[7px] ${active ? "bg-(--ash-950) text-(color:--lime)" : "bg-(--lime) text-(color:--ash-950) shadow-[inset_0_0_0_1px_var(--lime-dark)]"}`} aria-hidden="true"><Icon size={15} aria-hidden={true} /></span>
+                  : <Icon className="shrink-0" size={16} aria-hidden={true} />}
                 <span className="truncate">{t(`shell.${label}`)}</span>
               </button>
             );
@@ -171,8 +183,10 @@ export default function OwnerPanel() {
         </div>
       </aside>
 
-      <main ref={mainRef} tabIndex={-1} className="min-w-0 outline-none">
-        <div className="mx-auto w-[calc(100%-32px)] max-w-[1680px] pb-20 pt-5 md:pt-8">
+      <main ref={mainRef} tabIndex={-1} className={`min-w-0 outline-none ${staffActive ? "max-md:flex max-md:min-h-0 max-md:flex-1 max-md:flex-col" : ""}`}>
+        {/* Full-height chat page; hidden (not unmounted) on other sections so the conversation survives. */}
+        {auth === "owner" && staffMounted && <StaffChat hidden={section !== "staff"} />}
+        {!staffActive && <div className="mx-auto w-[calc(100%-32px)] max-w-[1680px] pb-20 pt-5 md:pt-8">
           {/* Shell visible from the first paint; sections mount only once owner access is confirmed. */}
           {auth === "loading" && <p className={stateBox} role="status"><LoaderCircle className="animate-spin" size={16} aria-hidden="true" /> {t("common.loading")}</p>}
           {auth === "error" && (
@@ -187,13 +201,14 @@ export default function OwnerPanel() {
           {section === "usuarios" && <UsersSection onUnauthorized={leavePanel} onAction={onAction} />}
           {section === "suscripciones" && <SubscriptionsSection onUnauthorized={leavePanel} onAction={onAction} />}
           {section === "pagos" && <PaymentsSection onUnauthorized={leavePanel} />}
+          {section === "campanas" && <CampaignsSection onUnauthorized={leavePanel} onAction={onAction} />}
           {section === "busquedas" && <SearchesSection onUnauthorized={leavePanel} onAction={onAction} />}
           {section === "comentarios" && <FeedbackSection onUnauthorized={leavePanel} onAction={onAction} />}
           {section === "blog" && <BlogSection onUnauthorized={leavePanel} onAction={onAction} />}
           {section === "trazabilidad" && <TraceabilitySection onUnauthorized={leavePanel} />}
           {section === "auditoria" && <AuditSection onUnauthorized={leavePanel} />}
           </>}
-        </div>
+        </div>}
       </main>
 
       <div className="pointer-events-none fixed inset-x-4 bottom-4 z-60 flex justify-end" aria-live="polite">

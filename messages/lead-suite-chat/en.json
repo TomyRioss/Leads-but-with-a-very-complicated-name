@@ -12,6 +12,32 @@
     "mentionLoading": "Searching leads…",
     "mentionEmpty": "No matching leads found.",
     "mentionLead": "Lead in your account",
+    "mentionRecent": "Recently contacted",
+    "mentionKeys": "Enter picks · Esc closes",
+    "mentionBatch": "Batch {date}",
+    "mentionButton": "Mention a lead",
+    "leadsSidebar": {
+      "title": "Lead Suite",
+      "close": "Close Lead Suite",
+      "search": "Search leads",
+      "views": {
+        "saved": "Saved",
+        "recent": "Recent",
+        "contacted": "Contacted"
+      },
+      "hint": "Click or drag a lead into the chat to mention it.",
+      "empty": {
+        "saved": "No saved leads yet. Tap the star to keep them handy.",
+        "recent": "No leads generated yet. Ask Leadtita for a search.",
+        "contacted": "No contacts logged yet."
+      },
+      "emptySearch": "No leads match.",
+      "error": "Couldn't load leads.",
+      "mention": "Mention {lead} in the chat",
+      "save": "Save {lead}",
+      "unsave": "Remove {lead} from saved",
+      "viewAll": "View all in Lead Suite"
+    },
     "modeLabel": "Mode",
     "modeTitle": "Choose how I can help",
     "modeHelp": "Choose the focus for this conversation.",
@@ -21,6 +47,32 @@
       "seller": "Offers, messages and objections.",
       "generator": "Find and qualify prospects.",
       "planner": "Priorities and next steps."
+    },
+    "permissions": {
+      "label": "Permissions:",
+      "title": "How much can it do alone?",
+      "help": "Choose which actions Leadtita runs without asking you.",
+      "options": {
+        "skip": "Skip",
+        "ask": "Ask",
+        "danger": "Danger"
+      },
+      "hints": {
+        "skip": "Only asks before sending.",
+        "ask": "Confirms every action.",
+        "danger": "Everything without asking, except sends to several leads."
+      },
+      "running": "On it.",
+      "danger": {
+        "title": "Turn on Danger mode",
+        "intro": "Leadtita will run every action without asking you to confirm.",
+        "risk1": "Sends single emails as soon as it drafts them. Sends to several leads (email or WhatsApp) are always shown for review.",
+        "risk2": "It can spend all your credits on searches without asking.",
+        "risk3": "Deletes contacts and books meetings directly. Sent or deleted items can't be undone.",
+        "dontShow": "Don't show again",
+        "cancel": "Cancel",
+        "confirm": "Turn on Danger"
+      }
     },
     "salesTitle": "Sales channels",
     "salesHint": "Choose a channel to focus the help.",
@@ -34,6 +86,14 @@
     "salesGmailConnectHint": "Connect Gmail to prepare and send emails from your account.",
     "salesClear": "No preferred channel",
     "placeholder": "Ask Leadtita to find, log or write…",
+    "placeholderTips": [
+      "Tip: type @ to mention a lead",
+      "Tip: “what should I do today?” builds your plan",
+      "Tip: drop a CSV to load leads",
+      "Tip: paste a chat screenshot to log it",
+      "Tip: “find 20 cafés without a website in Austin”",
+      "Tip: Shift+Enter adds a new line"
+    ],
     "hint": "Enter sends, Shift+Enter adds a line.",
     "send": "Send",
     "sending": "Sending…",
@@ -51,6 +111,12 @@
     "contextFull": {
       "title": "This conversation got too long for Leadtita.",
       "body": "Start a new chat to keep going: your leads and contacts stay saved."
+    },
+    "aiLimit": {
+      "title": "You used today's {limit} free AI messages.",
+      "body": "They reset at 00:00 UTC. A plan removes the daily limit.",
+      "cta": "See plans",
+      "rate": "Too many messages in a row. Wait a minute and retry."
     },
     "chooseLead": "Which of these leads is it?",
     "pickReply": "It's {name}",
@@ -88,7 +154,6 @@
       "doubtful": "Check these matches"
     },
     "confirming": "Saving…",
-    "confirmError": "Couldn't save. Try again.",
     "cancelled": "I didn't change anything. What should I adjust?",
     "done": {
       "record_contact": "Done: logged the contact with **{lead}**.",
@@ -113,21 +178,18 @@
       "gmail": "Gmail",
       "whatsapp": "WhatsApp",
       "today": "{used}/{limit} today",
-      "progress": "{channel}: {used} of {limit} messages sent today"
+      "remaining": "{count, plural, =0 {No sends left today} one {<n>#</n> left today} other {<n>#</n> left today}}",
+      "sent": "{used} of {limit} sent today",
+      "progress": "{channel}: {used} of {limit} messages sent today",
+      "ai": "AI messages",
+      "aiProgress": "AI messages: {used} of {limit} used today",
+      "month": "{used}/{limit} this month",
+      "monthRemaining": "{count, plural, =0 {No WhatsApp left this month} one {<n>#</n> left this month} other {<n>#</n> left this month}}",
+      "monthSent": "{used} of {limit} used this month (includes queued and scheduled)",
+      "monthProgress": "{channel}: {used} of {limit} messages used this month"
     },
     "pageTitle": "Leadtita",
     "pageIntroTitle": "How can I help today?",
-    "pageIntro": "Write to me like you'd talk to a teammate. I'll ask you to confirm before saving anything or spending credits.",
-    "pageExample1": "Yesterday I messaged Southside Realty on WhatsApp offering them a new website.",
-    "pageExampleLabel1": "Log contact",
-    "pageExample2": "How is my follow-up going? Give me feedback.",
-    "pageExampleLabel2": "Feedback",
-    "pageExample3": "Write a message for Central Café offering them more online bookings.",
-    "pageExampleLabel3": "Suggested message",
-    "pageExample4": "Add a lead: Main Street Hardware, Denver, +1 303 555 0123.",
-    "pageExampleLabel4": "Add lead",
-    "pageExample5": "Find me 10 real estate agencies in Austin, United States.",
-    "pageExampleLabel5": "Generate leads",
     "creditsMax": "Up to {count} credits",
     "free": "Free",
     "chargedOnlyDelivered": "Only delivered results are charged.",
@@ -144,7 +206,16 @@
       "missingWhatsapp": "Add a WhatsApp number to this lead before sending.",
       "missingEmail": "Add a valid email address to this lead before sending.",
       "confirmPrompt": "Review the message and confirm sending it to {lead} via {channel}.",
-      "error": "We couldn't prepare the message. Check the connection and try again."
+      "connect": "Go to Integrations",
+      "errors": {
+        "generic": "We couldn't prepare the send. Try again.",
+        "needs_gmail": "Connect Gmail to send this email.",
+        "needs_whatsapp": "Connect WhatsApp to send this message.",
+        "recipient_missing": "The lead has no valid recipient. Add one and retry.",
+        "lead_not_found": "We couldn't find this lead in your account.",
+        "unauthorized": "Your session expired. Reload the page and sign in again.",
+        "offline": "No internet connection. Check your network and retry."
+      }
     },
     "attach": "Attach files",
     "attachHint": "Attach images, PDF, Markdown or CSV (up to 5, 10 MB each, CSV up to 2,000 rows). You can also drag them or paste a screenshot.",
@@ -171,7 +242,8 @@
       "size": "Over 10 MB.",
       "empty": "No readable content.",
       "extract": "Could not read it.",
-      "rate": "Too many files in a row, wait a few minutes."
+      "rate": "Too many files in a row, wait a few minutes.",
+      "aiDaily": "Daily AI limit reached."
     },
     "targets": {
       "manual": "Manual batch",
@@ -284,6 +356,7 @@
     },
     "placeholderShort": "Ask Leadtita anything…",
     "newChat": "New chat",
+    "tour": "View tutorial",
     "untitled": "Untitled conversation",
     "statusExpired": "Expired — ask for it again",
     "history": {
@@ -299,16 +372,25 @@
       "confirmDeleteSelected": "Delete {count, plural, one {# conversation} other {# conversations}}?",
       "deleting": "Deleting…",
       "deleteError": "Chats could not be deleted. Try again.",
-      "empty": "No saved conversations yet."
+      "empty": "No conversations yet",
+      "emptyHint": "Your Leadtita chats save automatically and show up here so you can pick them up again.",
+      "groups": {
+        "today": "Today",
+        "yesterday": "Yesterday",
+        "week": "Last 7 days",
+        "older": "Older"
+      }
     },
     "attachMenu": {
       "upload": "Upload file",
       "uploadHint": "Image, PDF, Markdown or CSV",
       "drive": "From Google Drive",
-      "driveHint": "Connected Sheets, Docs and files"
+      "driveHint": "Attached to this message only",
+      "attachTitle": "Attach",
+      "connectors": "Connectors",
+      "connectorsHint": "Drive, Gmail, Calendar and WhatsApp"
     },
     "drive": {
-      "useTitle": "Attach to the chat",
       "read": "Read “{name}” from Google Drive",
       "errors": {
         "not_connected": "Connect Google Drive first.",
@@ -331,7 +413,7 @@
       "batchNote": "Sent one at a time, every {seconds} seconds, from your Gmail."
     },
     "whatsappCard": {
-      "batchNote": "Sent one at a time, every {min}–{max} s, max {daily} per day."
+      "batchNote": "Sent one by one, every {min}–{max} s. Quota: {monthly} WhatsApp messages per month (scheduled ones count too)."
     },
     "meetingCard": {
       "title": "Title",
@@ -349,6 +431,165 @@
     "dropzone": {
       "title": "Drop files to attach them",
       "types": "Images, PDF, Markdown or CSV · up to 5, 10 MB each"
+    },
+    "salesMissing": "Some channels aren't connected",
+    "salesNeedsConnect": "{channel} isn't connected yet. Connect it so Leadtita can send through it.",
+    "sendErrors": {
+      "error": "The message couldn't be sent.",
+      "session": "Your session expired. Reload the page and sign in again.",
+      "rate": "Too many requests in a row. Wait a moment and retry.",
+      "service": "Leadtita isn't available right now. Try again in a few minutes.",
+      "offline": "No internet connection. Check your network and retry.",
+      "busy": "Leadtita is still answering your previous message. Wait a few seconds and retry."
+    },
+    "confirmErrors": {
+      "generic": "The action couldn't be completed. Try again.",
+      "noCredits": "Not enough credits: this action needs {required, plural, one {# credit} other {# credits}} and you have {available}.",
+      "creditBusy": "Another search is already running on your account. Wait for it to finish and retry.",
+      "gmailQuota": "You reached Gmail's daily sending limit. Try again tomorrow.",
+      "whatsappUnavailable": "The WhatsApp service isn't responding. Try again in a few minutes.",
+      "invalid": "The card has invalid data. Review it and retry.",
+      "session": "Your session expired. Reload the page and sign in again.",
+      "rate": "Too many requests in a row. Wait a moment and retry.",
+      "service": "Leadtita isn't available right now. Try again in a few minutes.",
+      "offline": "No internet connection. Check your network and retry.",
+      "invalidSendAt": "The scheduled date already passed or is invalid. Pick another one.",
+      "scheduleLimit": "You reached the 10 scheduled messages per month of an account without a plan. Cancel one or get a plan.",
+      "whatsappMonthlyLimit": "Not enough monthly WhatsApp quota (100 per month, scheduled ones included). Remove recipients or wait for next month."
+    },
+    "creditWarning": {
+      "none": "You don't have credits for this search.",
+      "low": "This search can use up to {required} credits and you have {available}."
+    },
+    "buyCredits": "Get credits",
+    "batchReview": {
+      "selected": "{count} of {total} recipients",
+      "expandAll": "Show all messages",
+      "collapseAll": "Hide messages",
+      "show": "View message",
+      "hide": "Hide",
+      "include": "Include {name} in the send",
+      "excluded": "Not sent",
+      "edited": "Edited",
+      "subject": "Subject",
+      "message": "Message",
+      "emptyEmail": "Fill in the subject and message.",
+      "emptyText": "The message can't be empty.",
+      "noneSelected": "Pick at least one recipient.",
+      "acknowledge": "I reviewed the {count} recipients and their messages.",
+      "send": "{count, plural, =0 {Send} one {Send # message} other {Send # messages}}"
+    },
+    "salesDisconnect": "Disconnect",
+    "salesDisconnectYes": "Yes, disconnect",
+    "salesDisconnectNo": "Cancel",
+    "salesDisconnectError": "Could not disconnect. Try again.",
+    "salesDisconnectAsk": {
+      "whatsapp": "Disconnect WhatsApp?",
+      "gmail": "Disconnect Google? Drive and Calendar disconnect too."
+    },
+    "shortcuts": {
+      "email": {
+        "label": "Reach out by email",
+        "prompt": "Draft an email to reach one of my leads I haven't contacted yet."
+      },
+      "whatsapp": {
+        "label": "Reach out on WhatsApp",
+        "prompt": "Draft a WhatsApp message to reach one of my leads I haven't contacted yet."
+      },
+      "search": {
+        "label": "Find leads",
+        "prompt": "Find me new leads for what I sell."
+      },
+      "today": {
+        "label": "What can I do today?",
+        "prompt": "Plan my day with my leads: who to contact and what to do first."
+      }
+    },
+    "schedule": {
+      "label": "When to send",
+      "now": "Send now",
+      "later": "Schedule",
+      "when": "Date and time",
+      "invalid": "Pick a future date (up to 90 days).",
+      "confirm": "{count, plural, one {Schedule send} other {Schedule # messages}}",
+      "done": "Done: {count, plural, one {scheduled # message} other {scheduled # messages}} for {date}. See and edit it in Scheduled."
+    },
+    "scheduled": {
+      "button": "Scheduled",
+      "failedCount": "{count, plural, one {# failed} other {# failed}}",
+      "title": "Scheduled",
+      "intro": "Emails and WhatsApp messages Leadtita sends on the date you chose. You can edit, reschedule or cancel them before they go out.",
+      "close": "Close",
+      "loading": "Loading scheduled messages…",
+      "loadError": "We couldn't load your scheduled messages.",
+      "reload": "Retry",
+      "pending": "Pending ({count})",
+      "history": "Recent",
+      "empty": "No scheduled sends yet. Create one with “New scheduled message” or ask Leadtita: “Email Central Café in 2 hours”.",
+      "sendAt": "Sends on {date}",
+      "sentAt": "Sent on {date}",
+      "status": {
+        "scheduled": "Scheduled",
+        "sending": "Sending…",
+        "sent": "{channel, select, whatsapp {In WhatsApp queue} other {Sent}}",
+        "failed": "Failed",
+        "cancelled": "Cancelled"
+      },
+      "reasons": {
+        "gmail_daily_limit": "Gmail's daily limit was reached. Reschedule it for another day.",
+        "needs_gmail": "Gmail isn't connected. Connect it and retry.",
+        "needs_whatsapp": "WhatsApp isn't linked. Link it and retry.",
+        "invalid_number": "The number has no WhatsApp or is invalid.",
+        "send_failed": "It couldn't be sent. Review it and retry.",
+        "interrupted": "The send was interrupted and may or may not have gone out. Check before retrying."
+      },
+      "fields": {
+        "sendAt": "Date and time",
+        "subject": "Subject",
+        "body": "Message"
+      },
+      "edit": "Edit",
+      "retry": "Reschedule",
+      "save": "Save changes",
+      "saveRetry": "Reschedule send",
+      "discard": "Discard",
+      "cancel": "Cancel send",
+      "cancelTitle": "Cancel send",
+      "cancelBody": "This message won't be sent. This can't be undone.",
+      "cancelConfirm": "Yes, cancel",
+      "keep": "No, keep it",
+      "errors": {
+        "invalid_send_at": "Pick a future date (up to 90 days).",
+        "invalid": "Fill in the message (and the subject for emails).",
+        "not_editable": "This send already went out or was cancelled.",
+        "not_found": "This send no longer exists.",
+        "generic": "We couldn't save the change. Try again.",
+        "needs_gmail": "Connect Gmail to schedule emails.",
+        "needs_whatsapp": "Link WhatsApp to schedule messages.",
+        "schedule_limit": "You reached the 10 scheduled messages of this month (account without a plan). Cancel one or get a plan.",
+        "whatsapp_monthly_limit": "No monthly WhatsApp quota left (100 per month, scheduled ones included)."
+      },
+      "new": "New scheduled message",
+      "freeLeft": "{count, plural, =0 {You used the {limit} scheduled messages of this month (account without a plan).} one {# scheduled message left this month (account without a plan).} other {# scheduled messages left this month (account without a plan).}}",
+      "form": {
+        "title": "New scheduled message",
+        "channel": "Channel",
+        "lead": "Lead",
+        "leadPlaceholder": "Search a lead by name",
+        "searching": "Searching leads…",
+        "results": "Leads found",
+        "noResults": "No leads match that name.",
+        "changeLead": "Change",
+        "sendAt": "Date and time",
+        "subject": "Subject",
+        "body": "Message",
+        "hintEmail": "Sent from your Gmail to the lead's email.",
+        "hintWhatsapp": "Sent from your WhatsApp to the lead's number and uses 1 of your 100 WhatsApp messages this month.",
+        "missingEmail": "This lead has no valid email. Add one and try again.",
+        "missingWhatsapp": "This lead has no valid WhatsApp number. Add one and try again.",
+        "submit": "Schedule",
+        "cancel": "Cancel"
+      }
     }
   }
 }

@@ -1,17 +1,42 @@
 import { NextResponse } from "next/server";
+import { checkBotId } from "botid/server";
 import { setSessionCookie, toUserRole } from "@/lib/server/auth";
 import { PocketBaseRequestError, pocketBasePublicFetch } from "@/lib/server/pocketbase";
 import { errorTranslator } from "@/lib/server/locale";
+import { clientIp, rateLimited } from "@/lib/server/rate-limit";
+import { verifyTurnstile } from "@/lib/server/turnstile";
+
+const LOGIN_RATE = { max: 10, windowMs: 10 * 60_000 } as const;
+
+/** BotID verdict. Only runs on Vercel (local/self-hosted builds have no BotID proxy); fails open on service errors. */
+async function isBotRequest() {
+  if (!process.env.VERCEL) return false;
+  try {
+    return (await checkBotId()).isBot;
+  } catch (error) {
+    console.error("Leadta login BotID check failed:", error instanceof Error ? error.message : "unknown error");
+    return false;
+  }
+}
 
 type AuthResponse = { token: string; record: { id: string; email: string; name?: string; credits?: number; role?: unknown; verified?: boolean } };
 
 export async function POST(request: Request) {
   const t = errorTranslator(request);
-  let body: { email?: unknown; password?: unknown };
+  if (rateLimited(`login:${clientIp(request)}`, LOGIN_RATE.max, LOGIN_RATE.windowMs)) {
+    return NextResponse.json({ error: t("authRateLimited") }, { status: 429 });
+  }
+  if (await isBotRequest()) {
+    return NextResponse.json({ error: t("botDetected") }, { status: 403 });
+  }
+  let body: { email?: unknown; password?: unknown; captcha?: unknown };
   try {
     body = await request.json();
   } catch {
     return NextResponse.json({ error: t("loginInvalidInput") }, { status: 400 });
+  }
+  if (!(await verifyTurnstile(body.captcha, clientIp(request)))) {
+    return NextResponse.json({ error: t("captchaRequired"), code: "captcha" }, { status: 400 });
   }
 
   const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";

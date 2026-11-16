@@ -282,28 +282,10 @@ export async function getValidAccessToken(userId: string): Promise<string> {
 
 // ---------- Connected files ----------
 
-async function requireRow(userId: string) {
-  const row = await findRow(userId);
-  if (!row) throw new GoogleNotConnectedError();
-  return row;
-}
 
 export async function listFiles(userId: string): Promise<GoogleFile[]> {
   const row = await findRow(userId);
   return row ? parseFiles(row.files) : [];
 }
 
-export async function addFiles(userId: string, files: Omit<GoogleFile, "addedAt">[]): Promise<GoogleFile[]> {
-  const row = await requireRow(userId);
-  const merged = mergeFiles(parseFiles(row.files), files);
-  await pocketBaseFetch(recordPath(row.id), { method: "PATCH", body: JSON.stringify({ files: merged }) });
-  return merged;
-}
 
-export async function removeFile(userId: string, fileId: string): Promise<GoogleFile[]> {
-  const row = await requireRow(userId);
-  const current = parseFiles(row.files);
-  const next = current.filter((file) => file.id !== fileId);
-  if (next.length !== current.length) await pocketBaseFetch(recordPath(row.id), { method: "PATCH", body: JSON.stringify({ files: next }) });
-  return next;
-}

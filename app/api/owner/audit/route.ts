@@ -1,8 +1,11 @@
 import { NextResponse } from "next/server";
 import { requireOwner } from "@/lib/server/owner";
 import { ownerAuditActions } from "@/lib/server/owner-audit";
-import { errorResponse, filterString, isNotFound, listRecords, pocketBaseNotReady } from "../_shared";
+import { errorResponse, filterString, isNotFound, listRecords, pocketBaseNotReady, resolveSort } from "../_shared";
 import { errorTranslator } from "@/lib/server/locale";
+
+// UI column → PocketBase sort (details is JSON and is not sortable).
+const sortColumns = { created: "created", actor: "actor_email", action: "action", target: "target_label", ip: "ip" };
 
 type AuditRecord = {
   id: string;
@@ -39,7 +42,7 @@ export async function GET(request: Request) {
     const result = await listRecords<AuditRecord>("owner_audit_log", {
       page: positiveInt(params.get("page"), 1, 100_000),
       perPage: positiveInt(params.get("perPage"), 25, 100),
-      sort: "-created",
+      sort: resolveSort(params.get("sort"), sortColumns, "-created"),
       ...(filters.length ? { filter: filters.join(" && ") } : {}),
     });
     return NextResponse.json({

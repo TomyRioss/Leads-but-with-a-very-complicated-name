@@ -7,11 +7,15 @@ import {
   listRecords,
   normalizeCredits,
   pocketBaseNotReady,
+  resolveSort,
   toSubscriptionSummary,
   type SubscriptionRecord,
   type UserRecord,
 } from "../_shared";
 import { errorTranslator } from "@/lib/server/locale";
+
+// UI column → PocketBase sort. Plan and last activity are aggregated per page, so they are not sortable.
+const sortColumns = { email: "email", name: "name", credits: "credits", created: "created", phone: "phone" };
 
 const time = (value: string) => Date.parse(value.replace(" ", "T")) || 0;
 
@@ -32,7 +36,7 @@ export async function GET(request: Request) {
   const query: Record<string, string | number> = {
     page,
     perPage,
-    sort: "-created",
+    sort: resolveSort(params.get("sort"), sortColumns, "-created"),
     fields: "id,email,name,credits,created,updated,role,phone",
   };
   if (q) query.filter = `email ~ ${filterString(q)} || name ~ ${filterString(q)}`;

@@ -19,7 +19,7 @@ export async function Hero() {
           >
             {t("demo")} <Phone size={17} aria-hidden="true" />
           </a>
-          <Link className="lp-btn lp-btn-ghost" href="/buscar?signup=1">{t("primary")} <ArrowRight size={17} aria-hidden="true" /></Link>
+          <Link className="lp-btn lp-btn-ghost" href="/register">{t("primary")} <ArrowRight size={17} aria-hidden="true" /></Link>
         </div>
       </div>
       <LeadSheet />

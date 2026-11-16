@@ -1,0 +1,8 @@
+.whats-new-points { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.whats-new-points li { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--ash-50); color: var(--ink); font-size: 14px; line-height: 1.4; }
+.whats-new-points svg { flex: none; color: var(--lime-dark); }
+.whats-new-actions { display: grid; grid-template-columns: 1fr 1.4fr; gap: 8px; margin-top: 4px; }
+.whats-new-cta { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 44px; padding: 0 14px; font-size: 14px; text-decoration: none; }
+.whats-new-actions .auth-secondary-button, .whats-new-cta { font-family: inherit; }
+.whats-new-actions a:focus-visible, .whats-new-actions button:focus-visible { outline: 0; box-shadow: 0 0 0 3px color-mix(in srgb, var(--lime) 45%, transparent); }
+@media (max-width: 420px) { .whats-new-actions { grid-template-columns: 1fr; } .whats-new-cta { order: -1; } }

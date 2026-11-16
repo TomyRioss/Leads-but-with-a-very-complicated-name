@@ -3,6 +3,7 @@ import {
   fromPbDate,
   isContactStatus,
   normalizeChannel,
+  normalizeForMatch,
   normalizeLeadStatus,
   toPbDate,
   weekStartIso,
@@ -87,6 +88,77 @@ export async function findUserLeads(userId: string, query: string, limit = 10): 
     fields: LEAD_FIELDS,
   }));
   return result.items.map(toLead);
+}
+
+export type MentionLead = Pick<LeadMatch, "id" | "name" | "category" | "city" | "contactStatus"> & { batchDate: string | null; saved: boolean };
+type MentionRow = LeadRow & { saved_at?: string; expand?: { batch?: { created_at?: string } } };
+const MENTION_CANDIDATES = 50;
+const MENTION_FIELDS = `${LEAD_FIELDS},saved_at,expand.batch.created_at`;
+
+function toMention(row: MentionRow): MentionLead {
+  const lead = toLead(row);
+  return { id: lead.id, name: lead.name, category: lead.category, city: lead.city, contactStatus: lead.contactStatus, batchDate: fromPbDate(row.expand?.batch?.created_at), saved: Boolean(row.saved_at) };
+}
+
+export const SIDEBAR_VIEWS = ["saved", "recent", "contacted"] as const;
+export type SidebarView = (typeof SIDEBAR_VIEWS)[number];
+const SIDEBAR_QUERY: Record<SidebarView, { filter: string; sort: string }> = {
+  saved: { filter: `saved_at != ""`, sort: "-saved_at" },
+  recent: { filter: "", sort: "-created_at,name" },
+  contacted: { filter: `last_contacted_at != ""`, sort: "-last_contacted_at" },
+};
+
+/** Leadtita sidebar tabs: saved (newest first), recently generated, recently contacted. */
+export async function listSidebarLeads(userId: string, view: SidebarView, limit = 30): Promise<MentionLead[]> {
+  const { filter, sort } = SIDEBAR_QUERY[view];
+  const result = await pocketBaseFetch<List<MentionRow>>(listPath("leads", {
+    filter: [ownLead(userId), filter].filter(Boolean).join(" && "),
+    sort,
+    perPage: String(clampInt(limit, 1, 50, 30)),
+    skipTotal: "1",
+    expand: "batch",
+    fields: MENTION_FIELDS,
+  }));
+  return result.items.map(toMention);
+}
+
+/** Saves or unsaves one of the user's leads. Ownership is checked before writing. */
+export async function setLeadSaved(userId: string, leadId: string, saved: boolean): Promise<boolean> {
+  if (!(await getUserLead(userId, leadId))) return false;
+  await pocketBaseFetch(recordPath("leads", leadId), { method: "PATCH", body: JSON.stringify({ saved_at: saved ? toPbDate(new Date().toISOString()) : "" }) });
+  return true;
+}
+
+/**
+ * Chat @mentions. Empty query: most recently contacted leads. Otherwise every word must appear in the name
+ * (PocketBase `~` is case-insensitive LIKE, not accent-insensitive), then ranked: name starts with the query,
+ * every word starts a name word, then plain contains; ties keep the most recently contacted.
+ */
+export async function searchMentionLeads(userId: string, query: string, limit = 6): Promise<MentionLead[]> {
+  const words = query.trim().slice(0, 80).split(/\s+/).filter(Boolean).slice(0, 5);
+  const result = await pocketBaseFetch<List<MentionRow>>(listPath("leads", {
+    filter: [ownLead(userId), ...words.map((word) => `name ~ ${quote(word)}`)].join(" && "),
+    sort: "-last_contacted_at,name",
+    perPage: String(words.length ? MENTION_CANDIDATES : limit),
+    skipTotal: "1",
+    expand: "batch",
+    fields: MENTION_FIELDS,
+  }));
+  const needle = normalizeForMatch(words.join(" "));
+  const tokens = needle.split(" ").filter(Boolean);
+  const rank = (name: string) => {
+    const normalized = normalizeForMatch(name);
+    if (!needle) return 0;
+    if (normalized.startsWith(needle)) return 3;
+    const nameWords = normalized.split(" ");
+    return tokens.every((token) => nameWords.some((word) => word.startsWith(token))) ? 2 : 1;
+  };
+  // ponytail: ranks the 50 most recently contacted matches; a broad query on a huge account may miss a better one further down.
+  return result.items
+    .map((row, order) => ({ row, order, score: rank(row.name ?? "") }))
+    .sort((a, b) => b.score - a.score || a.order - b.order)
+    .slice(0, limit)
+    .map(({ row }) => toMention(row));
 }
 
 /** Leads del usuario paginados, con filtro opcional por estado de contacto y por nombre. */
@@ -479,12 +551,13 @@ export async function addManualLead(userId: string, input: ManualLeadInput): Pro
 }
 
 /** A batch the user already launched with the same parameters after `sinceIso` (a confirmed search replayed). */
-export async function findRecentBatch(userId: string, opts: { sinceIso: string; requestedCount: number; kind: "business" | "person"; query?: string; keyword?: string }) {
+/** The batch a Leadtita card already launched (replay of the same card). Matched by card fingerprint only, so another card
+ * from the same turn (e.g. the same search with different filters) is never mistaken for it. */
+export async function findRecentBatch(userId: string, opts: { sinceIso: string; cardKey: string }) {
   const filters = [
     `user = ${quote(userId)}`,
     `created_at >= ${quote(toPbDate(opts.sinceIso))}`,
-    `requested_count = ${Math.trunc(opts.requestedCount)}`,
-    opts.kind === "person" ? `kind = "person" && query = ${quote(opts.query ?? "")}` : `kind != "person" && keywords ~ ${quote(opts.keyword ?? "")}`,
+    `card_key = ${quote(opts.cardKey)}`,
   ];
   const result = await pocketBaseFetch<List<{ id: string; result_count?: number; status?: string }>>(listPath("lead_batches", {
     filter: filters.join(" && "),

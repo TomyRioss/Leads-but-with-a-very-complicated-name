@@ -12,8 +12,8 @@ export async function FinalCta() {
           <p>{t("text")}</p>
         </div>
         <div className="lp-final-actions">
-          <Link className="lp-btn lp-btn-ink" href="/buscar?signup=1">{t("primary")} <ArrowRight size={17} aria-hidden="true" /></Link>
-          <Link className="lp-final-link" href="/buscar">{t("secondary")}</Link>
+          <Link className="lp-btn lp-btn-ink" href="/register">{t("primary")} <ArrowRight size={17} aria-hidden="true" /></Link>
+          <Link className="lp-final-link" href="/login">{t("secondary")}</Link>
         </div>
       </div>
     </section>

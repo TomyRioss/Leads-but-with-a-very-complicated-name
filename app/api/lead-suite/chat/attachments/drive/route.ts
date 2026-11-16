@@ -29,8 +29,8 @@ export async function POST(request: Request) {
   if (typeof fileId !== "string" || !/^[A-Za-z0-9_-]{1,200}$/.test(fileId)) return NextResponse.json({ error: t("invalidRequestBody") }, { status: 400 });
 
   try {
-    // readDriveFile only reads files the user connected (drive.file) unless full-access mode is on.
-    const attachment = driveToContext(await readDriveFile(session.user.id, fileId));
+    // Picked in Picker for this message only: drive.file scope limits the user's own token to files they chose.
+    const attachment = driveToContext(await readDriveFile(session.user.id, fileId, { picked: true }));
     return withRefreshedSession(NextResponse.json({ attachment }), session.token);
   } catch (error) {
     if (error instanceof GoogleNotConnectedError) return NextResponse.json({ error: t("generic"), code: "not_connected" }, { status: 409 });

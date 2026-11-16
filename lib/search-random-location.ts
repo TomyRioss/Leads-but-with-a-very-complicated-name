@@ -14,6 +14,20 @@ export const RANDOM_LOCATION_COUNTRIES = [
 
 export type RandomSearchSlot = { keyword: string; country: string; limit: number };
 
+/** Máximo de países elegidos a mano en una búsqueda multipaís. */
+export const MAX_SEARCH_COUNTRIES = 10;
+
+/** Nombre del lote para varios países, dentro del máximo de 100 caracteres del campo `country`. */
+export function countriesLabel(countries: readonly string[]): string {
+  const all = countries.join(", ");
+  if (all.length <= 100) return all;
+  for (let shown = countries.length - 1; shown > 0; shown--) {
+    const label = `${countries.slice(0, shown).join(", ")} +${countries.length - shown}`;
+    if (label.length <= 100) return label;
+  }
+  return `${countries[0].slice(0, 90)} +${countries.length - 1}`;
+}
+
 /** Reparte `total` en `parts` cantidades que difieren como mucho en 1 y suman exactamente `total`. */
 export function splitEvenly(total: number, parts: number): number[] {
   if (parts <= 0) return [];
@@ -23,13 +37,12 @@ export function splitEvenly(total: number, parts: number): number[] {
 }
 
 /**
- * Plan de búsqueda: cada lead se asigna por turnos a un país (parejo entre países) y, dentro de cada país,
+ * Plan de búsqueda multipaís (aleatoria o elegida): cada lead se asigna por turnos a un país (parejo entre países) y, dentro de cada país,
  * por turnos a una keyword (parejo entre keywords). La suma de límites es exactamente `count`.
  * `offset` rota qué países reciben el lead extra (en el servidor se sortea para que no sea siempre el mismo).
  */
-export function planRandomSearch(count: number, keywords: string[], offset = 0): RandomSearchSlot[] {
-  const countries = RANDOM_LOCATION_COUNTRIES;
-  if (count <= 0 || keywords.length === 0) return [];
+export function planRandomSearch(count: number, keywords: string[], offset = 0, countries: readonly string[] = RANDOM_LOCATION_COUNTRIES): RandomSearchSlot[] {
+  if (count <= 0 || keywords.length === 0 || countries.length === 0) return [];
   const limits = new Map<string, number>();
   const perCountry = new Array<number>(countries.length).fill(0);
   for (let index = 0; index < count; index++) {

@@ -1,0 +1,19 @@
+.modal-dialog { position: fixed; inset: 0; margin: auto; height: fit-content; width: min(440px, calc(100vw - 32px)); max-width: calc(100vw - 32px); max-height: calc(100dvh - 32px); padding: 0; border: 1px solid var(--line); border-radius: 16px; background: var(--paper); color: var(--ink); overflow: auto; box-shadow: 0 1px 0 color-mix(in srgb, var(--ash-950) 4%, transparent), 0 28px 56px -28px color-mix(in srgb, var(--ash-950) 38%, transparent); }
+.modal-dialog::backdrop { background: color-mix(in srgb, var(--ash-950) 38%, transparent); }
+.modal-body { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; padding: 22px; }
+.modal-head { display: flex; align-items: center; gap: 12px; }
+.modal-head h2 { flex: 1; margin: 0; color: var(--ink); font-size: 21px; font-weight: 650; line-height: 1.15; letter-spacing: -0.03em; }
+.modal-head .brand-dot { color: var(--lime-dark); }
+.modal-icon { display: grid; flex: none; place-items: center; width: 40px; height: 40px; border-radius: 10px; background: var(--lime); color: var(--ink); }
+.modal-close { display: grid; flex: none; place-items: center; width: 36px; height: 36px; border: 0; border-radius: 8px; background: none; color: var(--muted); cursor: pointer; }
+.modal-close:hover { background: var(--ash-100); color: var(--ink); }
+.modal-intro { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.5; }
+.modal-label { color: var(--ash-800); font-size: 12px; font-weight: 650; }
+.modal-status { min-height: 1em; margin: -4px 0 0; color: var(--muted); font-size: 12px; }
+.modal-spin { animation: modal-rotate 900ms linear infinite; }
+@keyframes modal-rotate { to { transform: rotate(360deg); } }
+.modal-close:focus-visible { outline: 0; box-shadow: 0 0 0 3px color-mix(in srgb, var(--lime) 45%, transparent); }
+@media (max-width: 420px) { .modal-body { padding: 18px; } }
+@media (prefers-reduced-motion: reduce) { .modal-spin { animation: none; } }
+.integrations-dialog { width: min(680px, calc(100vw - 32px)); }
+.integrations-dialog .integrations-grid { max-width: none; }

@@ -1,11 +1,34 @@
 import { NextResponse } from "next/server";
-import { REFERRAL_COOKIE, attachReferral } from "@/lib/server/referrals";
+import { checkBotId } from "botid/server";
+import { disposableEmailBlocklistSet } from "disposable-email-domains-js";
 import { isValidPhoneNumber } from "libphonenumber-js/min";
+import { clientIp, rateLimited } from "@/lib/server/rate-limit";
+import { verifyTurnstile } from "@/lib/server/turnstile";
 import { errorTranslator, localeFrom } from "@/lib/server/locale";
 import { sendVerificationEmail, updateEmailUser } from "@/lib/server/email";
 import { PocketBaseAuthError, PocketBaseRequestError, isPocketBaseConfigured, pocketBaseFetch } from "@/lib/server/pocketbase";
 
-const signupCredits = 240;
+const signupCredits = 50;
+const REGISTER_RATE = { max: 5, windowMs: 10 * 60_000 } as const;
+// Built once per instance; the package's own helper rebuilds this Set on every call.
+const disposableDomains = disposableEmailBlocklistSet();
+
+/** True when the email domain, or any parent domain above the TLD, is a known disposable provider. */
+function isDisposableEmail(email: string) {
+  const parts = email.slice(email.lastIndexOf("@") + 1).split(".");
+  return parts.slice(0, -1).some((_, index) => disposableDomains.has(parts.slice(index).join(".")));
+}
+
+/** BotID verdict. Only runs on Vercel (local/self-hosted builds have no BotID proxy); fails open on service errors. */
+async function isBotRequest() {
+  if (!process.env.VERCEL) return false;
+  try {
+    return (await checkBotId()).isBot;
+  } catch (error) {
+    console.error("Leadta register BotID check failed:", error instanceof Error ? error.message : "unknown error");
+    return false;
+  }
+}
 
 type UserRecord = { id: string; email: string; name?: string; credits?: number; role?: unknown };
 
@@ -21,7 +44,13 @@ function pocketBaseFieldErrors(detail: string): Record<string, string | undefine
 
 export async function POST(request: Request) {
   let t = errorTranslator(request);
-  let body: { email?: unknown; password?: unknown; passwordConfirm?: unknown; phone?: unknown; name?: unknown; locale?: unknown };
+  if (rateLimited(`register:${clientIp(request)}`, REGISTER_RATE.max, REGISTER_RATE.windowMs)) {
+    return NextResponse.json({ error: t("authRateLimited") }, { status: 429 });
+  }
+  if (await isBotRequest()) {
+    return NextResponse.json({ error: t("botDetected") }, { status: 403 });
+  }
+  let body: { email?: unknown; password?: unknown; passwordConfirm?: unknown; phone?: unknown; name?: unknown; locale?: unknown; captcha?: unknown };
   try {
     body = await request.json();
   } catch {
@@ -36,8 +65,14 @@ export async function POST(request: Request) {
   const locale = localeFrom(request, body.locale);
   t = errorTranslator(request, body.locale);
 
+  if (!(await verifyTurnstile(body.captcha, clientIp(request)))) {
+    return NextResponse.json({ error: t("captchaRequired"), code: "captcha" }, { status: 400 });
+  }
   if (!/^\S+@\S+\.\S+$/.test(email)) {
     return NextResponse.json({ error: t("invalidEmail") }, { status: 400 });
+  }
+  if (isDisposableEmail(email)) {
+    return NextResponse.json({ error: t("disposableEmail") }, { status: 400 });
   }
   if (!isValidPhoneNumber(phone)) {
     return NextResponse.json({ error: t("invalidPhone") }, { status: 400 });
@@ -59,8 +94,6 @@ export async function POST(request: Request) {
       method: "POST",
       body: JSON.stringify({ email, phone, password, passwordConfirm, name, credits: signupCredits, emailVisibility: false, verified: false }),
     });
-    const referralCode = request.headers.get("cookie")?.split(";").map((part) => part.trim()).find((part) => part.startsWith(`${REFERRAL_COOKIE}=`))?.slice(REFERRAL_COOKIE.length + 1);
-    const referred = referralCode ? await attachReferral({ id: user.id, email }, referralCode) : false;
     let verificationSent = false;
     try {
       await sendVerificationEmail(user, locale);
@@ -69,9 +102,7 @@ export async function POST(request: Request) {
     } catch (emailError) {
       console.error("Leadta verification email failed:", emailError instanceof Error ? emailError.message : "unknown error");
     }
-    const response = NextResponse.json({ verificationRequired: true, verificationSent }, { status: 201 });
-    if (referralCode && referred) response.cookies.set(REFERRAL_COOKIE, "", { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "lax", path: "/", maxAge: 0 });
-    return response;
+    return NextResponse.json({ verificationRequired: true, verificationSent }, { status: 201 });
   } catch (error) {
     console.error(
       "Leadta register failed:",

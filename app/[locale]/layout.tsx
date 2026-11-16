@@ -6,6 +6,7 @@ import { hasLocale, NextIntlClientProvider } from "next-intl";
 import { getMessages, getTranslations, setRequestLocale } from "next-intl/server";
 import { notFound } from "next/navigation";
 import { routing } from "@/i18n/routing";
+import { CampaignBanner } from "@/app/campaign-banner";
 import "react-phone-number-input/style.css";
 import "../globals.css";
 
@@ -51,6 +52,7 @@ export default async function RootLayout({ children, params }: { children: React
           now={new Date("2026-01-01T00:00:00.000Z")}
           timeZone="UTC"
         >
+          <CampaignBanner />
           {children}
         </NextIntlClientProvider>
         <Analytics />

@@ -104,6 +104,8 @@
 .ls-chat__error--context button { margin-left: 0; }
 .ls-chat__error--context .ls-chat__error-primary { min-height: 36px; padding: 0 14px; border-radius: 10px; background: var(--lime); text-decoration: none; }
 .ls-chat__error--context .ls-chat__error-primary:hover { background: var(--lime-dark); }
+a.ls-chat__error-primary { display: inline-flex; align-items: center; gap: 4px; color: var(--ink); font-weight: 600; }
+a.ls-chat__error-primary:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
 
 .ls-chat button:focus-visible,
 .ls-chat textarea:focus-visible { outline: 3px solid var(--ash-950); outline-offset: 2px; }
@@ -168,6 +170,8 @@
   transition: border-color 160ms ease, box-shadow 160ms ease;
 }
 .ls-chat__composer:focus-within { border-color: var(--lime-dark); box-shadow: 0 0 0 3px color-mix(in srgb, var(--lime) 45%, transparent), 0 6px 20px rgb(23 25 24 / 0.06); }
+/* Lead dragged from the Leadtita sidebar: the composer is the drop target. */
+.ls-chat.is-lead-dragging .ls-chat__composer { border-color: var(--lime-dark); box-shadow: 0 0 0 3px color-mix(in srgb, var(--lime) 45%, transparent), 0 6px 20px rgb(23 25 24 / 0.06); }
 
 .ls-chat__input-wrap { position: relative; min-height: 22px; }
 .ls-chat__input-highlight,
@@ -230,9 +234,17 @@
 }
 .ls-chat__mention:hover, .ls-chat__mention.is-active { background: var(--ash-100); }
 .ls-chat__mention:focus-visible { outline: 2px solid var(--lime-dark); outline-offset: -2px; }
-.ls-chat__mention-name { font-size: 13px; font-weight: 650; }
-.ls-chat__mention-meta { color: var(--ash-600); font-size: 12px; }
+.ls-chat__mention-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-width: 0; }
+.ls-chat__mention-name { overflow: hidden; font-size: 13px; font-weight: 500; text-overflow: ellipsis; white-space: nowrap; }
+.ls-chat__mention-name mark { background: none; color: var(--ink); font-weight: 750; }
+.ls-chat__mention-status { flex: none; padding: 2px 7px; border-radius: 999px; background: var(--ash-100); color: var(--ash-700); font-size: 11px; font-weight: 600; }
+.ls-chat__mention.is-active .ls-chat__mention-status { background: var(--paper); }
+.ls-chat__mention-status.is-replied, .ls-chat__mention-status.is-meeting, .ls-chat__mention-status.is-won { background: var(--lime); color: var(--ash-950); }
+.ls-chat__mention-meta { overflow: hidden; color: var(--ash-600); font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
 .ls-chat__mentions-state { margin: 0; padding: 10px 11px; color: var(--ash-600); font-size: 13px; }
+.ls-chat__mentions-head { margin: 0; padding: 6px 11px 4px; color: var(--ash-500); font-size: 11px; font-weight: 650; letter-spacing: 0.02em; text-transform: uppercase; }
+.ls-chat__mentions-hint { position: sticky; bottom: -5px; margin: 4px -5px -5px; padding: 6px 16px; border-top: 1px solid var(--line); background: var(--paper); color: var(--ash-500); font-size: 11px; }
+@media (hover: none) and (pointer: coarse) { .ls-chat__mentions-hint { display: none; } }
 /* The mirror must preserve textarea glyph widths so its visible caret stays aligned. */
 .ls-chat__lead-mention { color: color-mix(in srgb, var(--lime-dark) 45%, var(--ash-950)); }
 .ls-chat__toolbar { display: flex; align-items: center; justify-content: flex-start; gap: 8px; cursor: default; }
@@ -265,6 +277,18 @@
 .ls-chat__control--sales .ls-chat__control-current { color: var(--ash-950); }
 .ls-chat__control--sales:hover .ls-chat__control-current, .ls-chat__control--sales.is-open .ls-chat__control-current { color: var(--ash-950); }
 .ls-chat__control.ls-chat__control--sales:focus-visible { outline: 2px solid var(--ash-950); outline-offset: 2px; }
+/* Permissions: no fill until hovered/open; "Peligro" reads as a dark warning chip so it is never active by accident. */
+.ls-chat__control--permission.is-danger { border-color: var(--ash-950); background: var(--ash-950); color: var(--lime); }
+.ls-chat__control--permission.is-danger .ls-chat__control-current { color: var(--lime); }
+.ls-chat__control--permission.is-danger:hover, .ls-chat__control--permission.is-danger.is-open { background: var(--ash-800); color: var(--lime); }
+.ls-chat__mode-option.is-danger .ls-chat__mode-option-icon, .ls-danger__icon { background: var(--ash-950); color: var(--lime); }
+.ls-danger__risks { display: grid; gap: 8px; margin: 0; padding-left: 18px; color: var(--ink); font-size: 14px; line-height: 1.45; }
+.ls-danger__check { display: flex; align-items: center; gap: 8px; color: var(--ash-800); font-size: 13px; cursor: pointer; }
+.ls-danger__check input { width: 16px; height: 16px; accent-color: var(--ash-950); }
+.ls-danger__actions { display: flex; gap: 10px; }
+.ls-danger__actions > * { flex: 1; }
+.ls-danger__confirm { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-width: 0; background: var(--ash-950); color: var(--lime); }
+.ls-danger__confirm:hover:not(:disabled) { background: var(--ash-800); }
 .ls-chat__mode-menu, .ls-chat__sales-menu {
   z-index: 30;
   border: 1px solid var(--line);
@@ -315,10 +339,18 @@
 .ls-chat__sales-choice .is-selected { color: var(--lime-dark); }
 .ls-chat__sales-connect { flex: none; padding: 6px 8px; border: 1px solid var(--line); border-radius: 7px; background: var(--paper); color: var(--ink); font-size: 11px; font-weight: 650; cursor: pointer; }
 .ls-chat__sales-connect:hover { border-color: var(--lime-dark); background: var(--ash-100); }
+.ls-chat__sales-connect:disabled { opacity: 0.55; cursor: progress; }
+.ls-chat__sales-connect.is-danger { border-color: var(--ash-800); background: var(--ash-900); color: var(--paper); }
+.ls-chat__sales-connect.is-danger:hover:not(:disabled) { background: var(--ash-950); }
+.ls-chat__sales-disconnect { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: -2px 0 2px; padding: 8px 10px; border-radius: 9px; background: var(--ash-100); }
+.ls-chat__sales-disconnect > span { flex: 1 1 100%; color: var(--ash-800); font-size: 12px; line-height: 1.4; }
+.ls-chat__sales-disconnect > button:first-of-type { margin-left: auto; }
 .ls-chat__sales-status { margin: 0; padding: 8px 2px; }
 .ls-chat__sales-connect-view { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line); }
 .ls-chat__sales-connect-view > p { margin: 0 0 10px; color: var(--ash-700); font-size: 12px; line-height: 1.45; }
 .ls-chat__sales-connect-view .gdrive-card { border: 0; padding: 0; box-shadow: none; }
+.ls-chat__control-alert { flex: none; color: var(--ash-950); }
+.ls-chat__sales-needs { margin: 10px 0 0; padding: 8px 10px; border: 1px solid var(--ash-300); border-radius: 8px; background: var(--ash-50); color: var(--ash-900); font-size: 12px; line-height: 1.45; }
 .ls-chat__sales-clear { margin-top: 9px; padding: 5px 2px; border: 0; background: transparent; color: var(--ash-600); font-size: 11px; text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }
 .ls-chat__sales-clear:hover { color: var(--ink); }
 @media (max-width: 400px) {
@@ -503,6 +535,51 @@
 .ls-chat__action.is-cancelled { box-shadow: none; }
 .ls-chat__action.is-cancelled > :not(.ls-chat__action-foot) { opacity: 0.55; }
 .ls-chat__action-error { display: flex; align-items: center; gap: 8px; margin: 0; color: var(--ink); font-size: 13.5px; font-weight: 600; }
+.ls-chat__action-error svg, .ls-chat__credit-warning svg { flex: none; }
+.ls-chat__credit-warning { display: flex; align-items: flex-start; gap: 8px; margin: 0; padding: 10px 12px; border: 1px solid var(--ash-300); border-radius: 10px; background: var(--ash-50); color: var(--ash-900); font-size: 13px; line-height: 1.45; }
+.ls-chat__error-link { color: var(--ink); font-weight: 650; text-decoration: underline; text-decoration-color: var(--lime-dark); text-underline-offset: 3px; white-space: nowrap; }
+.ls-chat__error-link:hover { text-decoration-color: var(--ink); }
+.ls-chat__error-link:focus-visible { outline: 2px solid var(--ash-950); outline-offset: 2px; border-radius: 2px; }
+
+/* Revisión de envíos en lote: un destinatario por fila, mensaje completo editable. */
+.ls-batch { display: grid; gap: 10px; }
+.ls-batch__bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
+.ls-batch__count { margin: 0; color: var(--ash-800); font-size: 13px; font-weight: 650; font-variant-numeric: tabular-nums; }
+.ls-batch__toggle-all, .ls-batch__expand { display: inline-flex; min-height: 32px; align-items: center; gap: 4px; padding: 0 8px; border: 0; border-radius: 8px; background: transparent; color: var(--ash-700); font: inherit; font-size: 12.5px; font-weight: 600; cursor: pointer; }
+.ls-batch__toggle-all:hover, .ls-batch__expand:hover { background: var(--ash-150); color: var(--ink); }
+.ls-batch__expand svg { transition: transform 160ms ease; }
+.ls-batch__expand[aria-expanded="true"] svg { transform: rotate(180deg); }
+.ls-batch__list { display: grid; max-height: 420px; gap: 6px; margin: 0; padding: 0; overflow-y: auto; list-style: none; overscroll-behavior: contain; }
+.ls-batch__row { display: grid; gap: 6px; padding: 10px 10px 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--paper); }
+.ls-batch__row.is-excluded { background: var(--ash-50); }
+.ls-batch__row.is-excluded .ls-batch__who, .ls-batch__row.is-excluded .ls-batch__preview { opacity: 0.55; }
+.ls-batch__row.is-excluded .ls-batch__who strong { text-decoration: line-through; text-decoration-color: var(--ash-500); }
+.ls-batch__row.is-invalid { border-color: var(--ash-950); }
+.ls-batch__head { display: flex; align-items: center; gap: 10px; }
+.ls-batch__head input[type="checkbox"] { width: 18px; height: 18px; flex: none; margin: 0; accent-color: var(--ash-950); cursor: pointer; }
+.ls-batch__who { display: grid; min-width: 0; flex: 1; gap: 1px; cursor: pointer; }
+.ls-batch__who strong { overflow: hidden; color: var(--ink); font-size: 13.5px; font-weight: 650; text-overflow: ellipsis; white-space: nowrap; }
+.ls-batch__who span { display: inline-flex; min-width: 0; align-items: center; gap: 5px; overflow: hidden; color: var(--muted); font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+.ls-batch__who span svg { flex: none; }
+.ls-batch__tag { flex: none; padding: 2px 8px; border-radius: 999px; background: var(--ash-150); color: var(--ash-800); font-size: 11px; font-weight: 650; }
+.ls-batch__tag.is-edited { background: var(--lime); color: var(--ash-950); }
+.ls-batch__preview { display: -webkit-box; margin: 0 0 0 28px; overflow: hidden; color: var(--ash-800); font-size: 12.5px; line-height: 1.45; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow-wrap: anywhere; }
+.ls-batch__panel { display: grid; gap: 8px; margin-left: 28px; }
+.ls-batch__panel label { display: grid; gap: 4px; }
+.ls-batch__panel label span { color: var(--ash-700); font-size: 12px; font-weight: 600; }
+.ls-batch__panel :is(input, textarea) { width: 100%; padding: 8px 10px; border: 1px solid var(--ash-300); border-radius: 8px; background: var(--paper); color: var(--ink); font: inherit; font-size: 13px; line-height: 1.5; }
+.ls-batch__panel textarea { resize: vertical; }
+.ls-batch__panel :is(input, textarea):disabled { background: var(--ash-50); color: var(--ash-600); }
+.ls-batch__error { margin: 0; color: var(--ink); font-size: 12.5px; font-weight: 600; }
+.ls-batch__ack { display: flex; min-height: 44px; align-items: center; gap: 10px; padding: 8px 12px; border: 1px solid var(--ash-300); border-radius: 10px; background: var(--ash-50); color: var(--ink); font-size: 13px; font-weight: 600; cursor: pointer; }
+.ls-batch__ack input { width: 18px; height: 18px; flex: none; margin: 0; accent-color: var(--ash-950); }
+.ls-batch :is(button, input, textarea):focus-visible { outline: 2px solid var(--ash-950); outline-offset: 2px; }
+.ls-chat__action-primary:disabled { cursor: not-allowed; opacity: 0.5; }
+@media (max-width: 480px) {
+  .ls-batch__preview, .ls-batch__panel { margin-left: 0; }
+  .ls-batch__expand span { display: none; }
+}
+@media (prefers-reduced-motion: reduce) { .ls-batch__expand svg { transition: none; } }
 .ls-chat__action-progress { display: flex; flex-direction: column; gap: 8px; color: var(--ash-700); font-size: 13.5px; font-weight: 600; }
 .ls-chat__progress-bar { position: relative; height: 4px; overflow: hidden; border-radius: 999px; background: var(--ash-150); }
 .ls-chat__progress-bar::after { content: ""; position: absolute; inset: 0 auto 0 0; width: 40%; border-radius: inherit; background: var(--lime-dark); animation: ls-chat-progress 1.4s cubic-bezier(0.65, 0, 0.35, 1) infinite; }
@@ -649,6 +726,8 @@
 .ls-chat__quota-meter { display: flex; min-width: 0; flex: 1 1 120px; flex-direction: column; gap: 5px; color: var(--ash-700); }
 .ls-chat__quota-meter.is-whatsapp { --quota-accent: #25d366; }
 .ls-chat__quota-meter.is-gmail { --quota-accent: #ea4335; }
+.ls-chat__quota-meter.is-ai { --quota-accent: var(--lime-dark); }
+.ls-chat__quotas:has(.is-ai) { width: min(560px, calc(100% - 180px)); }
 .ls-chat__quota-label { display: flex; min-width: 0; align-items: center; gap: 5px; font-size: 12px; line-height: 1.2; white-space: nowrap; }
 .ls-chat__quota-label svg { flex: none; color: var(--quota-accent); }
 .ls-chat__quota-label span { overflow: hidden; text-overflow: ellipsis; }
@@ -659,7 +738,14 @@
 .ls-chat__quota-meter:not(.is-compact) .ls-chat__quota-label { font-size: 12px; }
 .ls-chat__quota-meter:not(.is-compact) .ls-chat__quota-track { height: 6px; }
 .ls-chat__quotas .ls-chat__quota-meter { max-width: 175px; }
-.ls-chat__action .ls-chat__quota-meter { width: 100%; }
+.ls-chat__action .ls-chat__quota-meter { flex: none; width: 100%; gap: 7px; padding: 11px 13px; }
+.ls-chat__action .ls-chat__quota-label { font-size: 13px; font-weight: 600; }
+.ls-chat__action .ls-chat__quota-label strong { color: var(--ash-700); font-size: 13px; font-weight: 550; }
+.ls-chat__action .ls-chat__quota-label b { color: var(--ink); font-size: 18px; font-weight: 720; letter-spacing: -0.02em; }
+.ls-chat__quota-detail { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+.ls-chat__quota-meter.is-low:not(.is-compact) { border-color: var(--ash-400); }
+.ls-chat__quota-meter.is-empty:not(.is-compact) { border-color: var(--ash-500); background: var(--ash-150); }
+.ls-chat__quota-meter.is-empty:not(.is-compact) .ls-chat__quota-label strong { color: var(--ink); font-weight: 700; }
 .ls-chat.has-quotas .ls-chat__log { padding-top: 68px; }
 .ls-chat__corner { position: absolute; z-index: 3; top: 12px; right: 16px; display: flex; align-items: center; gap: 4px; }
 .ls-chat--panel .ls-chat__corner { right: 64px; }
@@ -715,9 +801,12 @@
 .ls-chat__history li.is-current { background: color-mix(in srgb, var(--lime) 16%, var(--paper)); }
 .ls-chat__history-check { flex: none; width: 16px; height: 16px; margin: 0 3px 0 8px; accent-color: var(--lime-dark); cursor: pointer; }
 .ls-chat__history-check:disabled { cursor: default; }
-.ls-chat__history-open { display: flex; min-width: 0; flex: 1; flex-direction: column; gap: 1px; min-height: 44px; padding: 6px 10px; border: 0; border-radius: 10px; background: transparent; color: var(--ink); text-align: left; cursor: pointer; }
+.ls-chat__history-open { display: flex; min-width: 0; flex: 1; align-items: center; gap: 10px; min-height: 48px; padding: 7px 10px; border: 0; border-radius: 10px; background: transparent; color: var(--ink); text-align: left; cursor: pointer; }
 .ls-chat__history-open:disabled, .ls-chat__history-delete:disabled { cursor: default; opacity: 0.55; }
 .ls-chat__history-open:hover { background: var(--ash-100); }
+.ls-chat__history-open > svg { flex: none; color: var(--ash-500); }
+.ls-chat__history li.is-current .ls-chat__history-open > svg { color: var(--lime-dark); }
+.ls-chat__history-open > span { display: grid; min-width: 0; gap: 2px; }
 .ls-chat__history-open strong { overflow: hidden; font-size: 13.5px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
 .ls-chat__history-open small { color: var(--muted); font-size: 12px; }
 .ls-chat__history-delete { display: grid; flex: none; width: 36px; height: 36px; place-items: center; border: 0; border-radius: 8px; background: transparent; color: var(--ash-500); cursor: pointer; }
@@ -726,7 +815,15 @@
 .ls-chat__history-confirm span { flex: 1 1 100%; }
 .ls-chat__history-confirm button { min-height: 34px; padding: 0 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); color: var(--ink); font-size: 13px; font-weight: 650; cursor: pointer; }
 .ls-chat__history-confirm button.is-danger { border-color: transparent; background: var(--ink); color: var(--paper); }
-.ls-chat__history-empty { margin: 8px; color: var(--muted); font-size: 13px; }
+.ls-chat__history-empty { display: grid; justify-items: center; gap: 6px; padding: 22px 16px 18px; text-align: center; }
+.ls-chat__history-empty > span { display: grid; width: 38px; height: 38px; place-items: center; margin-bottom: 4px; border-radius: 11px; background: var(--ash-100); color: var(--ash-700); }
+.ls-chat__history-empty strong { color: var(--ink); font-size: 13.5px; font-weight: 650; }
+.ls-chat__history-empty small { max-width: 240px; color: var(--muted); font-size: 12px; line-height: 1.45; }
+.ls-chat__history-group { margin: 8px 10px 2px; color: var(--ash-600); font-size: 11px; font-weight: 650; letter-spacing: 0.04em; text-transform: uppercase; }
+.ls-chat__history-group:first-child { margin-top: 2px; }
+/* Checkboxes stay out of the way until hover, focus or an active selection. */
+@media (hover: hover) { .ls-chat__history li:not(:hover):not(:focus-within) .ls-chat__history-check:not(:checked) { opacity: 0; } .ls-chat__history:has(.ls-chat__history-check:checked) .ls-chat__history-check { opacity: 1; } }
+.ls-chat__history-check { transition: opacity 120ms ease; }
 /* Lugar para el rincón sobre el primer mensaje. */
 .ls-chat--page .ls-chat__log, .ls-chat--panel .ls-chat__log { padding-top: 64px; }
 @media (max-width: 1024px) { .ls-chat--panel .ls-chat__corner { right: 12px; } }
@@ -749,7 +846,9 @@
   background: var(--paper);
   box-shadow: 0 14px 36px -14px rgb(23 25 24 / 0.32);
 }
-.ls-chat__attach-menu { display: flex; width: 260px; flex-direction: column; gap: 2px; padding: 6px; }
+.ls-chat__attach-menu { display: flex; width: 288px; max-width: calc(100vw - 32px); flex-direction: column; gap: 2px; padding: 6px; }
+.ls-chat__attach-section { margin: 6px 10px 2px; color: var(--ash-600); font-size: 11px; font-weight: 650; letter-spacing: 0.04em; text-transform: uppercase; }
+.ls-chat__attach-divider { height: 1px; margin: 4px 6px; background: var(--line); }
 .ls-chat__attach-menu button { display: flex; align-items: flex-start; gap: 10px; min-height: 48px; padding: 8px 10px; border: 0; border-radius: 10px; background: transparent; color: var(--ink); text-align: left; cursor: pointer; }
 .ls-chat__attach-menu button:hover, .ls-chat__attach-menu button:focus-visible { background: var(--ash-100); }
 .ls-chat__attach-menu button > svg { flex: none; margin-top: 2px; color: var(--ash-700); }

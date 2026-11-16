@@ -24,7 +24,7 @@ export default function PricingPage({ hero, children }: { hero: ReactNode; child
     <main className="app-shell pricing-shell">
       <nav className="topbar" aria-label={t("navLabel")}>
         <BrandLogo />
-        <div className="topbar-actions"><LanguageSwitcher /><Link className="pricing-nav-link" href="/buscar">{member ? t("goToLeadta") : t("session")}</Link></div>
+        <div className="topbar-actions"><LanguageSwitcher /><Link className="pricing-nav-link" href={member ? "/buscar" : "/login"}>{member ? t("goToLeadta") : t("session")}</Link></div>
       </nav>
 
       {hero}

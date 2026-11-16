@@ -6,8 +6,6 @@
     "accountMenu": "Account menu",
     "salesSupport": "Sales support",
     "salesSupportMessage": "Hi, I need sales help with Leadta.",
-    "recommendLeadta": "Recommend Leadta",
-    "recommendMessage": "I recommend Leadta for finding local businesses.",
     "keywordsPlaceholder": "E.g.: accounting firms\nreal estate agencies",
     "keywordCount": "{count, plural, one {# keyword} other {# keywords}}",
     "countryAria": "Country (required)",
@@ -171,7 +169,11 @@
     "deleteLeadsFailed": "Couldn’t delete the leads. Try again.",
     "pageTitle": "Find your next clients",
     "pageSubtitle": "Pick an industry and an area: Leadta brings the businesses with their contact details.",
-    "resultsTitle": "Your leads"
+    "resultsTitle": "Your leads",
+    "countryAddAnother": "Add another country",
+    "countriesSelected": "Selected countries",
+    "countryRemove": "Remove {country}",
+    "countriesHelp": "With several countries, each whole country is searched and leads are split evenly between them."
   },
   "Feedback": {
     "title": "Feedback",

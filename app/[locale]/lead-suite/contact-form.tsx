@@ -8,7 +8,7 @@ import { FaInstagram, FaLinkedin, FaWhatsapp } from "react-icons/fa";
 import { CONTACT_STATUSES } from "@/lib/lead-suite";
 import type { ContactChannel, ContactStatus, LeadContact, LeadMatch } from "@/lib/lead-suite";
 import { GoogleFeatureConnectButton } from "@/app/google-drive-connect";
-import "@/app/referral-dialog.css";
+import "@/app/modal-dialog.css";
 
 type ChannelIcon = ComponentType<{ size?: number; "aria-hidden"?: boolean | "true" }>;
 export const channelIcons: Record<ContactChannel, ChannelIcon> = {
@@ -207,24 +207,24 @@ export function ContactForm({ target, onClose, onSaved }: Props) {
   return (
     <dialog
       ref={dialogRef}
-      className="referral-dialog ls-contact-dialog"
+      className="modal-dialog ls-contact-dialog"
       aria-labelledby={`${uid}-title`}
       onClose={onClose}
       onCancel={(event) => { if (busy) event.preventDefault(); }}
       onClick={(event) => { if (event.target === event.currentTarget) close(); }}
     >
       {lead && (
-        <form className="referral-body ls-contact-form" onSubmit={submit} noValidate>
-          <div className="referral-head">
-            <span className="referral-icon" aria-hidden="true">{editing ? <UserRoundPen size={18} strokeWidth={1.8} /> : <UserRoundPlus size={18} strokeWidth={1.8} />}</span>
+        <form className="modal-body ls-contact-form" onSubmit={submit} noValidate>
+          <div className="modal-head">
+            <span className="modal-icon" aria-hidden="true">{editing ? <UserRoundPen size={18} strokeWidth={1.8} /> : <UserRoundPlus size={18} strokeWidth={1.8} />}</span>
             <h2 id={`${uid}-title`}>{editing ? t("formEditTitle") : t("formTitle")}</h2>
-            <button type="button" className="referral-close" onClick={close} aria-label={t("formClose")}><X size={18} aria-hidden="true" /></button>
+            <button type="button" className="modal-close" onClick={close} aria-label={t("formClose")}><X size={18} aria-hidden="true" /></button>
           </div>
-          <p className="referral-intro"><strong className="ls-contact-lead">{lead.name}</strong>{[lead.category, lead.city].filter(Boolean).length ? ` · ${[lead.category, lead.city].filter(Boolean).join(" · ")}` : ""}</p>
+          <p className="modal-intro"><strong className="ls-contact-lead">{lead.name}</strong>{[lead.category, lead.city].filter(Boolean).length ? ` · ${[lead.category, lead.city].filter(Boolean).join(" · ")}` : ""}</p>
 
           <div className="ls-ai-fill">
             <label className="ls-contact-field" htmlFor={`${uid}-ai`}>
-              <span className="referral-label"><Sparkles size={14} aria-hidden="true" /> {t("aiLabel")}</span>
+              <span className="modal-label"><Sparkles size={14} aria-hidden="true" /> {t("aiLabel")}</span>
             </label>
             <div className="ls-ai-fill-row">
               <input
@@ -239,7 +239,7 @@ export function ContactForm({ target, onClose, onSaved }: Props) {
                 aria-describedby={`${uid}-ai-status`}
               />
               <button type="button" className="auth-secondary-button ls-button ls-ai-fill-button" onClick={() => void aiFill()} disabled={busy || !aiText.trim()}>
-                {aiBusy ? <LoaderCircle className="referral-spin" size={15} aria-hidden="true" /> : <Sparkles size={15} aria-hidden="true" />}
+                {aiBusy ? <LoaderCircle className="modal-spin" size={15} aria-hidden="true" /> : <Sparkles size={15} aria-hidden="true" />}
                 {aiBusy ? t("aiWorking") : t("aiButton")}
               </button>
             </div>
@@ -247,7 +247,7 @@ export function ContactForm({ target, onClose, onSaved }: Props) {
           </div>
 
           <fieldset className={`ls-contact-channels${ai("channel")}`} disabled={busy}>
-            <legend className="referral-label">{t("formChannel")}</legend>
+            <legend className="modal-label">{t("formChannel")}</legend>
             {CHANNELS.map((option) => {
               const Icon = channelIcons[option];
               return (
@@ -262,11 +262,11 @@ export function ContactForm({ target, onClose, onSaved }: Props) {
 
           <div className="ls-contact-row">
             <label className={`ls-contact-field${ai("contactedAt")}`}>
-              <span className="referral-label">{t("formDate")}</span>
+              <span className="modal-label">{t("formDate")}</span>
               <input type="datetime-local" value={contactedAt} max={toLocalInput(new Date())} onChange={(event) => { setContactedAt(event.target.value); touch("contactedAt"); }} required disabled={busy} />
             </label>
             <label className={`ls-contact-field${ai("status")}`}>
-              <span className="referral-label">{t("formStatus")}</span>
+              <span className="modal-label">{t("formStatus")}</span>
               <select value={status} onChange={(event) => { setStatus(event.target.value as ContactStatus); touch("status"); }} disabled={busy}>
                 {CONTACT_STATUSES.map((option) => <option key={option} value={option}>{t(`statuses.${option}`)}</option>)}
               </select>
@@ -274,25 +274,25 @@ export function ContactForm({ target, onClose, onSaved }: Props) {
           </div>
 
           <label className={`ls-contact-field${ai("message")}`}>
-            <span className="referral-label">{t("formMessage")} <span className="ls-muted">{t("formOptional")}</span></span>
+            <span className="modal-label">{t("formMessage")} <span className="ls-muted">{t("formOptional")}</span></span>
             <textarea value={message} onChange={(event) => { setMessage(event.target.value); touch("message"); }} rows={3} maxLength={4000} placeholder={t("formMessagePlaceholder")} disabled={busy} />
           </label>
           <label className={`ls-contact-field${ai("notes")}`}>
-            <span className="referral-label">{t("formNotes")} <span className="ls-muted">{t("formOptional")}</span></span>
+            <span className="modal-label">{t("formNotes")} <span className="ls-muted">{t("formOptional")}</span></span>
             <textarea value={notes} onChange={(event) => { setNotes(event.target.value); touch("notes"); }} rows={2} maxLength={2000} placeholder={t("formNotesPlaceholder")} disabled={busy} />
           </label>
 
 
           {status === "meeting" && (
             <fieldset className="ls-contact-calendar" disabled={busy || Boolean(savedWithWarning)}>
-              <legend className="referral-label"><CalendarPlus size={14} aria-hidden="true" /> {t("calendarTitle")}</legend>
+              <legend className="modal-label"><CalendarPlus size={14} aria-hidden="true" /> {t("calendarTitle")}</legend>
               {calendarReady === false ? (
                 <div className="ls-contact-calendar-connect">
                   <p className="ls-muted">{t("calendarConnectHint")}</p>
                   <GoogleFeatureConnectButton feature="calendar" returnTo="/integraciones" />
                 </div>
               ) : calendarReady === null ? (
-                <p className="ls-muted"><LoaderCircle className="referral-spin" size={14} aria-hidden="true" /> {t("calendarChecking")}</p>
+                <p className="ls-muted"><LoaderCircle className="modal-spin" size={14} aria-hidden="true" /> {t("calendarChecking")}</p>
               ) : (
                 <>
                   <label className="ls-contact-check">
@@ -303,11 +303,11 @@ export function ContactForm({ target, onClose, onSaved }: Props) {
                     <>
                       <div className="ls-contact-row">
                         <label className="ls-contact-field">
-                          <span className="referral-label">{t("calendarStart")}</span>
+                          <span className="modal-label">{t("calendarStart")}</span>
                           <input type="datetime-local" value={meetingAt} min={toLocalInput(new Date())} onChange={(event) => setMeetingAt(event.target.value)} required />
                         </label>
                         <label className="ls-contact-field">
-                          <span className="referral-label">{t("calendarDuration")}</span>
+                          <span className="modal-label">{t("calendarDuration")}</span>
                           <select value={meetingMinutes} onChange={(event) => setMeetingMinutes(Number(event.target.value))}>
                             {MEETING_MINUTES.map((minutes) => <option key={minutes} value={minutes}>{t("calendarMinutes", { minutes })}</option>)}
                           </select>
@@ -322,14 +322,14 @@ export function ContactForm({ target, onClose, onSaved }: Props) {
             </fieldset>
           )}
 
-          <p className="referral-status" role={error ? "alert" : undefined}>{error}</p>
+          <p className="modal-status" role={error ? "alert" : undefined}>{error}</p>
           <div className="ls-contact-actions">
             <button type="button" className="auth-secondary-button ls-button" onClick={close} disabled={busy}>{t("formCancel")}</button>
             {savedWithWarning ? (
               <button type="button" className="primary-button ls-contact-submit" onClick={() => onSaved(savedWithWarning)}>{t("calendarSavedClose")}</button>
             ) : (
               <button type="submit" className="primary-button ls-contact-submit" disabled={busy}>
-                {saving && <LoaderCircle className="referral-spin" size={16} aria-hidden="true" />}
+                {saving && <LoaderCircle className="modal-spin" size={16} aria-hidden="true" />}
                 {saving ? t("formSaving") : editing ? t("formSaveChanges") : t("formSave")}
               </button>
             )}
@@ -412,7 +412,7 @@ export function ContactList({ contacts, showLead, onEdit, onDeleted }: { contact
             <div className="ls-contacts-bar-actions">
               <button type="button" className="auth-secondary-button ls-button" autoFocus onClick={() => setPending(null)} disabled={deleting}>{t("formCancel")}</button>
               <button type="button" className="danger-button ls-contacts-delete" onClick={() => void confirmDelete(bulkPending)} disabled={deleting}>
-                {deleting ? <LoaderCircle className="referral-spin" size={14} aria-hidden="true" /> : <Trash2 size={14} aria-hidden="true" />}{t("delete")}
+                {deleting ? <LoaderCircle className="modal-spin" size={14} aria-hidden="true" /> : <Trash2 size={14} aria-hidden="true" />}{t("delete")}
               </button>
             </div>
           </>
@@ -474,7 +474,7 @@ export function ContactList({ contacts, showLead, onEdit, onDeleted }: { contact
                     <span>{t("deleteConfirmShort")}</span>
                     <button type="button" className="ls-text-action" autoFocus onClick={() => setPending(null)} disabled={deleting}>{t("formCancel")}</button>
                     <button type="button" className="ls-text-action is-danger" onClick={() => void confirmDelete([contact.id])} disabled={deleting}>
-                      {deleting ? <LoaderCircle className="referral-spin" size={13} aria-hidden="true" /> : null}{t("delete")}
+                      {deleting ? <LoaderCircle className="modal-spin" size={13} aria-hidden="true" /> : null}{t("delete")}
                     </button>
                   </div>
                 )}

@@ -10,7 +10,7 @@ Standalone Baileys (`baileys@7.0.0-rc14`) service. Each leadta user links their 
 | `WHATSAPP_CALLBACK_URL` | required | Next.js endpoint that receives callbacks. |
 | `PORT` | 8787 | |
 | `DATA_DIR` | /data | Holds `queue.json`, `sessions/<userId>/` (auth) and `users/<userId>/contacts.json`. |
-| Daily message cap | 40 | Per user. The day rolls over at midnight America/Argentina/Buenos_Aires. |
+| Monthly message cap | 100 | Per user, fixed in code (same as the app's `WHATSAPP_MONTHLY_LIMIT`). The month rolls over at midnight of the 1st, America/Argentina/Buenos_Aires. |
 | `MIN_DELAY_S` / `MAX_DELAY_S` | 45 / 120 | Random gap between two sends from the same user. |
 | `LOG_LEVEL` | warn | pino level. Baileys' own logs stay at warn unless this is set to debug or trace. |
 
@@ -19,7 +19,7 @@ Standalone Baileys (`baileys@7.0.0-rc14`) service. Each leadta user links their 
 Every route except `GET /health` requires `Authorization: Bearer <secret>`. `userId` must be 15 alphanumeric chars. Bodies are JSON, up to 64 KB.
 
 - `GET /health` returns `{ ok: true }`.
-- `GET /sessions/:userId` returns a `SessionState`: `{ status, qr, phone, sentToday, dailyLimit, queued }`.
+- `GET /sessions/:userId` returns a `SessionState`: `{ status, qr, phone, sentThisMonth, monthlyLimit, queued }`.
 - `POST /sessions/:userId/start` starts the session, or returns the existing one. It is idempotent and returns a `SessionState`.
 - `DELETE /sessions/:userId` logs out, deletes the auth, the queue and the contacts, then returns `{ status: "disconnected" }`.
 - `POST /sessions/:userId/messages` takes `{ items: [{ ref, leadId, phone, text }] }` (1 to 10 items) and returns `{ queued, duplicates, invalid: [{ ref, reason }], etaSeconds }`. It answers 409 `not_connected` when the session is not connected.
@@ -29,6 +29,8 @@ Callbacks are sent as POST requests to `WHATSAPP_CALLBACK_URL` with the same Bea
 - `{ type: "sent", userId, leadId, ref, text, at }`
 - `{ type: "failed", userId, leadId, ref, reason, at }`
 - `{ type: "replied", userId, leadId, text, at }`
+
+"Programados" clock: every minute the worker POSTs to `/api/scheduled/dispatch` on the same origin as `WHATSAPP_CALLBACK_URL` (same Bearer token), one call at a time. The app sends the scheduled emails and WhatsApp messages that are due.
 
 ## Deploy (VPS with Docker and nginx)
 

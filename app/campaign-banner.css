@@ -1,0 +1,10 @@
+/* Static (non-animated) campaign strip. Sticky so the fixed sidebar and topbars can sit right under it via --campaign-banner-h. */
+.campaign-banner { position: sticky; z-index: 40; top: 0; display: flex; min-height: 44px; align-items: center; gap: 12px; padding: 6px 24px; background: var(--lime); color: var(--ink); font-family: var(--font-geist-sans), var(--font-ui); font-size: 13px; line-height: 1.35; }
+.campaign-banner__pill { display: inline-flex; max-width: 50%; height: 28px; flex: none; align-items: center; gap: 6px; padding: 0 12px; border-radius: 999px; background: var(--paper); color: var(--ink); font-weight: 600; }
+.campaign-banner__pill svg { flex: none; }
+.campaign-banner__label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.campaign-banner__message { display: -webkit-box; min-width: 0; margin: 0; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow-wrap: anywhere; color: var(--ink); font-weight: 500; }
+@media (max-width: 640px) {
+  .campaign-banner { min-height: 40px; gap: 10px; padding: 6px 16px; font-size: 12.5px; }
+  .campaign-banner__pill { height: 26px; padding: 0 10px; }
+}

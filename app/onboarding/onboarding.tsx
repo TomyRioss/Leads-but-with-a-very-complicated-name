@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useId, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState, type RefObject } from "react";
 import { useTranslations } from "next-intl";
 import { CircleHelp, X } from "lucide-react";
 import "./onboarding.css";
@@ -21,8 +21,6 @@ const MIN_BATCH = 5;
 
 type OnboardingProps = {
   userId: string;
-  /** El historial ya cargó: recién ahí se decide si se abre solo. */
-  ready: boolean;
   hasHistory: boolean;
   hasCountry: boolean;
   busy: boolean;
@@ -33,85 +31,29 @@ type OnboardingProps = {
 type Layout = { rect: { top: number; left: number; width: number; height: number } | null; card: { top: number; left: number } | null };
 
 const storageKey = (userId: string) => `leadta:onboarding:${userId}`;
-function isDone(userId: string) {
-  try { return localStorage.getItem(storageKey(userId)) !== null; } catch { return false; }
-}
 function markDone(userId: string, value: "completed" | "skipped") {
   try { localStorage.setItem(storageKey(userId), value); } catch { /* sin storage: el tour puede reaparecer */ }
 }
+/** Último elemento con ese ancla: en el chat puede haber varias tarjetas y la vigente es la más nueva. */
 function anchorOf(name: string) {
-  return document.querySelector<HTMLElement>(`[data-onboarding="${name}"]`);
+  const all = document.querySelectorAll<HTMLElement>(`[data-onboarding="${name}"]`);
+  return all.length ? all[all.length - 1] : null;
 }
 function keywordsTyped() {
   return Boolean(anchorOf("keywords")?.querySelector("textarea")?.value.trim());
 }
 
-export function Onboarding({ userId, ready, hasHistory, hasCountry, busy, resultCount, onGuidedCountChange }: OnboardingProps) {
-  const t = useTranslations("Onboarding");
-  const titleId = useId();
-  const bodyId = useId();
-  const [open, setOpen] = useState(false);
-  const [step, setStep] = useState(0);
-  const [sawBusy, setSawBusy] = useState(false);
-  // Se fija al abrir: el lote de 1 solo vale para quien nunca buscó; con historial el tour usa el mínimo normal.
-  const [guidedCount, setGuidedCount] = useState(1);
-  const [hasKeywords, setHasKeywords] = useState(false);
+/** Resaltado, posición de la tarjeta y foco del paso actual. Sin ancla en pantalla, la tarjeta queda centrada (CSS). */
+export function useSpotlight(open: boolean, anchorName: string, focus: boolean, bodyId: string, cardRef: RefObject<HTMLDivElement | null>) {
   const [layout, setLayout] = useState<Layout>({ rect: null, card: null });
-  const cardRef = useRef<HTMLDivElement>(null);
-  const launcherRef = useRef<HTMLButtonElement>(null);
-  const [autoChecked, setAutoChecked] = useState(false);
-
-  // La búsqueda guiada terminó cuando se vio `busy` y ya hay resultados.
-  if (open && busy && !sawBusy) setSawBusy(true);
-  const resultsReady = sawBusy && !busy && resultCount > 0;
-  const current = step === LAUNCH && resultsReady ? RESULTS : step;
-  const config = STEPS[current];
-
-  // Una sola vez, cuando el historial cargó: se abre solo si no hay búsquedas previas ni registro de completado.
-  // (Este componente solo se renderiza en el cliente, después del login, así que leer localStorage acá es seguro.)
-  if (ready && !autoChecked) {
-    setAutoChecked(true);
-    if (!hasHistory && !isDone(userId)) { setGuidedCount(1); setOpen(true); }
-  }
-
-  const start = useCallback(() => {
-    setStep(0);
-    setSawBusy(false);
-    setGuidedCount(hasHistory ? MIN_BATCH : 1);
-    setOpen(true);
-  }, [hasHistory]);
-
-  const close = useCallback((value: "completed" | "skipped") => {
-    markDone(userId, value);
-    if (cardRef.current?.contains(document.activeElement)) launcherRef.current?.focus();
-    setOpen(false);
-  }, [userId]);
-
-  useEffect(() => { onGuidedCountChange(open ? guidedCount : null); }, [open, guidedCount, onGuidedCountChange]);
-
   useEffect(() => {
     if (!open) return;
-    const sync = () => setHasKeywords(keywordsTyped());
-    const onKeyDown = (event: KeyboardEvent) => { if (event.key === "Escape" && (cardRef.current?.contains(document.activeElement) || !event.defaultPrevented)) close("skipped"); };
-    const frame = requestAnimationFrame(sync);
-    document.addEventListener("input", sync);
-    document.addEventListener("keydown", onKeyDown);
-    return () => {
-      cancelAnimationFrame(frame);
-      document.removeEventListener("input", sync);
-      document.removeEventListener("keydown", onKeyDown);
-    };
-  }, [open, close]);
-
-  // Resaltado, posición de la tarjeta y foco en cada paso.
-  useEffect(() => {
-    if (!open) return;
-    const anchor = anchorOf(config.anchor);
+    const anchor = anchorOf(anchorName);
     const card = cardRef.current;
     let frame = 0;
     const update = () => {
       frame = 0;
-      if (!anchor || !card) return;
+      if (!anchor || !card) { setLayout({ rect: null, card: null }); return; }
       const r = anchor.getBoundingClientRect();
       const vw = window.innerWidth;
       const vh = window.innerHeight;
@@ -134,7 +76,7 @@ export function Onboarding({ userId, ready, hasHistory, hasCountry, busy, result
     let described: HTMLElement | null = null;
     let previousDescription: string | null = null;
     const focusable = "textarea:not(:disabled), select:not(:disabled), button:not(:disabled)";
-    const control = config.focus && anchor ? (anchor.matches(focusable) ? anchor : anchor.querySelector<HTMLElement>(focusable)) : null;
+    const control = focus && anchor ? (anchor.matches(focusable) ? anchor : anchor.querySelector<HTMLElement>(focusable)) : null;
     if (control) {
       control.focus({ preventScroll: true });
       described = control;
@@ -160,7 +102,58 @@ export function Onboarding({ userId, ready, hasHistory, hasCountry, busy, result
         else described.setAttribute("aria-describedby", previousDescription);
       }
     };
-  }, [open, config.anchor, config.focus, bodyId]);
+  }, [open, anchorName, focus, bodyId, cardRef]);
+  return layout;
+}
+
+export function Onboarding({ userId, hasHistory, hasCountry, busy, resultCount, onGuidedCountChange }: OnboardingProps) {
+  const t = useTranslations("Onboarding");
+  const titleId = useId();
+  const bodyId = useId();
+  const [open, setOpen] = useState(false);
+  const [step, setStep] = useState(0);
+  const [sawBusy, setSawBusy] = useState(false);
+  // Se fija al abrir: el lote de 1 solo vale para quien nunca buscó; con historial el tour usa el mínimo normal.
+  const [guidedCount, setGuidedCount] = useState(1);
+  const [hasKeywords, setHasKeywords] = useState(false);
+  const cardRef = useRef<HTMLDivElement>(null);
+  const launcherRef = useRef<HTMLButtonElement>(null);
+
+  // La búsqueda guiada terminó cuando se vio `busy` y ya hay resultados.
+  if (open && busy && !sawBusy) setSawBusy(true);
+  const resultsReady = sawBusy && !busy && resultCount > 0;
+  const current = step === LAUNCH && resultsReady ? RESULTS : step;
+  const config = STEPS[current];
+
+  const start = useCallback(() => {
+    setStep(0);
+    setSawBusy(false);
+    setGuidedCount(hasHistory ? MIN_BATCH : 1);
+    setOpen(true);
+  }, [hasHistory]);
+
+  const close = useCallback((value: "completed" | "skipped") => {
+    markDone(userId, value);
+    if (cardRef.current?.contains(document.activeElement)) launcherRef.current?.focus();
+    setOpen(false);
+  }, [userId]);
+
+  useEffect(() => { onGuidedCountChange(open ? guidedCount : null); }, [open, guidedCount, onGuidedCountChange]);
+  useEffect(() => {
+    if (!open) return;
+    const sync = () => setHasKeywords(keywordsTyped());
+    const onKeyDown = (event: KeyboardEvent) => { if (event.key === "Escape" && (cardRef.current?.contains(document.activeElement) || !event.defaultPrevented)) close("skipped"); };
+    const frame = requestAnimationFrame(sync);
+    document.addEventListener("input", sync);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      cancelAnimationFrame(frame);
+      document.removeEventListener("input", sync);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [open, close]);
+
+  const { rect, card } = useSpotlight(open, config.anchor, config.focus, bodyId, cardRef);
 
   const key: StepKey = config.key;
   const repeat = guidedCount === MIN_BATCH;
@@ -173,7 +166,6 @@ export function Onboarding({ userId, ready, hasHistory, hasCountry, busy, result
     : key === "location" && !hasCountry ? t("steps.location.hint")
     : key === "launch" ? (busy ? t("steps.launch.searching") : sawBusy ? t("steps.launch.failed") : "")
     : "";
-  const { rect, card } = layout;
 
   return (
     <>

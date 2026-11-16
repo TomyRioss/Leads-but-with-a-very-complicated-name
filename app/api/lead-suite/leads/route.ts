@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/server/auth";
-import { listUserLeads } from "@/lib/server/lead-suite";
+import { listSidebarLeads, listUserLeads, searchMentionLeads, SIDEBAR_VIEWS, type SidebarView } from "@/lib/server/lead-suite";
 import { PocketBaseRequestError } from "@/lib/server/pocketbase";
 import { errorTranslator } from "@/lib/server/locale";
 import { uiError } from "@/lib/server/public-error";
@@ -24,6 +24,17 @@ export async function GET(request: Request) {
   const page = Number(params.get("page") ?? 1);
 
   try {
+    // Chat @mentions: ranked by relevance, recent leads when the query is empty.
+    if (params.get("mention") === "1") {
+      const limit = Math.min(20, Math.max(1, Number(params.get("limit")) || 6));
+      return NextResponse.json({ items: await searchMentionLeads(session.user.id, params.get("q") ?? "", limit) }, { headers: { "Cache-Control": "no-store" } });
+    }
+    // Leadtita sidebar tabs.
+    const view = params.get("view");
+    if (view !== null) {
+      if (!(SIDEBAR_VIEWS as readonly string[]).includes(view)) return NextResponse.json({ error: t("generic") }, { status: 400 });
+      return NextResponse.json({ items: await listSidebarLeads(session.user.id, view as SidebarView) }, { headers: { "Cache-Control": "no-store" } });
+    }
     const result = await listUserLeads(session.user.id, {
       page: Number.isFinite(page) ? page : 1,
       perPage: 20,

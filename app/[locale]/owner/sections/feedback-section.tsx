@@ -5,9 +5,10 @@ import { useTranslations } from "next-intl";
 import { Bug, ExternalLink, MessageSquare } from "lucide-react";
 import {
   errorBox, ghostButton, isUnauthorized, ownerFetch, primaryButton, smallButton, stateBox, statusPill, tableClass, tableWrap,
-  tdClass, theadClass, thClass, trClass, useOwnerFormat, useOwnerList, type OnAction,
+  sortTheadClass, tdClass, thClass, trClass, useOwnerFormat, useOwnerList, type OnAction,
 } from "../ui";
 import { ListToolbar, Pager } from "./list-controls";
+import { SortableTh } from "./sortable-th";
 
 type FeedbackItem = {
   id: string;
@@ -26,8 +27,9 @@ export default function FeedbackSection({ onUnauthorized, onAction }: { onUnauth
   const t = useTranslations("Owner.feedback");
   const common = useTranslations("Owner.common");
   const { formatDateTime, errorText } = useOwnerFormat();
-  const list = useOwnerList<FeedbackItem>("/api/owner/feedback", t("loadError"), onUnauthorized);
+  const list = useOwnerList<FeedbackItem>("/api/owner/feedback", t("loadError"), onUnauthorized, "status", "-createdAt");
   const { data, loading, error } = list;
+  const sorting = { sort: list.sort, onSort: list.setSort };
   const [confirmId, setConfirmId] = useState("");
   const [busyId, setBusyId] = useState("");
   const [actionError, setActionError] = useState("");
@@ -66,14 +68,14 @@ export default function FeedbackSection({ onUnauthorized, onAction }: { onUnauth
       {(error || actionError) && <p className={errorBox} role="alert">{actionError || error}</p>}
       <div className={`${tableWrap}${loading ? " opacity-60 transition-opacity" : ""}`} aria-busy={loading}>
         <table className={tableClass}>
-          <thead className={theadClass}>
+          <thead className={sortTheadClass}>
             <tr>
-              <th className={thClass} scope="col">{common("date")}</th>
-              <th className={thClass} scope="col">{common("user")}</th>
-              <th className={thClass} scope="col">{t("type")}</th>
+              <SortableTh {...sorting} column="createdAt" kind="date" label={common("date")} />
+              <SortableTh {...sorting} column="user" label={common("user")} />
+              <SortableTh {...sorting} column="kind" label={t("type")} />
               <th className={thClass} scope="col">{t("message")}</th>
-              <th className={thClass} scope="col">{common("status")}</th>
-              <th className={thClass} scope="col">{t("linear")}</th>
+              <SortableTh {...sorting} column="state" label={common("status")} />
+              <SortableTh {...sorting} column="identifier" label={t("linear")} />
               <th className={thClass} scope="col">{t("actions")}</th>
             </tr>
           </thead>

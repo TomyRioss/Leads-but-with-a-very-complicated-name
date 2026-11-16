@@ -47,12 +47,12 @@ export function parseContactFields(body: unknown, partial: boolean): Partial<Con
 }
 
 /** Sesión obligatoria: devuelve el userId o la respuesta de error lista. */
-export async function requireUser(request: Request): Promise<{ userId: string } | { response: NextResponse }> {
+export async function requireUser(request: Request): Promise<{ userId: string; role: string } | { response: NextResponse }> {
   const t = errorTranslator(request);
   try {
     const session = await getCurrentUser(request);
     if (!session) return { response: NextResponse.json({ error: t("signInToContinue") }, { status: 401 }) };
-    return { userId: session.user.id };
+    return { userId: session.user.id, role: session.user.role };
   } catch {
     return { response: NextResponse.json({ error: t("accountService") }, { status: 503 }) };
   }

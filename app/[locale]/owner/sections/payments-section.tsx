@@ -1,10 +1,11 @@
 "use client";
 
 import {
-  errorBox, rightCell, stateBox, statusPill, tableClass, tableWrap,
-  tdClass, theadClass, thClass, trClass, useOwnerFormat, useOwnerList,
+  errorBox, rightCell, sortTheadClass, stateBox, statusPill, tableClass, tableWrap,
+  tdClass, thClass, trClass, useOwnerFormat, useOwnerList,
 } from "../ui";
 import { ListToolbar, Pager } from "./list-controls";
+import { SortableTh } from "./sortable-th";
 import { useTranslations } from "next-intl";
 
 type Payment = {
@@ -27,8 +28,9 @@ export default function PaymentsSection({ onUnauthorized }: { onUnauthorized: ()
   const common = useTranslations("Owner.common");
   const { formatArs, formatDate, formatNumber, statusLabel } = useOwnerFormat();
   const statusOptions = statusValues.map((value) => ({ value, label: statusLabel(value) }));
-  const list = useOwnerList<Payment>("/api/owner/payments", t("loadError"), onUnauthorized);
+  const list = useOwnerList<Payment>("/api/owner/payments", t("loadError"), onUnauthorized, "status", "-created");
   const { data, loading, error } = list;
+  const sorting = { sort: list.sort, onSort: list.setSort };
 
   return (
     <section aria-label={t("title")}>
@@ -36,15 +38,15 @@ export default function PaymentsSection({ onUnauthorized }: { onUnauthorized: ()
       {error && <p className={errorBox} role="alert">{error}</p>}
       <div className={`${tableWrap}${loading ? " opacity-60 transition-opacity" : ""}`} aria-busy={loading}>
         <table className={tableClass}>
-          <thead className={theadClass}>
+          <thead className={sortTheadClass}>
             <tr>
-              <th className={thClass} scope="col">{common("date")}</th>
+              <SortableTh {...sorting} column="created" kind="date" label={common("date")} />
               <th className={thClass} scope="col">{common("user")}</th>
-              <th className={thClass} scope="col">{common("status")}</th>
-              <th className={`${thClass} ${rightCell}`} scope="col">{common("amount")}</th>
-              <th className={`${thClass} ${rightCell}`} scope="col">{common("credits")}</th>
-              <th className={`${thClass} ${rightCell}`} scope="col">{t("balanceBefore")}</th>
-              <th className={thClass} scope="col">{t("paymentId")}</th>
+              <SortableTh {...sorting} column="status" label={common("status")} />
+              <SortableTh {...sorting} column="amount" kind="number" label={common("amount")} />
+              <SortableTh {...sorting} column="credits" kind="number" label={common("credits")} />
+              <SortableTh {...sorting} column="balanceBefore" kind="number" label={t("balanceBefore")} />
+              <SortableTh {...sorting} column="paymentId" label={t("paymentId")} />
             </tr>
           </thead>
           <tbody>
