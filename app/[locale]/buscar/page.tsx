@@ -190,7 +190,7 @@ export default function Home() {
   const [devOnly, setDevOnly] = useState(false);
   const [currentUser, setCurrentUser] = useState<{ id: string; email: string; credits: number } | null>(() => {
     const cached = peekSessionUser();
-    return cached && cached.role !== "owner" ? { id: String(cached.id), email: String(cached.email), credits: Number(cached.credits) || 0 } : null;
+    return cached ? { id: String(cached.id), email: String(cached.email), credits: Number(cached.credits) || 0 } : null;
   });
   const [authLoading, setAuthLoading] = useState(true);
   const [authProblem, setAuthProblem] = useState("");
@@ -423,10 +423,6 @@ export default function Home() {
         if (!authPayload.user) {
           setHistoryLoading(false);
           setAuthLoading(false);
-          return;
-        }
-        if (authPayload.user.role === "owner") {
-          window.location.replace(window.location.pathname.startsWith("/en/") ? "/en/owner" : "/owner");
           return;
         }
         setCurrentUser({

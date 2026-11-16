@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useLocale, useTranslations } from "next-intl";
-import { ChevronDown, Headset, History, LayoutDashboard, LogOut, Menu, MessageSquare, Plug, PanelLeftClose, PanelLeftOpen, Search, Sparkles, Stars, UserSearch, X } from "lucide-react";
+import { ChevronDown, Headset, History, LayoutDashboard, LogOut, Menu, MessageSquare, Plug, PanelLeftClose, PanelLeftOpen, Search, ShieldCheck, Sparkles, Stars, UserSearch, X } from "lucide-react";
 import { BrandLogo, BrandMark } from "@/app/brand-logo";
 import { LanguageSwitcher } from "@/app/language-switcher";
 import { FeedbackDialog } from "@/app/feedback-dialog";
@@ -10,6 +10,7 @@ import { CreditsDialog } from "@/app/credits-dialog";
 import { IntegrationsDialog, OPEN_INTEGRATIONS_EVENT } from "@/app/integrations-dialog";
 import { OPEN_FEEDBACK_EVENT, type FeedbackPrefill } from "@/app/error-report";
 import { WhatsNewDialog } from "@/app/whats-new-dialog";
+import { getSession } from "@/lib/client/session";
 import { Link } from "@/i18n/navigation";
 import { Popover, usePopover } from "@/app/ui/popover";
 
@@ -70,6 +71,13 @@ export function AppSidebar({ active, user, onSignOut, announce = true }: AppSide
   const collapsed = useSyncExternalStore<boolean | null>(subscribeCollapsed, readCollapsed, () => null);
   const [renderBoot] = useState(() => !hydrated);
   const [feedbackOpen, setFeedbackOpen] = useState(false);
+  // Owners get a shortcut back to /owner; the session promise is shared and cached, so this adds no request.
+  const [isOwner, setIsOwner] = useState(false);
+  useEffect(() => {
+    let current = true;
+    void getSession().then((result) => { if (current) setIsOwner(result.user?.role === "owner"); }, () => undefined);
+    return () => { current = false; };
+  }, []);
   const [creditsOpen, setCreditsOpen] = useState(false);
   const [integrationsOpen, setIntegrationsOpen] = useState(false);
   // The chat's "+" menu opens the same modal through this event.
@@ -233,6 +241,12 @@ export function AppSidebar({ active, user, onSignOut, announce = true }: AppSide
             </li>}
           </ul>
           <div className="side-nav-bottom">
+            {isOwner && (
+              <Link title={tip(s("navOwnerPanel"))} className="side-nav-item" href="/owner" onClick={close}>
+                <ShieldCheck className="menu-icon" size={18} strokeWidth={1.8} aria-hidden="true" />
+                <span>{s("navOwnerPanel")}</span>
+              </Link>
+            )}
             <button type="button" title={tip(s("feedback"))} className="side-nav-item side-nav-feedback" aria-haspopup="dialog" onClick={() => { close(); setFeedbackOpen(true); }}>
               <MessageSquare className="menu-icon" size={18} strokeWidth={1.8} aria-hidden="true" />
               <span>{s("feedback")}</span>

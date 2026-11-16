@@ -5,9 +5,10 @@ import dynamic from "next/dynamic";
 import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
-import { ChartLine, CreditCard, LayoutDashboard, Newspaper, LoaderCircle, LogOut, Megaphone, Menu, MessageSquare, Receipt, RefreshCw, Route, ScrollText, Search, Sparkles, Users, X } from "lucide-react";
+import { ArrowLeftRight, ChartLine, CreditCard, LayoutDashboard, Newspaper, LoaderCircle, LogOut, Megaphone, Menu, MessageSquare, Receipt, RefreshCw, Route, ScrollText, Search, Sparkles, Users, X } from "lucide-react";
 import { BrandLogo } from "@/app/brand-logo";
 import { LanguageSwitcher } from "@/app/language-switcher";
+import { Link } from "@/i18n/navigation";
 import { ghostButton, iconButton, isUnauthorized, ownerFetch, stateBox, useFocusTrap, type OnAction } from "./ui";
 import { getSession, invalidateSession } from "@/lib/client/session";
 import StaffChat from "./staff/staff-chat";
@@ -153,6 +154,10 @@ export default function OwnerPanel() {
             <button className={`${iconButton} md:hidden`} type="button" onClick={closeMenu} aria-label={t("shell.closeMenu")}><X size={18} aria-hidden="true" /></button>
           </div>
           <div className="flex"><LanguageSwitcher /></div>
+          {/* Owners are also users: one click to the customer app (and back via "Panel owner" in its sidebar). */}
+          <Link className={`${ghostButton} w-full justify-start no-underline`} href="/leadtita">
+            <ArrowLeftRight size={15} aria-hidden="true" /> {t("shell.userPanel")}
+          </Link>
         </div>
 
         <nav aria-label={t("shell.sectionsLabel")} className="grid gap-1">
