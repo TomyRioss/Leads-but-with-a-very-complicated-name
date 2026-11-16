@@ -268,7 +268,21 @@
       "typeToConfirm": "Escribí <strong>{email}</strong> para confirmar",
       "deleteUser": "Eliminar usuario",
       "userDeleted": "Usuario {email} eliminado.",
-      "deleteError": "No se pudo eliminar el usuario."
+      "deleteError": "No se pudo eliminar el usuario.",
+      "bulkRegion": "Acciones en tanda",
+      "bulkSelectPage": "Seleccionar todos los usuarios de esta página",
+      "bulkSelectColumn": "Seleccionar",
+      "bulkSelectAria": "Seleccionar {email}",
+      "bulkSelected": "{count, plural, one {# usuario seleccionado} other {# usuarios seleccionados}}",
+      "bulkClear": "Limpiar selección",
+      "bulkDelete": "{count, plural, one {Eliminar # usuario} other {Eliminar # usuarios}}",
+      "bulkDeleting": "Eliminando…",
+      "bulkCancel": "Cancelar",
+      "bulkWarning": "{count, plural, one {Se va a eliminar # usuario} other {Se van a eliminar # usuarios}} con sus búsquedas, leads y suscripciones. No se puede deshacer.",
+      "bulkConfirmWord": "BORRAR",
+      "bulkTypeToConfirm": "Escribí <strong>{word}</strong> para confirmar",
+      "bulkDeleted": "{count, plural, one {# usuario eliminado.} other {# usuarios eliminados.}}",
+      "bulkFailed": "{count, plural, one {No se pudo eliminar # usuario; quedó seleccionado.} other {No se pudieron eliminar # usuarios; quedaron seleccionados.}}"
     },
     "subscriptions": {
       "title": "Suscripciones",

@@ -268,7 +268,21 @@
       "typeToConfirm": "Type <strong>{email}</strong> to confirm",
       "deleteUser": "Delete user",
       "userDeleted": "User {email} deleted.",
-      "deleteError": "Couldn't delete the user."
+      "deleteError": "Couldn't delete the user.",
+      "bulkRegion": "Bulk actions",
+      "bulkSelectPage": "Select every user on this page",
+      "bulkSelectColumn": "Select",
+      "bulkSelectAria": "Select {email}",
+      "bulkSelected": "{count, plural, one {# user selected} other {# users selected}}",
+      "bulkClear": "Clear selection",
+      "bulkDelete": "{count, plural, one {Delete # user} other {Delete # users}}",
+      "bulkDeleting": "Deleting…",
+      "bulkCancel": "Cancel",
+      "bulkWarning": "{count, plural, one {# user will be deleted} other {# users will be deleted}} along with their searches, leads and subscriptions. This can't be undone.",
+      "bulkConfirmWord": "DELETE",
+      "bulkTypeToConfirm": "Type <strong>{word}</strong> to confirm",
+      "bulkDeleted": "{count, plural, one {# user deleted.} other {# users deleted.}}",
+      "bulkFailed": "{count, plural, one {Couldn't delete # user; it stays selected.} other {Couldn't delete # users; they stay selected.}}"
     },
     "subscriptions": {
       "title": "Subscriptions",

@@ -54,6 +54,50 @@ export default function UsersSection({ onUnauthorized, onAction }: { onUnauthori
     setSelected({ id, mode });
   };
 
+  // Bulk delete: id -> email of picked users (kept across pages). Each one goes through the per-user DELETE,
+  // which re-checks owner protection and logs its own audit entry.
+  const [picked, setPicked] = useState<Map<string, string>>(() => new Map());
+  const [bulkConfirm, setBulkConfirm] = useState<string | null>(null);
+  const [bulkBusy, setBulkBusy] = useState(false);
+  const [bulkError, setBulkError] = useState("");
+  const confirmWord = t("bulkConfirmWord");
+  const deletable = data?.items.filter((user) => user.role !== "owner") ?? [];
+  const pageAllPicked = deletable.length > 0 && deletable.every((user) => picked.has(user.id));
+  const togglePick = (user: UserRow) => setPicked((current) => {
+    const next = new Map(current);
+    if (!next.delete(user.id)) next.set(user.id, user.email);
+    return next;
+  });
+  const togglePage = () => setPicked((current) => {
+    const next = new Map(current);
+    for (const user of deletable) {
+      if (pageAllPicked) next.delete(user.id);
+      else next.set(user.id, user.email);
+    }
+    return next;
+  });
+
+  async function deletePicked() {
+    if (bulkBusy || bulkConfirm?.trim().toUpperCase() !== confirmWord) return;
+    setBulkBusy(true);
+    setBulkError("");
+    const failed = new Map<string, string>();
+    let deleted = 0;
+    // ponytail: sequential on purpose; each delete cascades batches/leads in PocketBase.
+    for (const [id, email] of picked) {
+      const result = await ownerFetch(`/api/owner/users/${encodeURIComponent(id)}`, { method: "DELETE", body: { confirmEmail: email } });
+      if (result.status === 401) { setBulkBusy(false); return onUnauthorized(); }
+      if (result.ok) deleted += 1;
+      else failed.set(id, email);
+    }
+    setBulkBusy(false);
+    setPicked(failed);
+    setBulkConfirm(null);
+    if (deleted > 0) onAction?.(t("bulkDeleted", { count: deleted }));
+    if (failed.size > 0) setBulkError(t("bulkFailed", { count: failed.size }));
+    void reload();
+  }
+
   return (
     <section aria-label={t("title")}>
       <div className={sectionHead}>
@@ -65,10 +109,38 @@ export default function UsersSection({ onUnauthorized, onAction }: { onUnauthori
         </label>
       </div>
       {error && <p className={errorBox} role="alert">{error}</p>}
+      {bulkError && <p className={errorBox} role="alert">{bulkError}</p>}
+      {picked.size > 0 && (
+        <div className={`${confirmBox} mb-3`} role="region" aria-label={t("bulkRegion")}>
+          <div className="flex flex-wrap items-center justify-between gap-2.5">
+            <p className="m-0 text-[13px] font-semibold">{t("bulkSelected", { count: picked.size })}</p>
+            <div className="flex flex-wrap gap-2">
+              <button type="button" className={`${ghostButton} ${smallButton}`} disabled={bulkBusy} onClick={() => { setPicked(new Map()); setBulkConfirm(null); }}><X size={14} aria-hidden="true" /> {t("bulkClear")}</button>
+              {bulkConfirm === null && <button type="button" className={`${dangerButton} ${smallButton}`} onClick={() => { setBulkError(""); setBulkConfirm(""); }}><Trash2 size={14} aria-hidden="true" /> {t("bulkDelete", { count: picked.size })}</button>}
+            </div>
+          </div>
+          {bulkConfirm !== null && (
+            <form className="grid gap-2.5" onSubmit={(event) => { event.preventDefault(); void deletePicked(); }}>
+              <p className="m-0 text-xs leading-normal">{t("bulkWarning", { count: picked.size })}</p>
+              <label className="grid gap-1.5 text-xs">
+                {t.rich("bulkTypeToConfirm", { word: confirmWord, strong: (chunks) => <strong>{chunks}</strong> })}
+                <input className={controlClass} type="text" autoComplete="off" autoFocus value={bulkConfirm} disabled={bulkBusy} onChange={(event) => setBulkConfirm(event.target.value)} />
+              </label>
+              <div className="flex flex-wrap gap-2">
+                <button type="submit" className={dangerButton} disabled={bulkBusy || bulkConfirm.trim().toUpperCase() !== confirmWord}><Trash2 size={14} aria-hidden="true" /> {bulkBusy ? t("bulkDeleting") : t("bulkDelete", { count: picked.size })}</button>
+                <button type="button" className={ghostButton} disabled={bulkBusy} onClick={() => setBulkConfirm(null)}>{t("bulkCancel")}</button>
+              </div>
+            </form>
+          )}
+        </div>
+      )}
       <div className={`${tableWrap}${loading ? " opacity-60 transition-opacity" : ""}`} aria-busy={loading}>
         <table className={`${tableClass} md:[&_td]:px-2! md:[&_th]:px-2!`}>
           <thead className={sortTheadClass}>
             <tr>
+              <th className={`${thClass} w-8`} scope="col">
+                <input type="checkbox" className="size-4 cursor-pointer accent-(--ash-950)" aria-label={t("bulkSelectPage")} checked={pageAllPicked} disabled={deletable.length === 0 || bulkBusy} onChange={togglePage} />
+              </th>
               <SortableTh {...sorting} column="email" label={common("email")} />
               <SortableTh {...sorting} column="name" label={common("name")} />
               <SortableTh {...sorting} column="credits" kind="number" label={common("credits")} />
@@ -82,6 +154,9 @@ export default function UsersSection({ onUnauthorized, onAction }: { onUnauthori
           <tbody>
             {data?.items.map((user) => (
               <tr className={trClass} key={user.id}>
+                <td className={`${tdClass} w-8`} data-label={t("bulkSelectColumn")}>
+                  {user.role !== "owner" && <input type="checkbox" className="size-4 cursor-pointer accent-(--ash-950)" aria-label={t("bulkSelectAria", { email: user.email })} checked={picked.has(user.id)} disabled={bulkBusy} onChange={() => togglePick(user)} />}
+                </td>
                 <td className={tdClass} data-label={common("email")}>
                   <button type="button" className="cursor-pointer break-all rounded border-0 bg-transparent py-1.5 text-left text-xs font-semibold text-(color:--ink) underline decoration-(--ash-300) underline-offset-[3px] hover:decoration-(--ink) focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(color:--ash-950)" onClick={(event) => open(event.currentTarget, user.id)}>{user.email}</button>
                 </td>
