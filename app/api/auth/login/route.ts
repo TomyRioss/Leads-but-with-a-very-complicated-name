@@ -35,8 +35,9 @@ export async function POST(request: Request) {
   } catch {
     return NextResponse.json({ error: t("loginInvalidInput") }, { status: 400 });
   }
-  if (!(await verifyTurnstile(body.captcha, clientIp(request)))) {
-    return NextResponse.json({ error: t("captchaRequired"), code: "captcha" }, { status: 400 });
+  const captcha = await verifyTurnstile(body.captcha, clientIp(request));
+  if (!captcha.ok) {
+    return NextResponse.json({ error: t("captchaRequired"), code: "captcha", reason: captcha.reason }, { status: 400 });
   }
 
   const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";

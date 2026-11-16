@@ -65,8 +65,9 @@ export async function POST(request: Request) {
   const locale = localeFrom(request, body.locale);
   t = errorTranslator(request, body.locale);
 
-  if (!(await verifyTurnstile(body.captcha, clientIp(request)))) {
-    return NextResponse.json({ error: t("captchaRequired"), code: "captcha" }, { status: 400 });
+  const captcha = await verifyTurnstile(body.captcha, clientIp(request));
+  if (!captcha.ok) {
+    return NextResponse.json({ error: t("captchaRequired"), code: "captcha", reason: captcha.reason }, { status: 400 });
   }
   if (!/^\S+@\S+\.\S+$/.test(email)) {
     return NextResponse.json({ error: t("invalidEmail") }, { status: 400 });
