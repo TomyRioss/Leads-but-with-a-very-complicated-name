@@ -26,8 +26,9 @@ export async function verifyTurnstile(token: unknown, remoteIp?: string): Promis
   if (remoteIp && remoteIp !== "unknown") form.set("remoteip", remoteIp);
   try {
     const response = await fetch(VERIFY_URL, { method: "POST", body: form, signal: AbortSignal.timeout(TIMEOUT_MS), cache: "no-store" });
-    if (!response.ok) return { ok: false, reason: `http-${response.status}` };
-    const result = await response.json() as { success?: boolean; "error-codes"?: unknown; hostname?: unknown };
+    // Cloudflare also answers 4xx with a JSON body carrying the error-codes: read it before giving up.
+    const result = await response.json().catch(() => ({})) as { success?: boolean; "error-codes"?: unknown; hostname?: unknown };
+    if (!response.ok && !Array.isArray(result["error-codes"])) return { ok: false, reason: `http-${response.status}` };
     if (result.success === true) return { ok: true, reason: "" };
     const codes = Array.isArray(result["error-codes"]) ? result["error-codes"].filter((code): code is string => typeof code === "string").join(",") : "";
     console.warn("Turnstile rejected token:", codes || "no-error-codes", "hostname:", typeof result.hostname === "string" ? result.hostname : "-");
