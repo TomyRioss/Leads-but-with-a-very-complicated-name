@@ -430,7 +430,8 @@ async function runTool(ctx: ToolContext, name: string, rawArgs: string): Promise
   return { error: `Unknown tool ${name}.` };
 }
 
-async function callModel(apiKey: string, messages: ModelMessage[], signal?: AbortSignal, userId?: string) {
+/** `noTools`: the turn's tool budget is spent, so the model must answer in text (tool_choice "none"). */
+async function callModel(apiKey: string, messages: ModelMessage[], signal?: AbortSignal, userId?: string, noTools = false) {
   const timeout = AbortSignal.timeout(MODEL_TIMEOUT_MS);
   const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
     method: "POST",
@@ -439,6 +440,7 @@ async function callModel(apiKey: string, messages: ModelMessage[], signal?: Abor
       model: MODEL,
       provider: { require_parameters: true, sort: "price" },
       tools,
+      ...(noTools ? { tool_choice: "none" } : {}),
       messages,
       // Reasoning tokens count against max_tokens: with 600 an analytical turn could spend it all thinking and return no text.
       reasoning: { effort: "low" },
@@ -492,8 +494,12 @@ export async function runLeadSuiteChat(opts: { userId: string; messages: ChatMes
   ];
 
   for (let iteration = 0; iteration <= MAX_TOOL_ITERATIONS; iteration += 1) {
-    const { content, toolCalls } = await callModel(opts.apiKey, messages, opts.signal, opts.userId);
-    if (!toolCalls.length || iteration === MAX_TOOL_ITERATIONS) return { reply: sanitizeReply(content, ctx.hiddenIds), actions: ctx.actions };
+    // Last round: no more tools. Without this the model kept asking for tools, its text was empty and the chat
+    // reported "conversation too long" (e.g. "a proposal for each lead" needs several tools per lead).
+    const last = iteration === MAX_TOOL_ITERATIONS;
+    if (last) messages.push({ role: "system", content: "Tool budget for this turn is used up. Reply now in the user's language: say briefly what you already did and what is still pending, and offer to continue with the rest in the next message. Do not call tools." });
+    const { content, toolCalls } = await callModel(opts.apiKey, messages, opts.signal, opts.userId, last);
+    if (!toolCalls.length || last) return { reply: sanitizeReply(content, ctx.hiddenIds), actions: ctx.actions };
     messages.push({ role: "assistant", content: content || null, tool_calls: toolCalls });
     for (const call of toolCalls.slice(0, 5)) {
       let result: unknown;

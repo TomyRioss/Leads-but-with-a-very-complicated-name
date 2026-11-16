@@ -62,7 +62,8 @@ const PROGRESS_LABELS: Record<string, [string, string]> = {
 const progressLabel = (name: string, locale: "es" | "en") =>
   PROGRESS_LABELS[name]?.[locale === "en" ? 1 : 0] ?? (name.startsWith("propose_") ? (locale === "en" ? "Preparing the change…" : "Preparando el cambio…") : locale === "en" ? "Working…" : "Trabajando…");
 
-async function callModel(apiKey: string, messages: ModelMessage[], ownerId: string, signal?: AbortSignal) {
+/** `noTools`: the turn's tool budget is spent, so the model must answer in text (tool_choice "none"). */
+async function callModel(apiKey: string, messages: ModelMessage[], ownerId: string, signal?: AbortSignal, noTools = false) {
   const timeout = AbortSignal.timeout(MODEL_TIMEOUT_MS);
   const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
     method: "POST",
@@ -71,6 +72,7 @@ async function callModel(apiKey: string, messages: ModelMessage[], ownerId: stri
       model: MODEL,
       provider: { require_parameters: true, sort: "price" },
       tools: ownerTools,
+      ...(noTools ? { tool_choice: "none" } : {}),
       messages,
       reasoning: { effort: "low" },
       max_tokens: 32_000,
@@ -106,8 +108,11 @@ export async function runOwnerAssistant(opts: {
   ];
 
   for (let iteration = 0; iteration <= MAX_TOOL_ITERATIONS; iteration += 1) {
-    const { content, toolCalls } = await callModel(opts.apiKey, messages, opts.owner.id, opts.signal);
-    if (!toolCalls.length || iteration === MAX_TOOL_ITERATIONS) return { reply: content.trim(), actions: ctx.actions };
+    // Last round: no more tools, so the reply is never empty (an empty one surfaced as "conversation too long").
+    const last = iteration === MAX_TOOL_ITERATIONS;
+    if (last) messages.push({ role: "system", content: "Tool budget for this turn is used up. Reply now in the owner's language: say briefly what you already did and what is still pending, and offer to continue. Do not call tools." });
+    const { content, toolCalls } = await callModel(opts.apiKey, messages, opts.owner.id, opts.signal, last);
+    if (!toolCalls.length || last) return { reply: content.trim(), actions: ctx.actions };
     messages.push({ role: "assistant", content: content || null, tool_calls: toolCalls });
     for (const call of toolCalls.slice(0, MAX_CALLS_PER_ITERATION)) {
       const name = call.function?.name ?? "";
