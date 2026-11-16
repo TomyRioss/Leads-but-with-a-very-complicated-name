@@ -1345,10 +1345,6 @@ export function LeadSuiteChat({ onActivity, variant = "panel" }: { onActivity?: 
         ? [{ label: t(`filters.${key}.${extra[key]}`), hint: t(`filters.hints.${key}.${extra[key]}`) }]
         : []));
       return [
-        // maxReviews is inclusive ("fewer than 500" travels as 499): show it the way the user said it.
-        ...(extra.minReviews !== undefined ? [{ label: t("filters.minReviews", { n: Number(extra.minReviews) }), hint: t("filters.hints.minReviews", { n: Number(extra.minReviews) }) }] : []),
-        ...(extra.maxReviews !== undefined ? [{ label: t("filters.maxReviews", { n: Number(extra.maxReviews) + 1 }), hint: t("filters.hints.maxReviews", { max: Number(extra.maxReviews) }) }] : []),
-        ...(extra.minRating !== undefined ? [{ label: t("filters.minRating", { n: Number(extra.minRating) }), hint: t("filters.hints.minRating", { n: Number(extra.minRating) }) }] : []),
         ...presence,
       ];
     }

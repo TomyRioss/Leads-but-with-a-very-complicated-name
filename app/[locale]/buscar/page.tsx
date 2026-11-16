@@ -538,8 +538,6 @@ export default function Home() {
           ...(randomLocation ? { random: true } : { country: selectedCountries[0].name, countries: selectedCountries.map((option) => option.name), province, district }),
           filters: {
             ...filters,
-            minReviews: filters.minReviews === "" ? undefined : Number(filters.minReviews),
-            minRating: filters.minRating === "" ? undefined : Number(filters.minRating),
           },
         }),
       });

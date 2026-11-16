@@ -2,18 +2,16 @@
 
 import { memo, type Dispatch, type ReactNode, type SetStateAction } from "react";
 import { useTranslations } from "next-intl";
-import { ChevronDown, Globe, Mail, MessageSquareText, Phone, RotateCcw, SlidersHorizontal, Star } from "lucide-react";
+import { ChevronDown, Globe, Mail, Phone, RotateCcw, SlidersHorizontal } from "lucide-react";
 
 export type FilterChoice = "any" | "with" | "without";
 export type SearchFilters = {
-  minReviews: string;
-  minRating: string;
   website: FilterChoice;
   phone: FilterChoice;
   email: FilterChoice;
   skipClosed: boolean;
 };
-export const defaultSearchFilters: SearchFilters = { minReviews: "", minRating: "", website: "any", phone: "any", email: "any", skipClosed: false };
+export const defaultSearchFilters: SearchFilters = { website: "any", phone: "any", email: "any", skipClosed: false };
 
 type Option = { value: string; label: string };
 
@@ -51,12 +49,6 @@ export const SearchFiltersPanel = memo(function SearchFiltersPanel({ filters, se
   const s = useTranslations("Search");
   const set = <K extends keyof SearchFilters>(key: K) => (value: SearchFilters[K]) => setFilters((current) => ({ ...current, [key]: value }));
 
-  const reviewOptions: Option[] = [
-    { value: "", label: t("t_1aa3b744db") }, { value: "10", label: "10+" }, { value: "50", label: "50+" }, { value: "100", label: "100+" }, { value: "500", label: "500+" },
-  ];
-  const ratingOptions: Option[] = [
-    { value: "", label: t("t_1aa3b744db") }, { value: "3", label: "3+" }, { value: "4", label: "4+" }, { value: "4.5", label: s("ratingFourHalf") },
-  ];
   const presenceOptions: Option[] = [
     { value: "any", label: s("filtersAny") }, { value: "with", label: s("filtersWith") }, { value: "without", label: s("filtersWithout") },
   ];
@@ -64,8 +56,6 @@ export const SearchFiltersPanel = memo(function SearchFiltersPanel({ filters, se
   // Resumen visible con el panel cerrado: qué filtros recortan el lote.
   const presence = { with: { website: t("t_139ef9d2c1"), email: t("t_3014233e51"), phone: t("t_86fc9079fb") }, without: { website: t("t_fcfe9b7823"), email: t("t_b1f7ce3fe3"), phone: t("t_5a107669e1") } };
   const active = [
-    filters.minReviews && s("filtersReviewsChip", { count: filters.minReviews }),
-    filters.minRating && s("filtersRatingChip", { rating: filters.minRating.replace(".", s("decimalSeparator")) }),
     ...(["website", "email", "phone"] as const).map((key) => filters[key] !== "any" && presence[filters[key] as "with" | "without"][key]),
     filters.skipClosed && s("filtersOpenOnly"),
   ].filter((item): item is string => Boolean(item));
@@ -85,12 +75,6 @@ export const SearchFiltersPanel = memo(function SearchFiltersPanel({ filters, se
       </summary>
 
       <div className="filter-body">
-        <section className="filter-group" aria-labelledby="filter-group-reputation">
-          <h3 id="filter-group-reputation" className="filter-group-title">{s("filtersReputation")}</h3>
-          <ChoiceGroup name="filter-reviews" label={t("t_44fdec749a")} icon={<MessageSquareText size={15} strokeWidth={1.8} aria-hidden="true" />} options={reviewOptions} value={filters.minReviews} onChange={set("minReviews")} disabled={disabled} />
-          <ChoiceGroup name="filter-rating" label={t("t_c323da7d69")} icon={<Star size={15} strokeWidth={1.8} aria-hidden="true" />} options={ratingOptions} value={filters.minRating} onChange={set("minRating")} disabled={disabled} />
-        </section>
-
         <section className="filter-group" aria-labelledby="filter-group-contact">
           <h3 id="filter-group-contact" className="filter-group-title">{s("filtersContact")}</h3>
           <ChoiceGroup name="filter-website" label={t("t_e3fd0b8e08")} icon={<Globe size={15} strokeWidth={1.8} aria-hidden="true" />} options={presenceOptions} value={filters.website} onChange={(value) => set("website")(value as FilterChoice)} disabled={disabled} />

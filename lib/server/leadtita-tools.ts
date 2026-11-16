@@ -69,7 +69,7 @@ export function withKeywordSubset(payload: PendingPayload, keywords: unknown): P
 export const BUSINESS_SEARCH_COUNTS = [5, 10, 25, 50, 75, 100, 125, 150] as const;
 const PRESENCE = ["any", "with", "without"] as const;
 /** Filters /api/search applies at the source (validated there too). */
-const BUSINESS_FILTER_KEYS = ["minReviews", "maxReviews", "minRating", "website", "phone", "email", "skipClosed"] as const;
+const BUSINESS_FILTER_KEYS = ["website", "phone", "email", "skipClosed"] as const;
 const MAX_PEOPLE = 25;
 /** Dev feature `people_search`: off in production, so Leadtita neither offers nor runs people tools. */
 const peopleSearchEnabled = isDevFeatureEnabled("people_search");
@@ -106,9 +106,6 @@ export const leadtitaTools: ReturnType<typeof fn>[] = [
     country: { type: "string", minLength: 2, maxLength: 100 }, province: text(100), district: text(100),
     countries: { type: "array", minItems: 2, maxItems: MAX_SEARCH_COUNTRIES, items: { type: "string", minLength: 2, maxLength: 100 }, description: "Only when the user names 2+ countries: all of them (country = the first). Leads are split evenly across them; province/district are ignored." },
     count: { type: "integer", enum: BUSINESS_SEARCH_COUNTS, description: "Exactly what the user asked for (closest allowed size if not allowed). Never more to filter afterwards: filters below are applied by the search itself." },
-    minReviews: { type: "integer", minimum: 0, description: "At least N reviews." },
-    maxReviews: { type: "integer", minimum: 0, description: "At most N reviews (\"fewer than 500\" = 499)." },
-    minRating: { type: "number", minimum: 0, maximum: 5, description: "Minimum star rating." },
     website: { type: "string", enum: PRESENCE, description: "with = has a website, without = no website." },
     phone: { type: "string", enum: PRESENCE },
     email: { type: "string", enum: PRESENCE },
@@ -126,7 +123,7 @@ const LEADTITA_BASE_PROMPT = [
   "FEEDBACK: call followup_feedback, then give 2-4 short, concrete recommendations as a bullet list (who to follow up first, best channel, reply rate). No generic advice.",
   `MESSAGES: for a specific lead call lead_brief. If it has analyzed pains or proposals, draft 1-2 messages and show them with suggest_messages (WhatsApp by default; email adds a subject). Tone: first person, warm and close, rioplatense voseo in Spanish, 3-5 short sentences, open with the business name and one concrete detail, talk about the client's result not the technical task, no jargon, never invent facts, end with one low-commitment question. If it has no analyzed pains, call propose_analyze_pains right away instead of inventing problems. ${CREDITS_PER_PAIN_ANALYSIS === 0 ? "The server runs this analysis automatically at no credit cost; then draft from its results." : "The user must confirm its paid proposal before analysis; after confirmation, draft from the new analysis."}`,
   "LOAD LEADS: to add a lead manually use propose_add_lead with what the user gave; ask only for the name if missing.",
-  `GENERATE LEADS: businesses → propose_search_businesses (keywords: every business type the user named; for an ambiguous or niche type add 2-4 useful local-language variants of that same type, e.g. "distribuidora de insumos", "mayorista de insumos para comercios"; never other business types; always pass province/district when the user names a city or province; count = exactly what the user asked, one of ${BUSINESS_SEARCH_COUNTS.join(", ")} (closest size otherwise, say so); country required, ask if missing; several countries → pass them all in countries, no province/district). Pass the user's conditions as the real filters (minReviews, maxReviews, minRating, website/phone/email with|without; closed businesses are always skipped); never raise the count to filter later. If a condition has no filter (e.g. by social network or by age of the business), say in one line that the search can't filter by it and propose without it.`,
+  `GENERATE LEADS: businesses → propose_search_businesses (keywords: every business type the user named; for an ambiguous or niche type add 2-4 useful local-language variants of that same type, e.g. "distribuidora de insumos", "mayorista de insumos para comercios"; never other business types; always pass province/district when the user names a city or province; count = exactly what the user asked, one of ${BUSINESS_SEARCH_COUNTS.join(", ")} (closest size otherwise, say so); country required, ask if missing; several countries → pass them all in countries, no province/district). Pass the user's conditions as the real filters (website/phone/email with|without; closed businesses are always skipped); never raise the count to filter later. If a condition has no filter (e.g. by social network or by age of the business), say in one line that the search can't filter by it and propose without it.`,
   "COMMERCIAL PROFILE: the user's saved service and usual sectors are in USER PROFILE below. Before proposing a lead search, if the service is empty, ask ONE short question about what service they offer (offer 2-3 likely options as a list if the conversation lets you infer them); when they answer, call update_commercial_profile, then continue with the search. If they don't want to say, continue without it and don't ask again. When the user mentions the sectors they usually sell to, call update_commercial_profile with commercialSectors. Use the sectors to suggest business types and keywords when the user asks for leads without naming a type, and the service to pick the analysis focus.",
   ...(peopleSearchEnabled ? [` People/independent professionals → propose_search_people (count 1-${MAX_PEOPLE}).`] : []),
   " Never start a search without the card; only delivered results are charged.",
@@ -288,18 +285,6 @@ export function labelWithoutPlace(label: string, places: string[]) {
 /** Same rules as /api/search; only filters that change the result are kept. Closed businesses are always skipped (skipClosed = 1). */
 function businessFilters(raw: Record<string, unknown>): Record<string, string | number> | null {
   const out: Record<string, string | number> = {};
-  for (const key of ["minReviews", "maxReviews"] as const) {
-    if (raw[key] === undefined || raw[key] === null || raw[key] === "") continue;
-    const value = Number(raw[key]);
-    if (!Number.isInteger(value) || value < 0 || value > 100_000_000) return null;
-    out[key] = value;
-  }
-  if (out.minReviews !== undefined && out.maxReviews !== undefined && out.minReviews > out.maxReviews) return null;
-  if (raw.minRating !== undefined && raw.minRating !== null && raw.minRating !== "") {
-    const value = Number(raw.minRating);
-    if (!Number.isFinite(value) || value < 0 || value > 5) return null;
-    if (value > 0) out.minRating = value;
-  }
   for (const key of ["website", "phone", "email"] as const) {
     if (raw[key] === undefined || raw[key] === "any") continue;
     if (!(PRESENCE as readonly unknown[]).includes(raw[key])) return null;

@@ -277,9 +277,6 @@
       "update_commercial_profile": "Guardar tu perfil comercial"
     },
     "filters": {
-      "minReviews": "Al menos {n} reseñas",
-      "maxReviews": "Menos de {n} reseñas",
-      "minRating": "Calificación ≥ {n}",
       "website": {
         "with": "Con web",
         "without": "Sin web"
@@ -294,9 +291,6 @@
       },
       "focus": "Foco: {focus}",
       "hints": {
-        "minReviews": "Solo negocios con al menos {n} reseñas: más establecidos y con clientes activos.",
-        "maxReviews": "Negocios con hasta {max} reseñas: suelen ser más chicos y receptivos.",
-        "minRating": "Solo negocios con calificación promedio de {n} o más.",
         "website": {
           "with": "Solo negocios que tienen sitio web propio.",
           "without": "Solo negocios sin sitio web: buenos candidatos para ofrecerles uno."

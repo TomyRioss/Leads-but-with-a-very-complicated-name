@@ -277,9 +277,6 @@
       "update_commercial_profile": "Save your business profile"
     },
     "filters": {
-      "minReviews": "At least {n} reviews",
-      "maxReviews": "Fewer than {n} reviews",
-      "minRating": "Rating ≥ {n}",
       "website": {
         "with": "Has website",
         "without": "No website"
@@ -294,9 +291,6 @@
       },
       "focus": "Focus: {focus}",
       "hints": {
-        "minReviews": "Only businesses with at least {n} reviews: more established, with active customers.",
-        "maxReviews": "Businesses with up to {max} reviews: usually smaller and more receptive.",
-        "minRating": "Only businesses rated {n} or higher on average.",
         "website": {
           "with": "Only businesses with their own website.",
           "without": "Only businesses without a website: good candidates to offer one."
