@@ -18,6 +18,8 @@ import { Onboarding } from "@/app/onboarding/onboarding";
 import { MAX_SEARCH_COUNTRIES } from "@/lib/search-random-location";
 import { claimLeadtitaTour } from "@/app/onboarding/leadtita-onboarding";
 import { getSession, invalidateSession, peekSessionUser, setSessionCredits } from "@/lib/client/session";
+import { loadLiveCampaigns } from "@/app/campaign-banner";
+import { discountedCost } from "@/lib/campaigns";
 import { defaultSearchFilters, SearchFiltersPanel, type SearchFilters } from "./search-filters";
 
 const productionBatchSizes = [5, 10, 25, 50, 75, 100, 125, 150];
@@ -188,6 +190,13 @@ export default function Home() {
   const [apifyConfigured, setApifyConfigured] = useState(false);
   const [pocketBaseConfigured, setPocketBaseConfigured] = useState(false);
   const [devOnly, setDevOnly] = useState(false);
+  // Display only: the server prices with the same live discount when it reserves credits.
+  const [leadDiscount, setLeadDiscount] = useState(0);
+  useEffect(() => {
+    let current = true;
+    void loadLiveCampaigns().then((data) => { if (current) setLeadDiscount(data?.discounts.lead_search ?? 0); });
+    return () => { current = false; };
+  }, []);
   const [currentUser, setCurrentUser] = useState<{ id: string; email: string; credits: number } | null>(() => {
     const cached = peekSessionUser();
     return cached ? { id: String(cached.id), email: String(cached.email), credits: Number(cached.credits) || 0 } : null;
@@ -780,7 +789,9 @@ export default function Home() {
               </div>
               <p className="batch-credit-cost" aria-live="polite">
                 <Stars size={16} aria-hidden="true" />
-                <strong>{(count * 2).toLocaleString(numberLocale)} {t("t_66376a612c")}</strong>
+                {leadDiscount > 0 && <s>{(count * 2).toLocaleString(numberLocale)}</s>}
+                <strong>{discountedCost(count, 2, leadDiscount).toLocaleString(numberLocale)} {t("t_66376a612c")}</strong>
+                {leadDiscount > 0 && <span className="batch-credit-discount">-{leadDiscount}%</span>}
               </p>
             </fieldset>
 

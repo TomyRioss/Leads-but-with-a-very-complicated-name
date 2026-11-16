@@ -14,15 +14,15 @@ const MAX_TIMEOUT_MS = 2_147_483_647;
 // /owner and /en/owner (localePrefix "as-needed").
 const OWNER_PATH = /^\/(?:[a-z]{2}\/)?owner(?:\/|$)/;
 
-// One request per page load, shared by every mount.
-let bannerRequest: Promise<Banner | null> | null = null;
-function loadBanner() {
-  bannerRequest ??= fetch("/api/campaigns/live")
+// One request per page load, shared by the banner and every price display.
+let liveRequest: Promise<LiveCampaigns | null> | null = null;
+export function loadLiveCampaigns() {
+  liveRequest ??= fetch("/api/campaigns/live")
     .then((response) => (response.ok ? (response.json() as Promise<LiveCampaigns>) : null))
-    .then((data) => data?.banner ?? null)
     .catch(() => null);
-  return bannerRequest;
+  return liveRequest;
 }
+const loadBanner = () => loadLiveCampaigns().then((data) => data?.banner ?? null);
 
 const isOver = (banner: Banner) => !(Date.parse(banner.endsAt) > Date.now());
 
