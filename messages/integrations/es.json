@@ -96,6 +96,39 @@
       "never": "No volver a mostrar"
     },
     "dialogClose": "Cerrar",
-    "attachFromChat": "Los archivos de Drive se adjuntan a un mensaje desde el chat de Leadtita (+ → Google Drive). No se guardan en tu cuenta."
+    "attachFromChat": "Los archivos de Drive se adjuntan a un mensaje desde el chat de Leadtita (+ → Google Drive). No se guardan en tu cuenta.",
+    "apps": {
+      "title": "Apps conectadas",
+      "description": "Usá leadta desde Claude o ChatGPT con tu cuenta. Disponible en planes pagos.",
+      "loading": "Revisando tus apps…",
+      "loadError": "No pudimos cargar tus apps conectadas.",
+      "retry": "Reintentar",
+      "connectedAt": "Conectada el {date}",
+      "lastUsed": "Último uso: {date}",
+      "neverUsed": "Sin uso todavía",
+      "scopesLabel": "Permisos",
+      "scopes": {
+        "read": "Ver datos",
+        "write": "Editar CRM",
+        "credits": "Gastar créditos",
+        "send": "Enviar mensajes"
+      },
+      "disconnect": "Desconectar",
+      "disconnectTitle": "Desconectar {client}",
+      "disconnectBody": "{client} pierde el acceso a tu cuenta en el momento. Para volver a usarla tenés que conectarla de nuevo.",
+      "disconnectConfirm": "Sí, desconectar",
+      "disconnecting": "Desconectando…",
+      "disconnectError": "No pudimos desconectar. Probá de nuevo.",
+      "cancel": "Cancelar",
+      "disconnected": "{client} quedó desconectada.",
+      "empty": "Todavía no conectaste ninguna app.",
+      "howTo": "Cómo conectar una app",
+      "urlLabel": "URL del conector",
+      "copy": "Copiar URL",
+      "copied": "Copiada",
+      "copyError": "No pudimos copiar. Seleccioná la URL y copiala a mano.",
+      "claude": "En claude.ai: Configuración → Conectores → Agregar conector personalizado. Pegá la URL y aceptá los permisos.",
+      "chatgpt": "En ChatGPT: Configuración → Conectores (con el modo desarrollador activado) → agregá un servidor MCP con la URL."
+    }
   }
 }

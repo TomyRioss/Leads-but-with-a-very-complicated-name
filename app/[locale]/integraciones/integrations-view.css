@@ -1,0 +1,29 @@
+/* Apps conectadas (MCP) en /integraciones. Base: .gdrive-card; tokens de AGENTS.md. */
+.apps-card h2:focus { outline: 0; }
+.apps-notice { margin: 0; color: var(--ash-800); font-size: 13px; font-weight: 600; }
+.apps-notice:empty { display: none; }
+
+.apps-list { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.apps-item { display: grid; gap: 8px; padding: 12px 14px; border: 1px solid var(--ash-150); border-radius: 10px; background: var(--ash-50); }
+.apps-item-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.apps-item-name { min-width: 0; color: var(--ink); font-size: 14px; font-weight: 650; overflow-wrap: anywhere; }
+.apps-scopes { display: flex; flex-wrap: wrap; gap: 4px; margin: 0; padding: 0; list-style: none; }
+.apps-scopes li { padding: 2px 8px; border-radius: 999px; background: var(--ash-200); color: var(--ash-800); font-size: 11px; font-weight: 650; }
+.apps-item-meta { display: flex; flex-wrap: wrap; gap: 4px 14px; margin: 0; color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+.apps-item .gdrive-link:disabled { cursor: not-allowed; opacity: 0.55; }
+
+.apps-howto { border-top: 1px solid var(--ash-150); padding-top: 12px; }
+.apps-howto summary { width: fit-content; color: var(--ash-700); font-size: 13px; font-weight: 600; cursor: pointer; }
+.apps-howto summary:hover { color: var(--ink); }
+.apps-howto summary:focus-visible { border-radius: 4px; outline: 2px solid var(--ash-950); outline-offset: 2px; }
+.apps-howto[open] summary { margin-bottom: 12px; }
+
+.apps-connect { display: grid; gap: 12px; }
+.apps-url { display: grid; gap: 6px; }
+.apps-url-label { color: var(--ash-700); font-size: 12px; font-weight: 650; }
+.apps-url-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.apps-url-row code { min-width: 0; flex: 1 1 220px; padding: 10px 12px; border: 1px solid var(--ash-200); border-radius: 10px; background: var(--ash-50); color: var(--ink); font-family: var(--font-mono); font-size: 13px; overflow-wrap: anywhere; user-select: all; }
+.apps-url-row .gdrive-secondary { gap: 6px; }
+.apps-url .gdrive-hint:empty { display: none; }
+.apps-steps { display: grid; gap: 6px; margin: 0; padding-left: 20px; color: var(--ash-800); font-size: 13px; line-height: 1.5; }
+.apps-steps li::marker { color: var(--ash-600); font-weight: 650; }

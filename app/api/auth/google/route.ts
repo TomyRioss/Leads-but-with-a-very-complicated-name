@@ -4,7 +4,13 @@ import { NextRequest, NextResponse } from "next/server";
 const stateCookie = "leadta_google_state";
 const verifierCookie = "leadta_google_verifier";
 const localeCookie = "leadta_google_locale";
+const nextCookie = "leadta_google_next";
 const oauthCookieMaxAge = 600;
+
+/** Same-origin relative return path ("/…", never "//…", backslashes or control chars); "" otherwise. */
+function safeNextPath(value: string | null) {
+  return value && value.length <= 2000 && value.startsWith("/") && !value.startsWith("//") && !value.includes(String.fromCharCode(92)) && ![...value].some((char) => char.charCodeAt(0) < 32 || char.charCodeAt(0) === 127) ? value : "";
+}
 
 function appOrigin() {
   const configured = process.env.APP_URL?.trim() || (process.env.VERCEL ? "https://leadta.app" : "http://localhost:3000");
@@ -50,6 +56,8 @@ export async function GET(request: NextRequest) {
   setOauthCookie(response, stateCookie, state, secure);
   setOauthCookie(response, verifierCookie, verifier, secure);
   setOauthCookie(response, localeCookie, locale, secure);
+  const next = safeNextPath(request.nextUrl.searchParams.get("next"));
+  if (next) setOauthCookie(response, nextCookie, next, secure);
   response.headers.set("Cache-Control", "no-store");
   return response;
 }

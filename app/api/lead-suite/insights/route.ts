@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { cacheLife } from "next/cache";
 import { getCurrentUser } from "@/lib/server/auth";
-import { listLeadContacts, listLeadDirectory } from "@/lib/server/lead-suite";
+import { listLeadDirectory } from "@/lib/server/lead-suite";
+import { loadContactsInRange as loadContacts } from "@/lib/server/lead-suite-range";
 import {
   computeInsightMetrics,
   fallbackAnalysis,
@@ -16,24 +17,14 @@ import { PocketBaseRequestError } from "@/lib/server/pocketbase";
 import { errorTranslator, localeFrom } from "@/lib/server/locale";
 import { uiError } from "@/lib/server/public-error";
 import { aiRequestLimit } from "@/lib/server/ai-daily-limit";
-import type { LeadContact } from "@/lib/lead-suite";
 
 const DAY_MS = 86_400_000;
 const MAX_RANGE_MS = 92 * DAY_MS;
 const ANALYSIS_WINDOW_DAYS = 30;
-const MAX_CONTACT_PAGES = 20;
 const MAX_REFRESHES_PER_DAY = 2;
 
 // ponytail: contador en memoria por instancia; si hace falta un límite estricto entre instancias, moverlo a la base.
 const refreshSlots = new Map<string, number>();
-
-/** Contactos del usuario en [from, to], paginados (100 por página, como máximo 2000). */
-async function loadContacts(userId: string, from: string, to: string): Promise<LeadContact[]> {
-  const first = await listLeadContacts(userId, { from, to, page: 1, perPage: 100 });
-  const pages = Math.min(first.totalPages, MAX_CONTACT_PAGES);
-  const rest = await Promise.all(Array.from({ length: Math.max(0, pages - 1) }, (_, index) => listLeadContacts(userId, { from, to, page: index + 2, perPage: 100 })));
-  return [first, ...rest].flatMap((page) => page.items);
-}
 
 /**
  * Análisis diario de Leadtita. Cacheado por usuario, día local, idioma, zona horaria y slot de "Actualizar"

@@ -2,20 +2,34 @@ import { CREDITS_PER_PERSON } from "@/lib/people";
 import { countriesLabel, MAX_SEARCH_COUNTRIES } from "@/lib/search-random-location";
 import { isDevFeatureEnabled } from "@/lib/env-features";
 import { isContactStatus, normalizeChannel, normalizeForMatch, rankLeadsByText, type ContactStatus, type LeadMatch } from "@/lib/lead-suite";
-import { CREDITS_PER_LEAD, CREDITS_PER_PAIN_ANALYSIS, CreditOperationBusyError, InsufficientCreditsError } from "@/lib/server/credits";
+import { adjustCredits, CREDITS_PER_LEAD, CREDITS_PER_PAIN_ANALYSIS, CreditOperationBusyError, InsufficientCreditsError, reserveCreditAmount } from "@/lib/server/credits";
 import { featurePricing } from "@/lib/server/campaigns";
 import type { CampaignFeature } from "@/lib/campaigns";
+import { FREE_TOPUP_MAX_ROUNDS, isFreeTopUp, LEAD_RULE_FIELDS, LEAD_RULE_OPS, MAX_LEAD_RULES, matchesLeadRules, parseLeadRules, TOPUP_MAX_MISSING, type LeadRule } from "@/lib/lead-rules";
 import {
   addManualLead,
   findDuplicateContact,
   findRecentBatch,
   getLeadPainBrief,
   getLeadSuiteMetrics,
+  getUserBatch,
+  getUserLeadFields,
+  IMPORT_BATCH_COUNTRY,
+  isSearchBatch,
+  LEAD_EDIT_FIELDS,
+  listBatchLeads,
   listLeadContacts,
   listLeadDirectory,
+  listRecentBatches,
+  MAX_FILTER_BATCH_LEADS,
   recordLeadContact,
+  updateUserLead,
+  type BatchLead,
+  type BatchSummary,
+  type LeadEditField,
   type ManualLeadInput,
 } from "@/lib/server/lead-suite";
+import { deleteBatchLeads } from "@/lib/server/leads";
 import { ATTACHMENT_LIMITS, attachmentPromptBlock, driveToContext, type AttachmentContext } from "@/lib/server/leadtita-attachments";
 import { getConnection, GoogleNotConnectedError, hasCalendar, hasGmail, isGoogleDriveFullAccess } from "@/lib/server/google-connections";
 import { isValidEmail as isValidGmailAddress, sendGmail, sendGmailBatch } from "@/lib/server/google-gmail";
@@ -24,10 +38,11 @@ import { parseSendAt } from "@/lib/server/scheduled-messages";
 import { createCalendarEvent } from "@/lib/server/google-calendar";
 import { GoogleDriveError, readDriveFile, searchDriveFiles } from "@/lib/server/google-drive";
 import { createLeadRecords, pocketBaseFetch } from "@/lib/server/pocketbase";
+import { toUserRole } from "@/lib/server/auth";
 import { createHash } from "node:crypto";
 import { enqueueWhatsApp, getLeadWhatsApp, isWhatsAppConfigured, isWhatsAppConnected, WHATSAPP_BATCH_MAX, WHATSAPP_TEXT_MAX } from "@/lib/server/whatsapp";
 import { COMMERCIAL_SECTORS_MAX, getCommercialProfile, SERVICE_OFFERING_MAX, updateCommercialProfile, type CommercialProfile } from "@/lib/server/user-profile";
-import type { ConfirmedChange, LeadPreview, LeadSuiteAction, PendingPayload, ProposalInput } from "@/lib/server/lead-suite-agent";
+import type { ChangeExtra, ConfirmedChange, LeadPreview, LeadSuiteAction, PendingPayload, ProposalInput } from "@/lib/server/lead-suite-agent";
 
 // Leadtita capabilities beyond logging contacts: feedback, message drafts, manual leads, analysis and lead generation.
 // Every write or spend is only *proposed* here; it runs from the signed card the user confirms (applyLeadtitaChange).
@@ -45,6 +60,9 @@ export type LeadtitaHelpers = {
   addAttachment(attachment: AttachmentContext): void;
   driveRef(file: { id: string; name: string; mimeType: string }): string;
   driveByRef(ref: unknown): { id: string; name: string; mimeType: string } | undefined;
+  /** Short refs (B1, B2…) for batches listed this turn; the model never sees batch ids. */
+  batchRef(batch: BatchSummary): string;
+  batchByRef(ref: unknown): BatchSummary | undefined;
 };
 
 /** Keywords travel one per line inside the signed card (a keyword may contain commas). */
@@ -84,7 +102,13 @@ const fn = (name: string, description: string, properties: Record<string, unknow
   function: { name, description, parameters: { type: "object", additionalProperties: false, properties, required } },
 });
 const leadRefSchema = { type: "string", pattern: "^L\\d{1,3}$" };
+const batchRefSchema = { type: "string", pattern: "^B\\d{1,3}$" };
 const text = (max: number) => ({ type: "string", maxLength: max });
+const leadRulesSchema = (minItems: number, description: string) => ({
+  type: "array", minItems, maxItems: MAX_LEAD_RULES, description,
+  items: { type: "object", additionalProperties: false, properties: { field: { type: "string", enum: LEAD_RULE_FIELDS }, op: { type: "string", enum: LEAD_RULE_OPS }, value: { ...text(100), description: "Required for starts_with/contains/not_contains." } }, required: ["field", "op"] },
+});
+const RULES_HELP = "All must hold (AND). Phones compare by digits (\"+56\" = starts with 56); text ignores case and accents.";
 
 export const leadtitaTools: ReturnType<typeof fn>[] = [
   fn("followup_feedback", "Stats of the user's follow-up (last 30 days, reply rate, channels, pending follow-ups, recent contacts) to give brief, concrete feedback.", {}, []),
@@ -96,6 +120,7 @@ export const leadtitaTools: ReturnType<typeof fn>[] = [
       items: { type: "object", additionalProperties: false, properties: { channel: { type: "string", enum: ["whatsapp", "email"] }, subject: text(120), text: { type: "string", minLength: 1, maxLength: 1500 } }, required: ["channel", "text"] },
     },
   }, ["leadRef", "messages"]),
+  fn("enrich_leads", "Find a lead's email and social profiles with a web search (same as \"Enriquecer\" in the batch table). wholeBatch=true enriches every lead of that lead's batch. Free and runs right away; capped per account. Use when the user asks for emails, social networks or more contact data.", { leadRef: leadRefSchema, wholeBatch: { type: "boolean" } }, ["leadRef"]),
   fn("propose_analyze_pains", CREDITS_PER_PAIN_ANALYSIS === 0 ? "Request analyzing a lead's pains before drafting from evidence. This analysis is free and the server runs it automatically." : `Propose analyzing a lead's pains (needed before drafting from evidence). Yes/No card with its cost of ${CREDITS_PER_PAIN_ANALYSIS} credits.`, { leadRef: leadRefSchema, focus: text(300) }, ["leadRef"]),
   fn("propose_add_lead", "Propose adding a lead manually to the user's \"Manual\" batch. Yes/No card.", {
     name: { type: "string", minLength: 1, maxLength: 255 }, category: text(200), city: text(160), phone: text(60), email: text(254), website: text(500),
@@ -109,7 +134,17 @@ export const leadtitaTools: ReturnType<typeof fn>[] = [
     website: { type: "string", enum: PRESENCE, description: "with = has a website, without = no website." },
     phone: { type: "string", enum: PRESENCE },
     email: { type: "string", enum: PRESENCE },
+    customFilters: leadRulesSchema(0, `Conditions the filters above can't express (phone prefix, email domain, name/category/address contains or not, a field empty/non-empty). Applied before saving: non-matching places are never delivered nor charged. ${RULES_HELP}`),
   }, ["keywords", "country", "count"]),
+  fn("list_batches", "The user's 10 most recent lead batches (B refs), newest first: keywords, place, delivered/requested and date. Needed before filtering a batch.", {}, []),
+  fn("propose_filter_batch", "Propose keeping only the leads of an already generated batch that match the rules; the others are deleted and their credits refunded. Yes/No card with kept/discarded/refund.", {
+    batchRef: batchRefSchema,
+    rules: leadRulesSchema(1, `Leads to KEEP. ${RULES_HELP}`),
+  }, ["batchRef", "rules"]),
+  fn("propose_update_lead", "Propose editing a lead's data. Pass only the fields that change; \"\" clears a field (never the name). Yes/No card.", {
+    leadRef: leadRefSchema,
+    name: { type: "string", minLength: 1, maxLength: 255 }, phone: text(60), email: text(254), website: { ...text(500), description: "http(s) URL, or \"\" to clear." }, category: text(200), address: text(300),
+  }, ["leadRef"]),
   fn("update_commercial_profile", "Propose saving the user's commercial profile: the service they sell (used as the focus of pain analyses) and/or the business sectors they usually target. Yes/No card. Pass only what the user said.", {
     serviceOffering: { type: "string", minLength: 3, maxLength: SERVICE_OFFERING_MAX, description: "What the user sells, in their words (e.g. \"desarrollo de sitios web para pymes\")." },
     commercialSectors: { type: "string", minLength: 2, maxLength: COMMERCIAL_SECTORS_MAX, description: "Comma-separated sectors they usually target (e.g. \"inmobiliarias, gastronomía\"). Merge with the saved ones unless the user replaces them." },
@@ -123,7 +158,10 @@ const LEADTITA_BASE_PROMPT = [
   "FEEDBACK: call followup_feedback, then give 2-4 short, concrete recommendations as a bullet list (who to follow up first, best channel, reply rate). No generic advice.",
   `MESSAGES: for a specific lead call lead_brief. If it has analyzed pains or proposals, draft 1-2 messages and show them with suggest_messages (WhatsApp by default; email adds a subject). Tone: first person, warm and close, rioplatense voseo in Spanish, 3-5 short sentences, open with the business name and one concrete detail, talk about the client's result not the technical task, no jargon, never invent facts, end with one low-commitment question. If it has no analyzed pains, call propose_analyze_pains right away instead of inventing problems. ${CREDITS_PER_PAIN_ANALYSIS === 0 ? "The server runs this analysis automatically at no credit cost; then draft from its results." : "The user must confirm its paid proposal before analysis; after confirmation, draft from the new analysis."}`,
   "LOAD LEADS: to add a lead manually use propose_add_lead with what the user gave; ask only for the name if missing.",
-  `GENERATE LEADS: businesses → propose_search_businesses (keywords: every business type the user named; for an ambiguous or niche type add 2-4 useful local-language variants of that same type, e.g. "distribuidora de insumos", "mayorista de insumos para comercios"; never other business types; always pass province/district when the user names a city or province; count = exactly what the user asked, one of ${BUSINESS_SEARCH_COUNTS.join(", ")} (closest size otherwise, say so); country required, ask if missing; several countries → pass them all in countries, no province/district). Pass the user's conditions as the real filters (website/phone/email with|without; closed businesses are always skipped); never raise the count to filter later. If a condition has no filter (e.g. by social network or by age of the business), say in one line that the search can't filter by it and propose without it.`,
+  `GENERATE LEADS: businesses → propose_search_businesses (keywords: every business type the user named; for an ambiguous or niche type add 2-4 useful local-language variants of that same type, e.g. "distribuidora de insumos", "mayorista de insumos para comercios"; never other business types; always pass province/district when the user names a city or province; count = exactly what the user asked, one of ${BUSINESS_SEARCH_COUNTS.join(", ")} (closest size otherwise, say so); country required, ask if missing; several countries → pass them all in countries, no province/district). Pass the user's conditions as the real filters (website/phone/email with|without; closed businesses are always skipped); never raise the count to filter later. Conditions those filters can't express (phone prefix such as +56, email domain, name/category/address contains or not, a field empty/non-empty) go in customFilters: they're applied before charging, so count stays what the user asked. If a condition fits neither (e.g. by social network or by age of the business), say in one line that the search can't filter by it and propose without it.`,
+  "SHORTFALLS: never propose a new search to complete a batch that came short: the app tops it up automatically (free up to 2 rounds when fewer than 50 are missing) and then shows a paid card for the rest.",
+  "FILTER A BATCH: to filter leads already generated, call list_batches, then propose_filter_batch with its B ref and the rules of the leads to keep. Discarded leads are refunded; the refill of the missing ones is paid (the app offers it after).",
+  "EDIT A LEAD: propose_update_lead with only the fields that change.",
   "COMMERCIAL PROFILE: the user's saved service and usual sectors are in USER PROFILE below. Before proposing a lead search, if the service is empty, ask ONE short question about what service they offer (offer 2-3 likely options as a list if the conversation lets you infer them); when they answer, call update_commercial_profile, then continue with the search. If they don't want to say, continue without it and don't ask again. When the user mentions the sectors they usually sell to, call update_commercial_profile with commercialSectors. Use the sectors to suggest business types and keywords when the user asks for leads without naming a type, and the service to pick the analysis focus.",
   ...(peopleSearchEnabled ? [` People/independent professionals → propose_search_people (count 1-${MAX_PEOPLE}).`] : []),
   " Never start a search without the card; only delivered results are charged.",
@@ -208,6 +246,27 @@ export async function runLeadtitaTool(h: LeadtitaHelpers, name: string, args: Re
     return h.propose({ kind: "analyze_pains", leadId: lead.id, leadName: lead.name, data: {}, extra: { batchId: lead.batchId, ...(await cardPricing("pain_analysis", CREDITS_PER_PAIN_ANALYSIS, 1)), ...(focus ? { focus } : {}) } });
   }
 
+  // Same enrichment as the batch table (/api/analysis, action "enrichment"): free, runs right away, account caps apply.
+  if (name === "enrich_leads") {
+    const lead = h.leadByRef(args.leadRef);
+    if (!lead) return { error: "Unknown leadRef." };
+    const wholeBatch = args.wholeBatch === true;
+    const result = await (await useCases.analysis())(await sessionUser(h.userId), { batchId: lead.batchId, action: "enrichment", ...(wholeBatch ? {} : { leadId: lead.id }) }, { locale: h.locale });
+    if (result.status !== 200) return { error: String(result.body.error ?? "Enrichment failed.") };
+    const body = result.body as { leads?: { id: string; email?: string; social_profiles?: string }[]; analyzedCount?: number; alreadyAnalyzedCount?: number; limitedCount?: number; noEvidenceCount?: number; failedCount?: number };
+    const row = wholeBatch ? undefined : body.leads?.find((item) => item.id === lead.id);
+    h.push({ type: "batch_updated", batchId: lead.batchId });
+    return {
+      enriched: body.analyzedCount ?? 0,
+      alreadyEnriched: body.alreadyAnalyzedCount ?? 0,
+      notEnrichedByCap: body.limitedCount ?? 0,
+      withoutData: body.noEvidenceCount ?? 0,
+      failed: body.failedCount ?? 0,
+      ...(row ? { email: row.email ?? "", socialProfiles: row.social_profiles ?? "" } : {}),
+      note: "Reply in one short line with what was found; the batch card already shows the new emails and profiles.",
+    };
+  }
+
   if (name === "propose_add_lead") {
     const extra = manualLeadExtra(args);
     if (!extra) return { error: "Invalid lead data (name required; website must start with http)." };
@@ -218,6 +277,39 @@ export async function runLeadtitaTool(h: LeadtitaHelpers, name: string, args: Re
     const extra = businessSearchExtra(args);
     if (!extra) return { error: `Invalid search: 1-5 keywords, a country and count ${BUSINESS_SEARCH_COUNTS.join("/")}.` };
     return h.propose({ kind: "search_businesses", leadId: "", leadName: "", data: {}, extra: { ...extra, ...(await cardPricing("lead_search", CREDITS_PER_LEAD, extra.count)) } });
+  }
+
+  if (name === "list_batches") {
+    const batches = await listRecentBatches(h.userId, BATCH_LIST_LIMIT);
+    if (!batches.length) return { batches: [], note: "The user has no lead batches yet." };
+    return { batches: batches.map((batch) => `${h.batchRef(batch)} · ${batchLabel(batch)} · ${batch.resultCount}/${batch.requestedCount} leads · ${day(batch.createdAt || null)}`) };
+  }
+
+  if (name === "propose_filter_batch") {
+    const batch = h.batchByRef(args.batchRef);
+    if (!batch) return { error: "Unknown batchRef. Call list_batches first." };
+    const rules = parseLeadRules(args.rules);
+    if (!rules?.length) return { error: `Pass 1-${MAX_LEAD_RULES} valid rules (starts_with/contains/not_contains need a value).` };
+    const leads = await listBatchLeads(h.userId, batch.id);
+    if (!leads) return { error: `This batch has more than ${MAX_FILTER_BATCH_LEADS} leads and can't be filtered from the chat.` };
+    const discard = leads.filter((lead) => !matchesLeadRules(lead, rules));
+    if (!discard.length) return { nothingToDiscard: true, kept: leads.length, note: "Every lead of the batch already matches; tell the user in one line." };
+    return h.propose({
+      kind: "filter_batch", leadId: "", leadName: "", data: {},
+      extra: { batchId: batch.id, label: batchLabel(batch), kept: leads.length - discard.length, discarded: discard.length, refund: refundOf(discard), rules: JSON.stringify(rules) },
+    });
+  }
+
+  if (name === "propose_update_lead") {
+    const lead = h.leadByRef(args.leadRef);
+    if (!lead) return { error: "Unknown leadRef." };
+    const patch = leadEditExtra(args);
+    if (!patch || !Object.keys(patch).length) return { error: "Pass the fields to change: the name can't be empty, website must start with http(s), email must be valid." };
+    const current = await getUserLeadFields(h.userId, lead.id);
+    if (!current) return { error: "Lead not found." };
+    const changed = Object.fromEntries(Object.entries(patch).filter(([key, value]) => current[key as LeadEditField] !== value));
+    if (!Object.keys(changed).length) return { error: "Nothing changes: those values are already saved." };
+    return h.propose({ kind: "update_lead", leadId: lead.id, leadName: current.name || lead.name, data: {}, extra: changed });
   }
 
   if (name === "update_commercial_profile") {
@@ -265,8 +357,77 @@ function businessSearchExtra(raw: Record<string, unknown>) {
   const district = multi ? "" : str(raw.district, 100);
   const filters = businessFilters(raw);
   if (!filters) return null;
+  // The model passes `customFilters` (array); the signed card keeps them as `rules` (JSON string) and is re-parsed here.
+  const rules = parseLeadRules(raw.customFilters !== undefined ? raw.customFilters : raw.rules);
+  if (!rules) return null;
   const label = labelWithoutPlace(str(raw.label, 120), [district, province, ...countries]);
-  return { keywords: keywords.join(KEYWORD_SEPARATOR), ...(label ? { label } : {}), country: multi ? countriesLabel(countries) : country, ...(multi ? { countries: countries.join(KEYWORD_SEPARATOR) } : {}), ...(province ? { province } : {}), ...(district ? { district } : {}), count, ...filters };
+  return { keywords: keywords.join(KEYWORD_SEPARATOR), ...(label ? { label } : {}), country: multi ? countriesLabel(countries) : country, ...(multi ? { countries: countries.join(KEYWORD_SEPARATOR) } : {}), ...(province ? { province } : {}), ...(district ? { district } : {}), count, ...filters, ...(rules.length ? { rules: JSON.stringify(rules) } : {}) };
+}
+
+const RECORD = /^[a-zA-Z0-9]{15}$/;
+const EMAIL_SHAPE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const LEAD_EDIT_LIMITS: Record<LeadEditField, number> = { name: 255, phone: 60, email: 254, website: 500, category: 200, address: 300 };
+
+/** Fields a lead edit sets (same rules as a manual lead; "" clears, except the name). Null when any field is invalid. */
+function leadEditExtra(raw: Record<string, unknown>): Record<string, string> | null {
+  const out: Record<string, string> = {};
+  for (const key of LEAD_EDIT_FIELDS) {
+    if (raw[key] === undefined) continue;
+    if (typeof raw[key] !== "string") return null;
+    const value = (raw[key] as string).trim();
+    if (value.length > LEAD_EDIT_LIMITS[key] || (key === "name" && !value)) return null;
+    if (value && ((key === "website" && !/^https?:\/\/\S+$/i.test(value)) || (key === "email" && !EMAIL_SHAPE.test(value)))) return null;
+    out[key] = value;
+  }
+  return out;
+}
+
+/** Signed top-up card: the search params travel in it and /api/search runs only from them. */
+function topUpValid(extra: ChangeExtra) {
+  const { missing, round, free } = extra;
+  return RECORD.test(String(extra.batchId ?? "")) && splitKeywords(extra.keywords).length > 0 && Boolean(str(extra.country, 100))
+    && Number.isInteger(missing) && Number(missing) >= 1 && Number(missing) <= TOPUP_MAX_MISSING && Number.isInteger(round) && Number(round) >= 1
+    && (free === 0 || (free === 1 && isFreeTopUp(Number(round), Number(missing)) && Number(extra.credits ?? 0) === 0))
+    && parseLeadRules(extra.rules) !== null && businessFilters(extra) !== null;
+}
+
+// ---------- Batches: list, post-delivery filter and top-ups ----------
+
+const BATCH_LIST_LIMIT = 10;
+const batchPlace = (batch: Pick<BatchSummary, "district" | "province" | "country">) => [batch.district, batch.province, batch.country].filter(Boolean).join(", ");
+const batchLabel = (batch: BatchSummary) => [batch.keywords[0] || "-", batchPlace(batch)].filter(Boolean).join(" · ");
+const refundOf = (leads: BatchLead[]) => leads.reduce((total, lead) => total + lead.creditCost, 0);
+/** website/phone/email presence filters of a card, as card extra. */
+const presenceFilters = (extra: ChangeExtra) => Object.fromEntries((["website", "phone", "email"] as const).filter((key) => extra[key] === "with" || extra[key] === "without").map((key) => [key, extra[key]]));
+const cardCountries = (extra: ChangeExtra) => (extra.countries ? String(extra.countries).split(KEYWORD_SEPARATOR).filter(Boolean) : []);
+/** Multi-country batches keep countriesLabel(...) in `country`; a truncated one ("A, B +3") can't be rebuilt. */
+const batchCountries = (country: string) => (/\s\+\d+$/.test(country) ? null : country.split(", ").map((value) => value.trim()).filter(Boolean));
+
+type TopUpBatch = Pick<BatchSummary, "id" | "keywords" | "country" | "province" | "district"> & { missing: number; topupRounds: number };
+type TopUpSearch = { filters: Record<string, string | number>; countries?: string[]; rules: LeadRule[]; label?: string };
+
+/**
+ * Next top-up card of a batch short of leads (missing = requested − delivered), or null when nothing is missing.
+ * Round n = top-ups already run + 1; free iff isFreeTopUp, otherwise priced like a search of `missing` leads.
+ */
+export async function nextTopUpProposal(batch: TopUpBatch, search: TopUpSearch): Promise<ProposalInput | null> {
+  const missing = Math.min(TOPUP_MAX_MISSING, Math.trunc(batch.missing));
+  if (!(missing >= 1) || !RECORD.test(batch.id) || !batch.keywords.length || !batch.country) return null;
+  const round = Math.max(0, Math.trunc(batch.topupRounds)) + 1;
+  const free = isFreeTopUp(round, missing);
+  const countries = (search.countries ?? []).length > 1 ? search.countries! : [];
+  return {
+    kind: "topup_batch", leadId: "", leadName: "", data: {},
+    extra: {
+      batchId: batch.id, label: search.label || batch.keywords[0],
+      keywords: batch.keywords.slice(0, MAX_SEARCH_KEYWORDS).join(KEYWORD_SEPARATOR), country: batch.country,
+      ...(countries.length ? { countries: countries.join(KEYWORD_SEPARATOR) } : {}),
+      ...(!countries.length && batch.province ? { province: batch.province } : {}), ...(!countries.length && batch.district ? { district: batch.district } : {}),
+      ...presenceFilters(search.filters), skipClosed: 1, ...(search.rules.length ? { rules: JSON.stringify(search.rules) } : {}),
+      missing, round, free: free ? 1 : 0,
+      ...(free ? { credits: 0 } : await cardPricing("lead_search", CREDITS_PER_LEAD, missing)),
+    },
+  };
 }
 
 const normalizePlace = (value: string) => value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
@@ -331,6 +492,12 @@ export function revalidateLeadtitaExtra(payload: PendingPayload): boolean {
   if (payload.kind === "update_commercial_profile") return commercialProfileExtra(extra) !== null;
   if (payload.kind === "send_whatsapp_batch") return whatsAppEnabled && revalidateWhatsApp(payload);
   if (payload.kind === "analyze_pains") return typeof extra.batchId === "string" && /^[a-zA-Z0-9]{15}$/.test(extra.batchId) && /^[a-zA-Z0-9]{15}$/.test(payload.leadId);
+  if (payload.kind === "topup_batch") return topUpValid(extra);
+  if (payload.kind === "filter_batch") return RECORD.test(String(extra.batchId ?? "")) && Boolean(parseLeadRules(extra.rules)?.length);
+  if (payload.kind === "update_lead") {
+    const patch = leadEditExtra(extra);
+    return RECORD.test(payload.leadId) && patch !== null && Object.keys(patch).length > 0 && Object.keys(patch).length === Object.keys(extra).length;
+  }
   return true;
 }
 
@@ -351,26 +518,40 @@ export function previewLeads(rows: unknown): LeadPreview[] {
   });
 }
 
-export type InternalCall = { origin: string; cookie: string; locale: "es" | "en" };
+export type InternalCall = { locale: "es" | "en" };
 
-/** Calls an existing API route as the same user, so search/analysis logic and credit handling live in one place. */
-async function callOwnApi(call: InternalCall, path: string, body: unknown) {
-  const response = await fetch(new URL(path, call.origin), {
-    method: "POST",
-    headers: { "Content-Type": "application/json", Cookie: call.cookie, "Accept-Language": call.locale },
-    body: JSON.stringify(body),
-    cache: "no-store",
-  });
-  const payload = await response.json().catch(() => ({})) as Record<string, unknown>;
-  // Credit failures keep their type so the confirm route can tell the user what happened.
-  if (response.status === 402) throw new InsufficientCreditsError(Number(payload.credits ?? 0), Number(payload.required ?? 0));
-  if (response.status === 409) throw new CreditOperationBusyError();
-  if (!response.ok) throw new Error(typeof payload.error === "string" ? payload.error : `Request failed (${response.status}).`);
+/**
+ * Runs the same use cases as /api/search, /api/people/search and /api/analysis as this user (search/analysis logic and
+ * credit handling live in one place). Loaded on demand: business-search imports lead-suite-agent, which imports this file.
+ */
+const useCases = {
+  businessSearch: () => import("@/lib/server/business-search").then((module) => module.runBusinessSearch),
+  peopleSearch: () => import("@/lib/server/people/search-request").then((module) => module.runPeopleSearchRequest),
+  analysis: () => import("@/lib/server/lead-analysis").then((module) => module.runLeadAnalysis),
+};
+
+/** Route-style result → body, or the error the HTTP call used to raise. Credit failures keep their type so the confirm route can tell the user what happened. */
+function okBody(result: { status: number; body: Record<string, unknown> }) {
+  const payload = result.body;
+  if (result.status === 402) throw new InsufficientCreditsError(Number(payload.credits ?? 0), Number(payload.required ?? 0));
+  if (result.status === 409) throw new CreditOperationBusyError();
+  if (result.status < 200 || result.status > 299) throw new Error(typeof payload.error === "string" ? payload.error : `Request failed (${result.status}).`);
   return payload;
 }
 
+/** Id + role: what the use cases' free caps and rate limit need (the cookie session isn't available here). */
+async function sessionUser(userId: string) {
+  const record = await pocketBaseFetch<{ id: string; role?: unknown }>(`/api/collections/users/records/${encodeURIComponent(userId)}?fields=id,role`);
+  return { id: record.id, role: toUserRole(record.role) };
+}
+
+/** `nextProposal`: the next top-up card, signed by the caller into `ConfirmedChange.next`. */
+export type LeadtitaConfirmed = ConfirmedChange & { nextProposal?: ProposalInput };
+/** Signs a proposal for this user (lead-suite-agent's signPendingChange; passed in to avoid a runtime import cycle). */
+export type ProposalSigner = (input: ProposalInput) => string;
+
 /** Returns null when the change isn't a Leadtita one. Each branch is safe to replay (single effect per confirmed card). */
-export async function applyLeadtitaChange(userId: string, payload: PendingPayload, call: InternalCall): Promise<ConfirmedChange | null> {
+export async function applyLeadtitaChange(userId: string, payload: PendingPayload, call: InternalCall, sign?: ProposalSigner): Promise<LeadtitaConfirmed | null> {
   const extra = payload.extra ?? {};
   const since = new Date(payload.iat).toISOString();
   // Fingerprint of this exact signed card: a replay of it finds its own batch, a sibling card doesn't.
@@ -392,7 +573,7 @@ export async function applyLeadtitaChange(userId: string, payload: PendingPayloa
     const focus = typeof extra.focus === "string" && extra.focus ? extra.focus : await getCommercialProfile(userId).then((profile) => profile.serviceOffering).catch(() => "");
     // Replayed card: the lead was already analyzed with this focus, don't run (or count) it again.
     if (brief.analyzed && brief.focus === focus) return { kind: payload.kind, leadName: brief.lead.name, summary: { tags: brief.tags } };
-    await callOwnApi(call, "/api/analysis", { batchId: extra.batchId, action: "pain_points", leadId: payload.leadId, focus });
+    okBody(await (await useCases.analysis())(await sessionUser(userId), { batchId: extra.batchId, action: "pain_points", leadId: payload.leadId, focus }, { locale: call.locale }));
     const after = await getLeadPainBrief(userId, payload.leadId);
     return { kind: payload.kind, leadName: brief.lead.name, summary: { tags: after?.tags ?? [] } };
   }
@@ -411,9 +592,46 @@ export async function applyLeadtitaChange(userId: string, payload: PendingPayloa
     if (previous) return { kind: payload.kind, leadName: "", summary: { batchId: previous.id, delivered: previous.result_count ?? 0, charged: (await featurePricing("lead_search", CREDITS_PER_LEAD)).cost(previous.result_count ?? 0), replayed: true } };
     const filters = Object.fromEntries(BUSINESS_FILTER_KEYS.filter((key) => extra[key] !== undefined).map((key) => [key, key === "skipClosed" ? true : extra[key]]));
     const countries = extra.countries ? String(extra.countries).split(KEYWORD_SEPARATOR).filter(Boolean) : undefined;
-    const result = await callOwnApi(call, "/api/search", { keywords, country: extra.country, ...(countries ? { countries } : {}), province: extra.province ?? "", district: extra.district ?? "", count, filters, cardKey });
+    const rules = parseLeadRules(extra.rules) ?? [];
+    const result = okBody(await (await useCases.businessSearch())({ id: userId }, { keywords, country: extra.country, ...(countries ? { countries } : {}), province: extra.province ?? "", district: extra.district ?? "", count, filters, customFilters: rules, cardKey }, { locale: call.locale }));
     const delivered = Array.isArray(result.leads) ? result.leads.length : 0;
-    return { kind: payload.kind, leadName: "", summary: { batchId: String(result.batchId ?? ""), delivered, charged: Number(result.creditsUsed ?? delivered * CREDITS_PER_LEAD), preview: previewLeads(result.leads) } };
+    const batchId = String(result.batchId ?? "");
+    const missing = Number(result.missing);
+    const known = result.missing !== undefined && Number.isFinite(missing);
+    // A run that found nothing won't find more on a top-up: no next card.
+    const nextProposal = known && delivered > 0
+      ? await nextTopUpProposal({ id: batchId, keywords, country: String(extra.country), province: String(extra.province ?? ""), district: String(extra.district ?? ""), missing, topupRounds: 0 }, { filters: presenceFilters(extra), countries, rules, label: typeof extra.label === "string" ? extra.label : "" })
+      : null;
+    return { kind: payload.kind, leadName: "", summary: { batchId, delivered, charged: Number(result.creditsUsed ?? delivered * CREDITS_PER_LEAD), preview: previewLeads(result.leads), ...(known ? { missing } : {}) }, ...(nextProposal ? { nextProposal } : {}) };
+  }
+
+  if (payload.kind === "topup_batch") {
+    if (!sign) throw new Error("Top-up unavailable in this request.");
+    // The search use case re-verifies this token and takes every search param from it (body fields are ignored).
+    const { v: _v, uid: _uid, iat: _iat, exp: _exp, ...proposal } = payload;
+    void _v; void _uid; void _iat; void _exp;
+    const result = okBody(await (await useCases.businessSearch())({ id: userId }, { topUp: sign(proposal) }, { locale: call.locale }));
+    const leads = Array.isArray(result.leads) ? result.leads : [];
+    const missing = Number(result.missing);
+    const known = result.missing !== undefined && Number.isFinite(missing);
+    const round = Number.isInteger(Number(result.round)) ? Number(result.round) : Number(extra.round);
+    const batchId = String(extra.batchId);
+    const nextProposal = known && !result.replayed && leads.length > 0
+      ? await nextTopUpProposal({ id: batchId, keywords: splitKeywords(extra.keywords), country: String(extra.country), province: String(extra.province ?? ""), district: String(extra.district ?? ""), missing, topupRounds: round }, { filters: presenceFilters(extra), countries: cardCountries(extra), rules: parseLeadRules(extra.rules) ?? [], label: typeof extra.label === "string" ? extra.label : "" })
+      : null;
+    return {
+      kind: payload.kind, leadName: "",
+      summary: { batchId, delivered: leads.length, charged: Number(result.creditsUsed ?? 0), preview: previewLeads(leads), ...(known ? { missing } : {}), round, ...(result.replayed ? { replayed: true } : {}) },
+      ...(nextProposal ? { nextProposal } : {}),
+    };
+  }
+
+  if (payload.kind === "filter_batch") return applyFilterBatch(userId, payload);
+
+  if (payload.kind === "update_lead") {
+    // Idempotent: replaying the card writes the same values again.
+    const lead = await updateUserLead(userId, payload.leadId, leadEditExtra(extra) ?? {});
+    return { kind: payload.kind, leadName: lead.name, lead };
   }
 
   if (payload.kind === "search_people" && peopleSearchEnabled) {
@@ -421,11 +639,58 @@ export async function applyLeadtitaChange(userId: string, payload: PendingPayloa
     const query = String(extra.query ?? "");
     const previous = await findRecentBatch(userId, { sinceIso: since, cardKey });
     if (previous) return { kind: payload.kind, leadName: "", summary: { batchId: previous.id, delivered: previous.result_count ?? 0, charged: (await featurePricing("people_search", CREDITS_PER_PERSON)).cost(previous.result_count ?? 0), replayed: true } };
-    const result = await callOwnApi(call, "/api/people/search", { query, location: extra.location ?? "", count, locale: call.locale, includeMeta: true, cardKey });
+    const result = okBody(await (await useCases.peopleSearch())(await sessionUser(userId), { query, location: extra.location ?? "", count, locale: call.locale, includeMeta: true, cardKey }, { locale: call.locale }));
     return { kind: payload.kind, leadName: "", summary: { batchId: String(result.batchId ?? ""), delivered: Number(result.delivered ?? 0), charged: Number(result.charged ?? 0), preview: previewLeads(result.leads) } };
   }
 
   return null;
+}
+
+/**
+ * Deletes the batch leads that don't match the rules and refunds what they cost (credit_cost), under the user's credit
+ * lock. Recomputed on apply, so a replay finds nothing left to delete and refunds nothing. Free top-ups are exhausted
+ * first: refunded leads are never replaced for free.
+ */
+async function applyFilterBatch(userId: string, payload: PendingPayload): Promise<LeadtitaConfirmed> {
+  const extra = payload.extra ?? {};
+  const batchId = String(extra.batchId);
+  const rules = parseLeadRules(extra.rules);
+  if (!rules?.length) throw new Error("Invalid change.");
+  const lock = await reserveCreditAmount(userId, 0);
+  let batch!: BatchSummary;
+  let deleted: BatchLead[] = [];
+  let kept = 0;
+  let refunded = 0;
+  try {
+    const found = await getUserBatch(userId, batchId);
+    if (!found) throw new Error("Batch not found.");
+    batch = found;
+    const leads = await listBatchLeads(userId, batchId);
+    if (!leads) throw new Error(`Batch has more than ${MAX_FILTER_BATCH_LEADS} leads.`);
+    const discard = leads.filter((lead) => !matchesLeadRules(lead, rules));
+    if (discard.length) {
+      // Before deleting, so a failure halfway never leaves refunded leads replaceable for free.
+      if (batch.topupRounds < FREE_TOPUP_MAX_ROUNDS) {
+        await pocketBaseFetch(`/api/collections/lead_batches/records/${encodeURIComponent(batchId)}`, { method: "PATCH", body: JSON.stringify({ topup_rounds: FREE_TOPUP_MAX_ROUNDS }) });
+      }
+      const result = await deleteBatchLeads(userId, batchId, discard.map((lead) => lead.id));
+      if ("error" in result) throw new Error("Batch not found.");
+      const gone = new Set(result.deletedIds);
+      deleted = discard.filter((lead) => gone.has(lead.id));
+    }
+    kept = leads.length - deleted.length;
+    refunded = refundOf(deleted);
+    if (refunded > 0) await adjustCredits(userId, refunded, lock.balance + refunded);
+  } finally {
+    await lock.release();
+  }
+  const summary = { batchId, kept, discarded: deleted.length, refunded };
+  // Paid refill of the missing leads, only for batches created by /api/search (not Manual, imports or people).
+  const countries = batchCountries(batch.country);
+  const nextProposal = isSearchBatch(batch) && countries
+    ? await nextTopUpProposal({ ...batch, missing: batch.requestedCount - Math.max(0, batch.resultCount - deleted.length), topupRounds: Math.max(batch.topupRounds, FREE_TOPUP_MAX_ROUNDS) }, { filters: {}, countries, rules, label: batch.keywords[0] })
+    : null;
+  return { kind: payload.kind, leadName: "", summary, ...(nextProposal ? { nextProposal } : {}) };
 }
 
 // ---------- Bulk imports from attachments (CSV rows, or rows the model read from a PDF/Markdown/image) ----------
@@ -605,7 +870,7 @@ export async function applyImport(userId: string, payload: PendingPayload): Prom
       if (payload.extra?.target === "new_batch") {
         batchId = (await pocketBaseFetch<{ id: string }>("/api/collections/lead_batches/records", {
           method: "POST",
-          body: JSON.stringify({ user: userId, keywords: [file.slice(0, 120)], country: "Importado", province: "", district: "", requested_count: plan.toCreate.length, result_count: 0, status: "completed", created_at: new Date().toISOString() }),
+          body: JSON.stringify({ user: userId, keywords: [file.slice(0, 120)], country: IMPORT_BATCH_COUNTRY, province: "", district: "", requested_count: plan.toCreate.length, result_count: 0, status: "completed", created_at: new Date().toISOString() }),
         })).id;
       } else {
         // First row through addManualLead: it finds or creates the user's Manual batch and counts itself.

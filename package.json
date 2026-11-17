@@ -10,11 +10,13 @@
   },
   "dependencies": {
     "@countrystatecity/countries": "^3.0.1",
+    "@modelcontextprotocol/server": "2.3.1",
     "@vercel/analytics": "^2.0.1",
     "botid": "^1.5.13",
     "disposable-email-domains-js": "^2.0.0",
     "libphonenumber-js": "^1.13.15",
     "lucide-react": "^1.70.0",
+    "mcp-handler": "2.3.0",
     "next": "16.4.5",
     "next-intl": "^4.15.0",
     "posthog-js": "^1.447.12",
@@ -25,7 +27,8 @@
     "react-phone-number-input": "^3.4.18",
     "recharts": "^3.10.1",
     "unpdf": "^1.9.1",
-    "write-excel-file": "^4.1.1"
+    "write-excel-file": "^4.1.1",
+    "zod": "4.6.7"
   },
   "devDependencies": {
     "@tailwindcss/turbopack": "^4",

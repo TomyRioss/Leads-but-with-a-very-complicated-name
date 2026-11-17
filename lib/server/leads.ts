@@ -4,7 +4,7 @@ export const RECORD_ID = /^[a-zA-Z0-9]{15}$/;
 export const MAX_DELETE_LEADS = 200;
 const DELETE_CONCURRENCY = 5;
 
-export type DeleteLeadsResult = { deleted: number; failed: string[] } | { error: "batch_not_found" };
+export type DeleteLeadsResult = { deleted: number; deletedIds: string[]; failed: string[] } | { error: "batch_not_found" };
 
 /**
  * Borra leads de un lote del usuario. Solo borra ids que pertenecen a ese lote; los ajenos se ignoran
@@ -27,20 +27,21 @@ export async function deleteBatchLeads(userId: string, batchId: string, leadIds:
   const inBatchSet = new Set(inBatch);
   const failed = leadIds.filter((id) => !inBatchSet.has(id));
 
-  let deleted = 0;
+  const deletedIds: string[] = [];
   let next = 0;
   await Promise.all(Array.from({ length: Math.min(DELETE_CONCURRENCY, inBatch.length) }, async () => {
     while (next < inBatch.length) {
       const id = inBatch[next++];
       try {
         await pocketBaseFetch(`/api/collections/leads/records/${id}`, { method: "DELETE" });
-        deleted++;
+        deletedIds.push(id);
       } catch {
         failed.push(id);
       }
     }
   }));
 
+  const deleted = deletedIds.length;
   if (deleted > 0) {
     // ponytail: read-modify-write; concurrent deletes on same batch could drift result_count, recount via list if it matters
     await pocketBaseFetch(`/api/collections/lead_batches/records/${batchId}`, {
@@ -49,5 +50,5 @@ export async function deleteBatchLeads(userId: string, batchId: string, leadIds:
     }).catch((error) => console.error("PocketBase batch count update failed:", error));
   }
 
-  return { deleted, failed };
+  return { deleted, deletedIds, failed };
 }

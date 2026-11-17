@@ -965,6 +965,15 @@ button.ls-chat__pain:focus-visible, .ls-chat__proposals-open:focus-visible { out
 .ls-chat__sources a { display: inline-flex; align-self: flex-start; align-items: center; gap: 3px; min-height: 28px; color: inherit; font-weight: 650; text-decoration: underline; text-decoration-color: var(--lime); text-underline-offset: 3px; }
 .ls-chat__sources a:focus-visible { outline: 2px solid var(--lime); outline-offset: 2px; border-radius: 4px; }
 
+/* Foco del análisis de dolores: diálogo chico también en móvil (no pantalla completa para un solo campo). */
+.ls-chat__focus-dialog { width: min(440px, calc(100vw - 32px)); height: fit-content; max-height: calc(100dvh - 32px); border: 1px solid var(--line); border-radius: 18px; }
+.ls-chat__focus-form { gap: 10px; padding-bottom: 18px; }
+.ls-chat__focus-form > :is(label, input, .ls-chat__action-buttons) { margin: 0 20px; }
+.ls-chat__focus-form label { color: var(--muted); font-size: 13px; line-height: 1.5; }
+.ls-chat__focus-form input { padding: 9px 12px; border: 1px solid var(--ash-300); border-radius: 10px; background: var(--paper); color: var(--ink); font: inherit; font-size: 14px; }
+.ls-chat__focus-form input:focus-visible { outline: 2px solid var(--ash-950); outline-offset: 2px; }
+.ls-chat__focus-form .ls-chat__action-primary { display: inline-flex; align-items: center; gap: 6px; }
+
 /* Modal "Ver propuesta": reusa el diálogo del lote, más angosto, un solo scroll. */
 .ls-chat__proposal-dialog { width: min(600px, calc(100vw - 32px)); }
 .ls-chat__proposal-scroll { display: flex; min-height: 0; flex-direction: column; gap: 18px; padding: 4px 20px 20px; overflow-y: auto; overscroll-behavior: contain; }

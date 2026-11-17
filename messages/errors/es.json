@@ -35,7 +35,7 @@
     "freePainLimit": "Alcanzaste el límite gratuito de {limit} análisis de dolores. Con un plan no hay límite: mirá los planes en /pricing.",
     "freeEnrichmentLimit": "Alcanzaste el límite gratuito de {limit} enriquecimientos. Con un plan no hay límite: mirá los planes en /pricing.",
     "aiRateLimited": "Hiciste muchas consultas a la IA en poco tiempo. Esperá un minuto e intentá de nuevo.",
-    "aiDailyLimit": "Llegaste al límite gratuito de {limit} mensajes de IA por hoy. Se renueva a las 00:00 UTC; con un plan no hay límite: mirá los planes en /pricing.",
+    "aiDailyLimit": "Usaste los {limit} mensajes de IA gratis de tu cuenta. Con un plan no hay límite: mirá los planes en /pricing.",
     "peopleQueryInvalid": "Describí a quién buscás en 3 a 300 caracteres.",
     "peopleLocationInvalid": "La ubicación puede tener hasta 160 caracteres.",
     "peopleCountInvalid": "Elegí entre 1 y 25 personas.",

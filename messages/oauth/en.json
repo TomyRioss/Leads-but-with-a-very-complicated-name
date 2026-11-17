@@ -1,0 +1,30 @@
+{
+  "oauth": {
+    "metaTitle": "Authorize app | Leadta",
+    "loading": "Checking the request…",
+    "redirectingLogin": "Sign in to continue. Taking you there…",
+    "title": "{client} wants to access your leadta account",
+    "redirectHost": "When you're done you'll go back to <strong>{host}</strong>.",
+    "permissionsTitle": "It will be able to",
+    "included": "Included",
+    "scopes": {
+      "read": { "title": "See your data", "description": "Leads, contacts and metrics." },
+      "write": { "title": "Edit your CRM", "description": "Log contacts, edit leads and change statuses." },
+      "credits": { "title": "Search and analyze", "description": "Search leads and analyze pain points. Uses your account credits." },
+      "send": { "title": "Send messages", "description": "Send emails and WhatsApp messages to your leads from your connected accounts." }
+    },
+    "trustHint": "Only allow apps you trust. You can disconnect it anytime from Integrations.",
+    "allow": "Allow",
+    "allowing": "Authorizing…",
+    "cancel": "Cancel",
+    "canceling": "Canceling…",
+    "submitError": "We couldn't complete the authorization. Please try again.",
+    "planTitle": "The connector is for paid plans",
+    "planBody": "To use leadta from Claude or ChatGPT you need an active plan.",
+    "planCta": "See plans",
+    "invalidTitle": "We couldn't process the request",
+    "invalidBody": "The authorization link is invalid or expired. Go back to the app and try connecting again.",
+    "loadError": "We couldn't load the request. Check your connection.",
+    "retry": "Retry"
+  }
+}

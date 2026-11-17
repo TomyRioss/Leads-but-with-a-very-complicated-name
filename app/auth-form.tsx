@@ -332,6 +332,10 @@ export function AuthForm({ onAuthenticated, initialError = "", initialMode = "lo
   const [busy, setBusy] = useState(false);
   const [phoneStep] = useState(() => typeof window !== "undefined" && new URLSearchParams(window.location.search).get("authStep") === "phone");
   const captchaRef = useRef<TurnstileFieldHandle>(null);
+  // `?next=` return path (e.g. the MCP consent page), read on mount: switching login/register drops the query.
+  // The Google route validates it server-side.
+  const nextPath = useRef<string | null>(null);
+  useEffect(() => { nextPath.current = new URLSearchParams(window.location.search).get("next"); }, []);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -381,7 +385,8 @@ export function AuthForm({ onAuthenticated, initialError = "", initialMode = "lo
         setVerifyStep({ email: email.trim().toLowerCase(), sent: Boolean(payload.verificationSent), fromLogin: false });
         return;
       }
-      if (payload.user?.role === "owner") {
+      // A return path (validated by AuthPage) wins over the owner panel, so owners can finish e.g. the MCP consent.
+      if (payload.user?.role === "owner" && !nextPath.current) {
         window.location.assign(window.location.pathname.startsWith("/en/") ? "/en/owner" : "/owner");
         return;
       }
@@ -439,7 +444,10 @@ export function AuthForm({ onAuthenticated, initialError = "", initialMode = "lo
           <>
           <h1 id="auth-title" tabIndex={-1}>{mode === "register" ? t("registerTitle") : t("loginTitle")}<span className="brand-dot" aria-hidden="true">.</span></h1>
           <p className="auth-intro">{mode === "register" && t("registerIntro")}{t("privateIntro")}</p>
-          <a className="google-auth-button" href={`/api/auth/google?locale=${locale}`}><FcGoogle size={18} aria-hidden="true" /><span>{t("continueWithGoogle")}</span></a>
+          <a className="google-auth-button" href={`/api/auth/google?locale=${locale}`} onClick={(event) => {
+            // The default navigation then follows the updated href.
+            if (nextPath.current) event.currentTarget.href = `/api/auth/google?locale=${locale}&next=${encodeURIComponent(nextPath.current)}`;
+          }}><FcGoogle size={18} aria-hidden="true" /><span>{t("continueWithGoogle")}</span></a>
           <div className="auth-divider" aria-hidden="true"><span>{t("orContinueWithEmail")}</span></div>
           <form className="auth-fields" onSubmit={submit}>
             <label className="field">

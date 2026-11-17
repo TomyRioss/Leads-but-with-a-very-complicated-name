@@ -17,6 +17,7 @@ const ACTION_TYPES = new Set([
   "google_feature_connect",
   "whatsapp_connect",
   "drive_file",
+  "batch_updated",
 ]);
 
 export type ChatTurnRecord = {

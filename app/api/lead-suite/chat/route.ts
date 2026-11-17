@@ -84,7 +84,7 @@ export async function POST(request: Request) {
             salesChannel,
             permission,
             signal: request.signal,
-            internalCall: { origin: new URL(request.url).origin, cookie: request.headers.get("cookie") ?? "", locale },
+            internalCall: { locale },
             onToolProgress: (event) => send("progress", event),
           });
           if (!result.reply.trim() && !result.actions.length) throw new Error("context_full");

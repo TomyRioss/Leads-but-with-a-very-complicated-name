@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { checkBotId } from "botid/server";
 import { setSessionCookie, toUserRole } from "@/lib/server/auth";
 import { PocketBaseRequestError, pocketBasePublicFetch } from "@/lib/server/pocketbase";
+import { findEmailUser } from "@/lib/server/email";
 import { errorTranslator } from "@/lib/server/locale";
 import { clientIp, rateLimited } from "@/lib/server/rate-limit";
 import { verifyTurnstile } from "@/lib/server/turnstile";
@@ -59,6 +60,12 @@ export async function POST(request: Request) {
     return response;
   } catch (error) {
     if (error instanceof PocketBaseRequestError && [400, 401, 403].includes(error.status)) {
+      // users.authRule = "verified = true" makes PocketBase reject unverified accounts like a wrong password,
+      // so look the email up to send them to the verify step instead.
+      const user = await findEmailUser(email).catch(() => null);
+      if (user && user.verified !== true) {
+        return NextResponse.json({ code: "EMAIL_NOT_VERIFIED", error: t("emailNotVerified") }, { status: 403 });
+      }
       return NextResponse.json({ error: t("wrongCredentials") }, { status: 401 });
     }
     return NextResponse.json({ error: t("accountService") }, { status: 503 });

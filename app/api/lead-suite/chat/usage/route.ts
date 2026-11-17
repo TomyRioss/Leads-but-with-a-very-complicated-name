@@ -23,7 +23,7 @@ export async function GET(request: Request) {
       gmail,
       // Monthly (plan cap): sent + queued + scheduled.
       whatsapp: { used: whatsapp.used, limit: whatsapp.limit },
-      // null = no daily AI cap (owner or active plan).
+      // null = no free AI cap (owner or active plan).
       ai: ai.unlimited ? null : { used: Math.min(ai.limit, ai.used), limit: ai.limit },
     });
   } catch {

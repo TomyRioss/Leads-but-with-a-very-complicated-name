@@ -484,7 +484,9 @@ export async function getLeadPainBrief(userId: string, leadId: string): Promise<
 }
 
 export type ManualLeadInput = { name: string; category?: string; city?: string; phone?: string; email?: string; website?: string };
-const MANUAL_BATCH_COUNTRY = "Manual";
+export const MANUAL_BATCH_COUNTRY = "Manual";
+/** Country of the batches created by a Leadtita import into a new batch. */
+export const IMPORT_BATCH_COUNTRY = "Importado";
 
 /** Adds a lead to the user's "Manual" batch (created on first use). Replaying the same lead returns the existing one. */
 export async function addManualLead(userId: string, input: ManualLeadInput): Promise<{ lead: LeadMatch; batchId: string; created: boolean }> {
@@ -567,4 +569,111 @@ export async function findRecentBatch(userId: string, opts: { sinceIso: string; 
     fields: "id,result_count,status",
   }));
   return result.items[0] ?? null;
+}
+
+// ---------- Leadtita: batches (B refs), batch filter and lead edits ----------
+
+export type BatchSummary = {
+  id: string; keywords: string[]; country: string; province: string; district: string;
+  requestedCount: number; resultCount: number; topupRounds: number; kind: string; createdAt: string;
+};
+type BatchRow = { id: string; keywords?: unknown; country?: string; province?: string; district?: string; requested_count?: number; result_count?: number; topup_rounds?: number; kind?: string; created_at?: string };
+const BATCH_FIELDS = "id,keywords,country,province,district,requested_count,result_count,topup_rounds,kind,created_at";
+const wholeCount = (value: unknown) => (typeof value === "number" && Number.isFinite(value) ? Math.max(0, Math.trunc(value)) : 0);
+
+function toBatch(row: BatchRow): BatchSummary {
+  return {
+    id: row.id,
+    keywords: Array.isArray(row.keywords) ? row.keywords.filter((keyword): keyword is string => typeof keyword === "string" && Boolean(keyword.trim())) : [],
+    country: row.country ?? "", province: row.province ?? "", district: row.district ?? "",
+    requestedCount: wholeCount(row.requested_count), resultCount: wholeCount(row.result_count), topupRounds: wholeCount(row.topup_rounds),
+    kind: row.kind ?? "", createdAt: row.created_at ?? "",
+  };
+}
+
+/** Only batches created by /api/search can be topped up (not the Manual batch, imports or people searches). */
+export const isSearchBatch = (batch: BatchSummary) =>
+  batch.kind !== "person" && batch.country !== MANUAL_BATCH_COUNTRY && batch.country !== IMPORT_BATCH_COUNTRY && batch.keywords.length > 0;
+
+/** The user's most recent business batches, newest first. */
+export async function listRecentBatches(userId: string, limit = 10): Promise<BatchSummary[]> {
+  const result = await pocketBaseFetch<List<BatchRow>>(listPath("lead_batches", {
+    filter: `user = ${quote(userId)} && kind != "person"`,
+    sort: "-created_at",
+    perPage: String(clampInt(limit, 1, 20, 10)),
+    skipTotal: "1",
+    fields: BATCH_FIELDS,
+  }));
+  return result.items.map(toBatch);
+}
+
+export async function getUserBatch(userId: string, batchId: string): Promise<BatchSummary | null> {
+  if (!batchId) return null;
+  const result = await pocketBaseFetch<List<BatchRow>>(listPath("lead_batches", {
+    filter: `id = ${quote(batchId)} && user = ${quote(userId)}`,
+    perPage: "1",
+    skipTotal: "1",
+    fields: BATCH_FIELDS,
+  }));
+  return result.items[0] ? toBatch(result.items[0]) : null;
+}
+
+export const MAX_FILTER_BATCH_LEADS = 150;
+export type BatchLead = { id: string; name: string; phone: string; email: string; website: string; category: string; address: string; creditCost: number };
+type BatchLeadRow = { id: string; name?: string; phone?: string; email?: string; website?: string; category?: string; address?: string; credit_cost?: number };
+
+/** Every lead of one of the user's batches; null when it has more than MAX_FILTER_BATCH_LEADS (never a partial list). */
+export async function listBatchLeads(userId: string, batchId: string): Promise<BatchLead[] | null> {
+  const result = await pocketBaseFetch<List<BatchLeadRow>>(listPath("leads", {
+    filter: `batch = ${quote(batchId)} && ${ownLead(userId)}`,
+    sort: "created_at",
+    perPage: String(MAX_FILTER_BATCH_LEADS + 1),
+    skipTotal: "1",
+    fields: "id,name,phone,email,website,category,address,credit_cost",
+  }));
+  if (result.items.length > MAX_FILTER_BATCH_LEADS) return null;
+  return result.items.map((row) => ({
+    id: row.id, name: row.name ?? "", phone: row.phone ?? "", email: row.email ?? "", website: row.website ?? "",
+        // Not wholeCount: campaign discounts make per-lead costs fractional, and the refund must return exactly that.
+    category: row.category ?? "", address: row.address ?? "", creditCost: typeof row.credit_cost === "number" && Number.isFinite(row.credit_cost) ? Math.max(0, row.credit_cost) : 0,
+  }));
+}
+
+export const LEAD_EDIT_FIELDS = ["name", "phone", "email", "website", "category", "address"] as const;
+export type LeadEditField = (typeof LEAD_EDIT_FIELDS)[number];
+export type LeadEditPatch = Partial<Record<LeadEditField, string>>;
+/** Column limits of the leads collection. */
+const LEAD_EDIT_MAX: Record<LeadEditField, number> = { name: 255, phone: 100, email: 500, website: 1000, category: 500, address: 1000 };
+
+/** Current editable values of one of the user's leads. */
+export async function getUserLeadFields(userId: string, leadId: string): Promise<Record<LeadEditField, string> | null> {
+  if (!leadId) return null;
+  const result = await pocketBaseFetch<List<Partial<Record<LeadEditField, string>>>>(listPath("leads", {
+    filter: `id = ${quote(leadId)} && ${ownLead(userId)}`,
+    perPage: "1",
+    skipTotal: "1",
+    fields: LEAD_EDIT_FIELDS.join(","),
+  }));
+  const row = result.items[0];
+  return row ? Object.fromEntries(LEAD_EDIT_FIELDS.map((key) => [key, row[key] ?? ""])) as Record<LeadEditField, string> : null;
+}
+
+/** Edits a lead of the user. "" clears a field, except the name. Same values again = no-op (replay-safe). */
+export async function updateUserLead(userId: string, leadId: string, patch: LeadEditPatch): Promise<LeadMatch> {
+  const lead = await requireLead(userId, leadId);
+  const body: LeadEditPatch = {};
+  for (const key of LEAD_EDIT_FIELDS) {
+    const value = patch[key];
+    if (typeof value !== "string" || (key === "name" && !value.trim())) continue;
+    body[key] = value.trim().slice(0, LEAD_EDIT_MAX[key]);
+  }
+  if (!Object.keys(body).length) return lead;
+  await pocketBaseFetch(recordPath("leads", lead.id), { method: "PATCH", body: JSON.stringify(body) });
+  return {
+    ...lead,
+    ...(body.name !== undefined ? { name: body.name } : {}),
+    ...(body.category !== undefined ? { category: body.category } : {}),
+    ...(body.phone !== undefined ? { phone: body.phone } : {}),
+    ...(body.website !== undefined ? { website: body.website } : {}),
+  };
 }

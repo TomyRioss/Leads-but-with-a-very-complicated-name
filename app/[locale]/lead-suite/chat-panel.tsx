@@ -5,9 +5,10 @@ import type { ClipboardEvent, DragEvent, FormEvent, KeyboardEvent, ReactNode } f
 import { useLocale, useTranslations } from "next-intl";
 import { ErrorReportButton } from "@/app/feedback-dialog";
 import { BrandMark } from "@/app/brand-logo";
-import { ArrowDown, ArrowUp, ArrowUpRight, AtSign, Ban, BriefcaseBusiness, CalendarCheck, CalendarClock, CalendarPlus, Check, ChevronRight, CircleAlert, CircleCheck, CircleHelp, Coins, Copy, Download, FileText, FileUp, Globe, History, Image as ImageIcon, ListPlus, LoaderCircle, Mail, Mails, MessagesSquare, Maximize2, MessageCircle, MessageSquarePlus, PencilLine, Plus, RotateCcw, Search, Send, Sheet, Sparkles, SquarePen, StickyNote, Tag, Trash2, Upload, UserPlus, UserSearch, X } from "lucide-react";
+import { ArrowDown, ArrowUp, ArrowUpRight, AtSign, Ban, BriefcaseBusiness, CalendarCheck, CalendarClock, CalendarPlus, Check, ChevronRight, CircleAlert, CircleCheck, CircleHelp, Coins, Copy, Download, FileText, FileUp, Globe, Filter, History, Image as ImageIcon, ListPlus, LoaderCircle, Mail, Mails, MessagesSquare, Maximize2, MessageCircle, MessageSquarePlus, PackagePlus, PencilLine, Plus, RotateCcw, Search, Send, Sheet, Sparkles, SquarePen, StickyNote, Tag, Trash2, Upload, UserPen, UserPlus, UserSearch, X } from "lucide-react";
 import type { ContactChannel, ContactStatus } from "@/lib/lead-suite";
 import { renderMarkdown } from "@/lib/markdown";
+import { parseLeadRules, type LeadRule } from "@/lib/lead-rules";
 import { findingsForTag } from "@/lib/analysis-format";
 import { cleanWebsiteUrl, displayWebsite } from "@/lib/url-display";
 import { getSocialProfileUrl, type Lead, type SocialNetwork } from "@/lib/types";
@@ -107,7 +108,7 @@ function MessageQuotaMeter({ channel, used, limit, label, today, detail, descrip
 type ChatRole = "user" | "assistant";
 type ChangeData = { channel?: ContactChannel; message?: string; contactedAt?: string; status?: ContactStatus; notes?: string };
 type MentionLead = MentionLeadOption;
-type PendingKind = "record_contact" | "update_contact" | "delete_contact" | "update_status" | "add_note" | "add_lead" | "analyze_pains" | "search_businesses" | "search_people" | "import_leads" | "import_contacts" | "send_email" | "send_email_batch" | "send_whatsapp_batch" | "create_meeting" | "update_commercial_profile";
+type PendingKind = "record_contact" | "update_contact" | "delete_contact" | "update_status" | "add_note" | "add_lead" | "analyze_pains" | "search_businesses" | "search_people" | "import_leads" | "import_contacts" | "send_email" | "send_email_batch" | "send_whatsapp_batch" | "create_meeting" | "update_commercial_profile" | "topup_batch" | "filter_batch" | "update_lead";
 type ChangeExtra = Record<string, string | number>;
 type ChatAction =
   | { type: "pending_change"; token: string; change: { kind: PendingKind; leadName: string; data: ChangeData; before?: ChangeData; extra?: ChangeExtra; review?: BatchReviewRow[] } }
@@ -117,12 +118,14 @@ type ChatAction =
   | { type: "google_feature_connect"; feature: "gmail" | "calendar" }
   | { type: "whatsapp_connect" }
   | { type: "drive_file"; name: string; kind: "csv" | "text"; rows: number }
+  /** Leadtita changed leads of this batch (enrichment): reload its card. */
+  | { type: "batch_updated"; batchId: string }
   /** Client-only: shown after a confirmed search/import delivers a batch. */
   | { type: "batch_result"; kind: PendingKind; batchId: string; count: number; charged: number; tags: (Chip | string)[]; preview: LeadPreview[] };
 /** Summary chip; `hint` = longer explanation shown on hover, keyboard focus or tap. */
 type Chip = { label: string; hint?: string };
 type LeadPreview = { id: string; name: string; phone: string; whatsapp: string; email: string; socialProfiles: string };
-type ResultState = { download?: "xlsx" | "csv"; downloadError?: boolean; analyze?: "busy" | "done" | "error"; analyzed?: { analyzed: number; findings: number } };
+type ResultState = { download?: "xlsx" | "csv"; downloadError?: boolean; analyze?: "busy" | "done" | "error"; analyzed?: { analyzed: number; findings: number }; enrich?: "busy" | "done" | "error"; enriched?: number; enrichError?: string };
 /** A detected pain with its evidence (review quote or website note) when the analysis cites one. */
 type PainSource = { label: string; quote: string; url: string };
 type Pain = { tag: string; detail: string; sources: PainSource[] };
@@ -141,8 +144,9 @@ function cleanWebsite(raw: string): { href: string; label: string } | null {
 }
 
 /** One lead row in the result card and the batch modal (from the confirm preview or the full /api/leads list). */
-type RowLead = { id: string; name: string; phone: string; whatsapp: string; email: string; socialProfiles: string; category: string; address: string; website: string; pains: Pain[]; proposals: Proposal[] };
-const rowFromPreview = (lead: LeadPreview): RowLead => ({ ...lead, category: "", address: "", website: "", pains: [], proposals: [] });
+/** enriched: the email/social enrichment already ran on this lead (same rule as /buscar). analyzed: the pain analysis ran, even if it found nothing. */
+type RowLead = { id: string; name: string; phone: string; whatsapp: string; email: string; socialProfiles: string; category: string; address: string; website: string; pains: Pain[]; proposals: Proposal[]; enriched: boolean; analyzed: boolean };
+const rowFromPreview = (lead: LeadPreview): RowLead => ({ ...lead, category: "", address: "", website: "", pains: [], proposals: [], enriched: false, analyzed: false });
 
 /** Old analyses stored the internal website-audit instruction as the WEB source text: never show it as a quote. */
 const LEGACY_WEB_TEXT = new Set([
@@ -184,15 +188,20 @@ const rowFromLead = (lead: Lead): RowLead => ({
   // Only http(s) links are rendered (lead data is untrusted); cleanWebsite drops tracking params.
   website: cleanWebsiteUrl(lead.website),
   ...painsOf(lead),
+  enriched: Boolean(lead.enrichment_detail?.status || lead.enrichment?.trim()),
+  // A saved analysis without pains (status no_data) still counts: "Analizar dolores" must not come back for it.
+  analyzed: Boolean(lead.pain_points_detail || lead.pain_points?.trim()),
 });
 
 /** Batch table for a batch id: people batches open in /personas, the rest in /historial. */
 const batchHref = (kind: PendingKind, batchId: string) => `${kind === "search_people" ? "/personas" : "/historial"}?batch=${encodeURIComponent(batchId)}`;
 /** WhatsAppContact expects an international number; a wa.me link carries the digits. */
 const whatsappPhone = (lead: Pick<LeadPreview, "phone" | "whatsapp">) => lead.phone || (lead.whatsapp.match(/(\d{8,15})/)?.[1] ? `+${lead.whatsapp.match(/(\d{8,15})/)![1]}` : "");
-const RESULT_KINDS: PendingKind[] = ["search_businesses", "search_people", "import_leads"];
-type ConfirmedSummary = { batchId?: string; delivered?: number; charged?: number; tags?: string[]; created?: boolean | number; skipped?: number; failed?: number; queued?: number; preview?: LeadPreview[]; eventLink?: string; meetLink?: string; serviceOffering?: string; commercialSectors?: string; limitReached?: boolean; scheduled?: number; sendAt?: string };
-const SPEND_KINDS: PendingKind[] = ["search_businesses", "search_people", "analyze_pains"];
+const RESULT_KINDS: PendingKind[] = ["search_businesses", "search_people", "import_leads", "topup_batch"];
+type ConfirmedSummary = { batchId?: string; delivered?: number; charged?: number; tags?: string[]; created?: boolean | number; skipped?: number; failed?: number; queued?: number; preview?: LeadPreview[]; eventLink?: string; meetLink?: string; serviceOffering?: string; commercialSectors?: string; limitReached?: boolean; scheduled?: number; sendAt?: string; missing?: number; round?: number; kept?: number; discarded?: number; refunded?: number };
+const SPEND_KINDS: PendingKind[] = ["search_businesses", "search_people", "analyze_pains", "topup_batch"];
+/** Lead fields update_lead can change (the card shows one chip per changed field). */
+const LEAD_EDIT_FIELDS = ["name", "phone", "email", "website", "category", "address"] as const;
 type AttachmentKind = "image" | "pdf" | "text" | "csv";
 /** Extracted by /api/lead-suite/chat/attachments; sent back with the conversation (the server re-validates it). */
 type AttachmentContext = { name: string; kind: AttachmentKind; size: number; text: string; truncated: boolean; csv?: { totalRows: number; rows: unknown[] } & Record<string, unknown>; preview?: { headers: string[]; rows: string[][] }; restored?: boolean };
@@ -229,6 +238,9 @@ const ACTION_ICON = {
   send_whatsapp_batch: MessagesSquare,
   create_meeting: CalendarPlus,
   update_commercial_profile: BriefcaseBusiness,
+  topup_batch: PackagePlus,
+  filter_batch: Filter,
+  update_lead: UserPen,
 } as const;
 /** Pixels from the bottom that still count as "reading the latest message". */
 const STICK_TO_BOTTOM_PX = 96;
@@ -628,15 +640,30 @@ export function LeadSuiteChat({ onActivity, variant = "panel" }: { onActivity?: 
 
   const [results, setResults] = useState<Record<string, ResultState>>({});
   const [leadPains, setLeadPains] = useState<Record<string, LeadPainState>>({});
+  const [leadEnrich, setLeadEnrich] = useState<Record<string, "busy" | "error">>({});
   // Full lead lists of delivered batches (result cards and the "see more" modal), fetched once per batch.
   const [batchLeads, setBatchLeads] = useState<Record<string, RowLead[]>>({});
   const requestedBatches = useRef(new Set<string>());
+  const refreshedBatches = useRef(new Set<string>());
   const [modal, setModal] = useState<{ batchId: string; kind: PendingKind; count: number } | null>(null);
   const [modalQuery, setModalQuery] = useState("");
   const modalRef = useRef<HTMLDialogElement>(null);
   useEffect(() => {
     for (const message of messages) {
       for (const action of message.actions ?? []) {
+        if (action.type === "batch_updated") {
+          const key = `${message.id}:${action.batchId}`;
+          if (refreshedBatches.current.has(key)) continue;
+          refreshedBatches.current.add(key);
+          // Fresh copy of a batch Leadtita just changed (only when its card is on screen).
+          if (requestedBatches.current.has(action.batchId)) {
+            fetch(`/api/leads?batchId=${encodeURIComponent(action.batchId)}`, { cache: "no-store" })
+              .then((response) => (response.ok ? response.json() : null))
+              .then((payload: { leads?: Lead[] } | null) => { if (Array.isArray(payload?.leads)) setBatchLeads((current) => ({ ...current, [action.batchId]: payload.leads!.map(rowFromLead) })); })
+              .catch(() => undefined);
+          }
+          continue;
+        }
         if (action.type !== "batch_result" || requestedBatches.current.has(action.batchId)) continue;
         requestedBatches.current.add(action.batchId);
         fetch(`/api/leads?batchId=${encodeURIComponent(action.batchId)}`, { cache: "no-store" })
@@ -660,6 +687,13 @@ export function LeadSuiteChat({ onActivity, variant = "panel" }: { onActivity?: 
     const dialog = proposalRef.current;
     if (proposalLead && dialog && !dialog.open) dialog.showModal();
   }, [proposalLead]);
+  // "Analizar dolores" (lead or batch) asks the focus first, prefilled with the saved service; a changed focus is saved as the service.
+  const [focusAsk, setFocusAsk] = useState<{ batchId: string; leadId?: string; value: string } | null>(null);
+  const focusRef = useRef<HTMLDialogElement>(null);
+  useEffect(() => {
+    const dialog = focusRef.current;
+    if (focusAsk && dialog && !dialog.open) dialog.showModal();
+  }, [focusAsk]);
   // CSV / Sheet attachment: table preview of the first rows.
   const [filePreview, setFilePreview] = useState<AttachmentContext | null>(null);
   const filePreviewRef = useRef<HTMLDialogElement>(null);
@@ -844,10 +878,10 @@ export function LeadSuiteChat({ onActivity, variant = "panel" }: { onActivity?: 
 
 
   /** One lead through the same pain analysis as the table (/api/analysis with leadId); free, counts toward the free cap. */
-  async function analyzeLead(batchId: string, leadId: string) {
+  async function analyzeLead(batchId: string, leadId: string, focus: string) {
     setLeadPains((current) => ({ ...current, [leadId]: { status: "busy" } }));
     try {
-      const response = await fetch("/api/analysis", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ batchId, action: "pain_points", leadId }) });
+      const response = await fetch("/api/analysis", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ batchId, action: "pain_points", leadId, focus }) });
       const payload = (await response.json().catch(() => ({}))) as { leads?: Lead[] };
       if (!response.ok) throw new Error(String(response.status));
       const lead = payload.leads?.find((item) => item.id === leadId);
@@ -856,6 +890,19 @@ export function LeadSuiteChat({ onActivity, variant = "panel" }: { onActivity?: 
     } catch {
       setLeadPains((current) => ({ ...current, [leadId]: { status: "error" } }));
     }
+  }
+  function submitFocus(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!focusAsk) return;
+    const focus = focusAsk.value.trim();
+    const { batchId, leadId } = focusAsk;
+    focusRef.current?.close();
+    if (focus !== serviceOffering) {
+      setServiceOffering(focus);
+      // The analysis gets the focus in its own body, so it never waits on (or depends on) this save.
+      void fetch("/api/account/profile", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ serviceOffering: focus }) }).catch(() => undefined);
+    }
+    void (leadId ? analyzeLead(batchId, leadId, focus) : analyzeBatch(batchId, focus));
   }
   const patchResult = (batchId: string, patch: ResultState) => setResults((current) => ({ ...current, [batchId]: { ...current[batchId], ...patch } }));
 
@@ -877,18 +924,41 @@ export function LeadSuiteChat({ onActivity, variant = "panel" }: { onActivity?: 
   }
 
   /** Same pain analysis as the batch table (/api/analysis); free, it only counts toward the free analysis cap. */
-  async function analyzeBatch(batchId: string) {
+  async function analyzeBatch(batchId: string, focus: string) {
     patchResult(batchId, { analyze: "busy" });
     try {
-      const response = await fetch("/api/analysis", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ batchId, action: "pain_points" }) });
-      const payload = (await response.json().catch(() => ({}))) as { analyzedCount?: number; findingCount?: number };
+      const response = await fetch("/api/analysis", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ batchId, action: "pain_points", focus }) });
+      const payload = (await response.json().catch(() => ({}))) as { analyzedCount?: number; findingCount?: number; leads?: Lead[] };
       if (!response.ok) throw new Error(String(response.status));
       patchResult(batchId, { analyze: "done", analyzed: { analyzed: payload.analyzedCount ?? 0, findings: payload.findingCount ?? 0 } });
+      // The response carries the whole batch: rows pick up pains and the "analyzed" mark (also leads with no pains found).
+      if (Array.isArray(payload.leads)) setBatchLeads((current) => ({ ...current, [batchId]: payload.leads!.map(rowFromLead) }));
       onActivity?.();
     } catch {
       patchResult(batchId, { analyze: "error" });
     }
   }
+  /**
+   * Same email/social enrichment as the batch table (/api/analysis, action "enrichment"): free, capped per account.
+   * The response carries every lead of the batch, so the card shows the new emails and profiles right away.
+   */
+  async function enrich(batchId: string, leadId?: string) {
+    if (leadId) setLeadEnrich((current) => ({ ...current, [leadId]: "busy" }));
+    else patchResult(batchId, { enrich: "busy", enrichError: "" });
+    try {
+      const response = await fetch("/api/analysis", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ batchId, action: "enrichment", ...(leadId ? { leadId } : {}) }) });
+      const payload = (await response.json().catch(() => ({}))) as { leads?: Lead[]; analyzedCount?: number; error?: string };
+      if (!response.ok) throw new Error(typeof payload.error === "string" ? payload.error : "");
+      if (Array.isArray(payload.leads)) setBatchLeads((current) => ({ ...current, [batchId]: payload.leads!.map(rowFromLead) }));
+      if (leadId) setLeadEnrich((current) => Object.fromEntries(Object.entries(current).filter(([id]) => id !== leadId)));
+      else patchResult(batchId, { enrich: "done", enriched: payload.analyzedCount ?? 0 });
+      onActivity?.();
+    } catch (error) {
+      if (leadId) setLeadEnrich((current) => ({ ...current, [leadId]: "error" }));
+      else patchResult(batchId, { enrich: "error", enrichError: error instanceof Error ? error.message : "" });
+    }
+  }
+
 
   /** Display extra of a pending card (to rebuild its keyword list on confirm). */
   const pendingExtra = (token: string): ChangeExtra => {
@@ -960,9 +1030,10 @@ export function LeadSuiteChat({ onActivity, variant = "panel" }: { onActivity?: 
         const { code } = (await response.json().catch(() => ({}))) as { code?: string };
         throw new Error(response.status === 401 ? "session" : code === "gmail_quota" ? "gmailQuota" : code === "whatsapp_unavailable" ? "whatsappUnavailable" : code === "invalid" ? "invalid" : code === "invalid_send_at" ? "invalidSendAt" : code === "schedule_limit" ? "scheduleLimit" : code === "whatsapp_monthly_limit" ? "whatsappMonthlyLimit" : response.status === 429 ? "rate" : response.status === 503 ? "service" : "generic");
       }
-      const { result } = (await response.json()) as { result?: { leadName?: string; summary?: ConfirmedSummary } };
+      const { result } = (await response.json()) as { result?: { leadName?: string; summary?: ConfirmedSummary; next?: ChatAction } };
       const summary = result?.summary ?? {};
       if (summary.charged) setBalance((current) => (current === null ? current : Math.max(0, current - Number(summary.charged))));
+      if (summary.refunded) setBalance((current) => (current === null ? current : current + Number(summary.refunded)));
       void refreshMessageQuota();
       setCards((current) => ({ ...current, [token]: "done" }));
       if (summary.sendAt) {
@@ -988,11 +1059,26 @@ export function LeadSuiteChat({ onActivity, variant = "panel" }: { onActivity?: 
         skipped: summary.skipped ?? 0,
         failed: summary.failed ?? 0,
         queued: summary.queued ?? 0,
+        missing: summary.missing ?? 0,
+        kept: summary.kept ?? 0,
+        discarded: summary.discarded ?? 0,
+        refunded: summary.refunded ?? 0,
         href: summary.batchId ? batchHref(kind, summary.batchId) : "/historial",
       }), resultCard);
       if (kind === "send_email_batch" && summary.limitReached) appendAssistant(t("gmailDailyLimitReached"));
       onActivity?.();
       focusComposer();
+      // Next top-up round for a batch still short of leads. Free rounds run on their own (the server caps them and
+      // re-checks the price); a paid one stays as a Yes/No card.
+      const next = result?.next;
+      if (next?.type === "pending_change" && next.change.kind === "topup_batch") {
+        const nextExtra = next.change.extra ?? {};
+        const missing = Number(nextExtra.missing ?? 0);
+        if (Number(nextExtra.free) === 1) {
+          appendAssistant(t("topup.autoRunning", { missing }), [next]);
+          await confirm(next.token, "topup_batch", "", actionTags("topup_batch", nextExtra), { extra: nextExtra });
+        } else appendAssistant(t("topup.offer", { missing, credits: Number(nextExtra.credits ?? 0) }), [next]);
+      }
     } catch (error) {
       const key = isOffline(error) ? "offline" : error instanceof Error && (CONFIRM_ERRORS as readonly string[]).includes(error.message) ? error.message : "generic";
       setCardErrors((current) => ({ ...current, [token]: t(`confirmErrors.${key}`) }));
@@ -1335,18 +1421,42 @@ export function LeadSuiteChat({ onActivity, variant = "panel" }: { onActivity?: 
       query: String(extra.label ?? keywordsOf(extra)[0] ?? extra.query ?? ""),
       place: place || String(extra.location ?? ""),
       hasPlace: place || extra.location ? "yes" : "no",
+      hasQuery: extra.label || keywordsOf(extra)[0] ? "yes" : "no",
+      missing: Number(extra.missing ?? 0),
     });
   };
 
+  /** "Teléfono empieza con +56", "Sin web": one custom search/batch filter as a chip label. */
+  const ruleLabel = (rule: LeadRule) => rule.op === "empty" || rule.op === "not_empty"
+    ? t(`rules.${rule.op}.${rule.field}`)
+    : t(`rules.${rule.op}`, { field: t(`rules.fields.${rule.field}`), value: rule.value });
+
   /** Search filters and import counts as chips instead of a label/value table. */
   const actionTags = (kind: PendingKind, extra: ChangeExtra): Chip[] => {
-    if (kind === "search_businesses") {
+    const rules = (parseLeadRules(extra.rules) ?? []).map((rule) => ({ label: ruleLabel(rule) }));
+    if (kind === "search_businesses" || kind === "topup_batch") {
       const presence = (["website", "phone", "email"] as const).flatMap((key) => (extra[key] === "with" || extra[key] === "without"
         ? [{ label: t(`filters.${key}.${extra[key]}`), hint: t(`filters.hints.${key}.${extra[key]}`) }]
         : []));
       return [
         ...presence,
+        ...rules,
       ];
+    }
+    if (kind === "filter_batch") {
+      return [
+        { label: t("batchFilter.kept", { n: Number(extra.kept ?? 0) }) },
+        { label: t("batchFilter.discarded", { n: Number(extra.discarded ?? 0) }) },
+        ...(Number(extra.refund) > 0 ? [{ label: t("batchFilter.refund", { n: Number(extra.refund) }) }] : []),
+        ...rules,
+      ];
+    }
+    if (kind === "update_lead") {
+      return LEAD_EDIT_FIELDS.filter((key) => key in extra).map((key) => {
+        const value = String(extra[key] ?? "").trim();
+        const field = t(`rules.fields.${key}`);
+        return { label: value ? t("leadEdit.set", { field, value: key === "website" ? cleanWebsite(value)?.label ?? value : value }) : t("leadEdit.clear", { field }) };
+      });
     }
     if (kind === "update_commercial_profile") {
       return [
@@ -1438,10 +1548,11 @@ export function LeadSuiteChat({ onActivity, variant = "panel" }: { onActivity?: 
       return url ? [{ id, label, Icon, url }] : [];
     });
     const pains = lead.id ? leadPains[lead.id] : undefined;
+    const enrichState = lead.id ? leadEnrich[lead.id] : undefined;
     const website = lead.website ? cleanWebsite(lead.website) : null;
     const found = pains?.status === "done" ? pains.pains ?? [] : lead.pains;
     const proposals = pains?.status === "done" ? pains.proposals ?? [] : lead.proposals;
-    const analyzed = pains?.status === "done" || lead.pains.length > 0;
+    const analyzed = pains?.status === "done" || lead.analyzed || lead.pains.length > 0;
     return (
       <li key={lead.id || lead.name}>
         <div className="ls-chat__result-row-head">
@@ -1449,8 +1560,14 @@ export function LeadSuiteChat({ onActivity, variant = "panel" }: { onActivity?: 
             <strong>{lead.name}</strong>
             {extended && (lead.category || lead.address) ? <small>{[lead.category, lead.address].filter(Boolean).join(" · ")}</small> : null}
           </span>
+          {lead.id && !lead.enriched ? (
+            <button type="button" className="ls-chat__result-analyze" onClick={() => void enrich(batchId, lead.id)} disabled={enrichState === "busy"} aria-label={t("result.enrichLead", { lead: lead.name })}>
+              {enrichState === "busy" ? <LoaderCircle className="ls-chat__spin" aria-hidden="true" size={14} /> : <AtSign aria-hidden="true" size={14} />}
+              <span>{enrichState === "busy" ? t("result.enriching") : enrichState === "error" ? t("result.enrichRetry") : t("result.enrich")}</span>
+            </button>
+          ) : null}
           {lead.id ? (
-            <button type="button" className="ls-chat__result-analyze" onClick={() => void analyzeLead(batchId, lead.id)} disabled={pains?.status === "busy" || analyzed} aria-label={t("result.analyzeLead", { lead: lead.name })}>
+            <button type="button" className="ls-chat__result-analyze" onClick={() => setFocusAsk({ batchId, leadId: lead.id, value: serviceOffering })} disabled={pains?.status === "busy" || analyzed} aria-label={t("result.analyzeLead", { lead: lead.name })}>
               {pains?.status === "busy" ? <LoaderCircle className="ls-chat__spin" aria-hidden="true" size={14} /> : analyzed ? <Check aria-hidden="true" size={14} /> : <Sparkles aria-hidden="true" size={14} />}
               <span>{pains?.status === "busy" ? t("result.analyzing") : analyzed ? t("result.analyzedOne") : t("result.analyze")}</span>
             </button>
@@ -1536,7 +1653,7 @@ export function LeadSuiteChat({ onActivity, variant = "panel" }: { onActivity?: 
             const monthly = channel === "whatsapp";
             return <MessageQuotaMeter key={channel} channel={channel} {...usage} label={label} today={t(monthly ? "quota.month" : "quota.today", usage)} description={t(monthly ? "quota.monthProgress" : "quota.progress", { channel: label, ...usage })} compact />;
           })}
-          {messageQuota.ai ? <MessageQuotaMeter channel="ai" {...messageQuota.ai} label={t("quota.ai")} today={t("quota.today", messageQuota.ai)} description={t("quota.aiProgress", messageQuota.ai)} compact /> : null}
+          {messageQuota.ai ? <MessageQuotaMeter channel="ai" {...messageQuota.ai} label={t("quota.ai")} today={t("quota.aiTotal", messageQuota.ai)} description={t("quota.aiProgress", messageQuota.ai)} compact /> : null}
           <ScheduledButton />
         </div>
       ) : null}
@@ -1710,7 +1827,7 @@ export function LeadSuiteChat({ onActivity, variant = "panel" }: { onActivity?: 
                   const { kind, leadName, data, before, extra = {}, review } = action.change;
                   const state = cards[action.token];
                   const spend = SPEND_KINDS.includes(kind);
-                  const destructive = kind === "delete_contact";
+                  const destructive = kind === "delete_contact" || kind === "filter_batch";
                   const credits = Number(extra.credits ?? 0);
                   const Icon = ACTION_ICON[kind];
                   const titleId = `ls-chat-action-${message.id}-${index}`;
@@ -1913,9 +2030,15 @@ export function LeadSuiteChat({ onActivity, variant = "panel" }: { onActivity?: 
                           {state.download === "csv" ? <LoaderCircle className="ls-chat__spin" aria-hidden="true" size={15} /> : <Download aria-hidden="true" size={15} />}{t("result.csv")}
                         </button>
                         {action.kind !== "search_people" ? (
-                          <button type="button" onClick={() => void analyzeBatch(action.batchId)} disabled={state.analyze === "busy" || state.analyze === "done"}>
+                          <button type="button" onClick={() => setFocusAsk({ batchId: action.batchId, value: serviceOffering })} disabled={state.analyze === "busy" || state.analyze === "done"}>
                             {state.analyze === "busy" ? <LoaderCircle className="ls-chat__spin" aria-hidden="true" size={15} /> : <Sparkles aria-hidden="true" size={15} />}
                             {state.analyze === "busy" ? t("result.analyzing") : t("result.analyzeBatch")}
+                          </button>
+                        ) : null}
+                        {action.kind !== "search_people" ? (
+                          <button type="button" onClick={() => void enrich(action.batchId)} disabled={state.enrich === "busy" || state.enrich === "done"}>
+                            {state.enrich === "busy" ? <LoaderCircle className="ls-chat__spin" aria-hidden="true" size={15} /> : <AtSign aria-hidden="true" size={15} />}
+                            {state.enrich === "busy" ? t("result.enriching") : t("result.enrichBatch")}
                           </button>
                         ) : null}
                       </div>
@@ -1923,6 +2046,8 @@ export function LeadSuiteChat({ onActivity, variant = "panel" }: { onActivity?: 
                         {state.downloadError ? t("result.downloadError")
                           : state.analyze === "done" && state.analyzed ? t("result.analyzed", { analyzed: state.analyzed.analyzed, findings: state.analyzed.findings })
                           : state.analyze === "error" ? t("result.analyzeError")
+                          : state.enrich === "done" ? t("result.enrichDone", { count: state.enriched ?? 0 })
+                          : state.enrich === "error" ? state.enrichError || t("result.enrichError")
                           : ""}
                       </p>
                     </article>
@@ -2115,6 +2240,22 @@ export function LeadSuiteChat({ onActivity, variant = "panel" }: { onActivity?: 
               </section>
             </div>
           </div>
+        </dialog>
+      ) : null}
+      {focusAsk ? (
+        <dialog ref={focusRef} className="ls-chat__batch-dialog ls-chat__focus-dialog" aria-labelledby="ls-chat-focus-title" onClose={() => setFocusAsk(null)} onClick={(event) => { if (event.target === event.currentTarget) focusRef.current?.close(); }}>
+          <form className="ls-chat__batch-body ls-chat__focus-form" onSubmit={submitFocus}>
+            <header className="ls-chat__batch-head">
+              <h2 id="ls-chat-focus-title">{t("result.focusTitle")}</h2>
+              <button type="button" className="ls-chat__batch-close" onClick={() => focusRef.current?.close()} aria-label={t("result.close")}><X aria-hidden="true" size={18} /></button>
+            </header>
+            <label htmlFor="ls-chat-focus-input">{t("result.focusHint")}</label>
+            <input id="ls-chat-focus-input" value={focusAsk.value} onChange={(event) => setFocusAsk({ ...focusAsk, value: event.target.value })} placeholder={t("result.focusPlaceholder")} required minLength={3} maxLength={300} autoFocus />
+            <div className="ls-chat__action-buttons">
+              <button type="button" className="ls-chat__action-secondary" onClick={() => focusRef.current?.close()}>{t("result.focusCancel")}</button>
+              <button type="submit" className="ls-chat__action-primary"><Sparkles aria-hidden="true" size={14} />{t("result.focusSubmit")}</button>
+            </div>
+          </form>
         </dialog>
       ) : null}
       {filePreview?.preview ? (

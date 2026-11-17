@@ -113,8 +113,8 @@
       "body": "Start a new chat to keep going: your leads and contacts stay saved."
     },
     "aiLimit": {
-      "title": "You used today's {limit} free AI messages.",
-      "body": "They reset at 00:00 UTC. A plan removes the daily limit.",
+      "title": "You used your {limit} free AI messages.",
+      "body": "A plan removes the limit.",
       "cta": "See plans",
       "rate": "Too many messages in a row. Wait a minute and retry."
     },
@@ -171,7 +171,10 @@
       "send_email_batch": "Done: sent {delivered, plural, one {# email} other {# emails}}{failed, plural, =0 {} other {, # failed}}{skipped, plural, =0 {} other {, # not sent}}. Logged in Lead Suite.",
       "send_whatsapp_batch": "Done: queued {queued, plural, one {# WhatsApp message} other {# WhatsApp messages}}{skipped, plural, =0 {} other {; skipped #}}{failed, plural, =0 {} other {; # not on WhatsApp or invalid number}}. They go out one at a time and get logged in Lead Suite.",
       "create_meeting": "Done: scheduled the meeting with **{lead}** and logged it as Meeting in Lead Suite. [Open in Google Calendar]({event})",
-      "update_commercial_profile": "Done: I saved your business profile. I use it to analyze pains and suggest sectors."
+      "update_commercial_profile": "Done: I saved your business profile. I use it to analyze pains and suggest sectors.",
+      "topup_batch": "Done: {delivered, plural, =0 {I found no new leads for the batch} one {added # lead to the batch} other {added # leads to the batch}}{charged, plural, =0 {} other {, # credits charged}}. [Open the batch]({href})",
+      "filter_batch": "Done: discarded {discarded}, {kept} left.{refunded, plural, =0 {} other { Refunded # credits.}}",
+      "update_lead": "Done: updated **{lead}**."
     },
     "gmailDailyLimitReached": "You've reached your Gmail sending limit (40 per day or your plan's monthly quota).",
     "quota": {
@@ -182,7 +185,8 @@
       "sent": "{used} of {limit} sent today",
       "progress": "{channel}: {used} of {limit} messages sent today",
       "ai": "AI messages",
-      "aiProgress": "AI messages: {used} of {limit} used today",
+      "aiProgress": "Free AI messages: {used} of {limit} used",
+      "aiTotal": "{used}/{limit} free",
       "month": "{used}/{limit} this month",
       "monthRemaining": "{count, plural, =0 {No WhatsApp left this month} one {<n>#</n> left this month} other {<n>#</n> left this month}}",
       "monthSent": "{used} of {limit} used this month (includes queued and scheduled)",
@@ -243,7 +247,7 @@
       "empty": "No readable content.",
       "extract": "Could not read it.",
       "rate": "Too many files in a row, wait a few minutes.",
-      "aiDaily": "Daily AI limit reached."
+      "aiDaily": "Free AI messages used up."
     },
     "targets": {
       "manual": "Manual batch",
@@ -274,7 +278,10 @@
       "send_email_batch": "Send {count, plural, one {# email} other {# emails}}",
       "send_whatsapp_batch": "Send WhatsApp to {count, plural, one {# lead} other {# leads}}",
       "create_meeting": "Schedule a meeting with {lead}",
-      "update_commercial_profile": "Save your business profile"
+      "update_commercial_profile": "Save your business profile",
+      "topup_batch": "Fill {missing, plural, one {# missing lead} other {# missing leads}}{hasQuery, select, yes { for {query}} other {}}",
+      "filter_batch": "Filter the batch {query}",
+      "update_lead": "Edit {lead}"
     },
     "filters": {
       "website": {
@@ -315,11 +322,54 @@
       "doubtful": "{n, plural, one {# doubtful} other {# doubtful}}",
       "unmatched": "{n} without a lead"
     },
+    "rules": {
+      "fields": {
+        "phone": "Phone",
+        "email": "Email",
+        "website": "Website",
+        "name": "Name",
+        "category": "Category",
+        "address": "Address"
+      },
+      "starts_with": "{field} starts with {value}",
+      "contains": "{field} contains {value}",
+      "not_contains": "{field} doesn't contain {value}",
+      "empty": {
+        "phone": "No phone",
+        "email": "No email",
+        "website": "No website",
+        "name": "No name",
+        "category": "No category",
+        "address": "No address"
+      },
+      "not_empty": {
+        "phone": "Has phone",
+        "email": "Has email",
+        "website": "Has website",
+        "name": "Has name",
+        "category": "Has category",
+        "address": "Has address"
+      }
+    },
+    "batchFilter": {
+      "kept": "Keeps {n}",
+      "discarded": "Discards {n}",
+      "refund": "Refund {n} credits"
+    },
+    "leadEdit": {
+      "set": "{field}: {value}",
+      "clear": "{field}: (clear)"
+    },
+    "topup": {
+      "autoRunning": "{missing, plural, one {# lead} other {# leads}} missing: searching for more at no cost…",
+      "offer": "Still {missing, plural, one {# lead} other {# leads}} missing. Search for more? Up to {credits} credits, only delivered leads are charged."
+    },
     "result": {
       "title": {
         "search_businesses": "{count, plural, one {# lead delivered} other {# leads delivered}}",
         "search_people": "{count, plural, one {# person delivered} other {# people delivered}}",
-        "import_leads": "{count, plural, one {# lead loaded} other {# leads loaded}}"
+        "import_leads": "{count, plural, one {# lead loaded} other {# leads loaded}}",
+        "topup_batch": "{count, plural, one {# lead added to the batch} other {# leads added to the batch}}"
       },
       "charged": "{count} credits charged",
       "preview": "First leads in the batch",
@@ -334,6 +384,13 @@
       "analyzeBatch": "Analyze the batch's pains",
       "analyzeLead": "Analyze pains of {lead}",
       "analyzedOne": "Analyzed",
+      "enrich": "Enrich",
+      "enriching": "Enriching…",
+      "enrichRetry": "Retry",
+      "enrichBatch": "Enrich batch",
+      "enrichLead": "Find email and social profiles for {lead}",
+      "enrichDone": "{count, plural, =0 {No new leads to enrich.} one {Enriched # lead: added the emails and profiles I found.} other {Enriched # leads: added the emails and profiles I found.}}",
+      "enrichError": "Couldn't enrich. Try again in a moment.",
       "pains": "Pains found",
       "noPains": "No pains with evidence.",
       "viewMore": "See more",
@@ -346,7 +403,12 @@
       "proposalTitle": "Proposal for {lead}",
       "proposals": "Proposals",
       "sources": "Sources",
-      "viewSource": "View source"
+      "viewSource": "View source",
+      "focusTitle": "What service do you want to offer them?",
+      "focusHint": "I analyze pains with this focus. If you change it, it is saved as your service.",
+      "focusPlaceholder": "E.g. online booking system",
+      "focusSubmit": "Analyze",
+      "focusCancel": "Cancel"
     },
     "placeholderShort": "Ask Leadtita anything…",
     "newChat": "New chat",

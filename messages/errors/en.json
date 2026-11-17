@@ -35,7 +35,7 @@
     "freePainLimit": "You reached the free limit of {limit} pain analyses. A plan removes this limit: see the plans at /pricing.",
     "freeEnrichmentLimit": "You reached the free limit of {limit} enrichments. A plan removes this limit: see the plans at /pricing.",
     "aiRateLimited": "You made a lot of AI requests in a short time. Wait a minute and try again.",
-    "aiDailyLimit": "You reached the free limit of {limit} AI messages for today. It resets at 00:00 UTC; a plan removes this limit: see the plans at /pricing.",
+    "aiDailyLimit": "You used your account's {limit} free AI messages. A plan removes this limit: see the plans at /pricing.",
     "peopleQueryInvalid": "Describe who you're looking for in 3 to 300 characters.",
     "peopleLocationInvalid": "The location can be up to 160 characters.",
     "peopleCountInvalid": "Choose between 1 and 25 people.",

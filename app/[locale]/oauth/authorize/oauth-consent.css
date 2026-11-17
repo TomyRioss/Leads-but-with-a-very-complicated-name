@@ -1,0 +1,33 @@
+/* Pantalla de consentimiento OAuth (MCP). Base: .auth-panel; tokens de AGENTS.md. */
+.oauth-panel { width: min(100%, 460px); }
+.oauth-panel h1 { overflow-wrap: anywhere; text-wrap: balance; }
+.oauth-panel h1:focus { outline: 0; }
+.oauth-host { color: var(--ink); font-weight: 650; overflow-wrap: anywhere; }
+
+.oauth-state { display: flex; align-items: center; gap: 10px; color: var(--muted); }
+.oauth-state h1 { color: var(--muted); font-size: 15px; font-weight: 550; letter-spacing: 0; }
+
+.oauth-perms-title { margin: 22px 0 8px; color: var(--ash-700); font-size: 12px; font-weight: 650; letter-spacing: 0.02em; }
+.oauth-scopes { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.oauth-scope { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border: 1px solid var(--ash-150); border-radius: 10px; background: var(--ash-50); }
+.oauth-scope.full-data-toggle { display: flex; min-height: 0; cursor: pointer; }
+.oauth-scope-toggle:hover { border-color: var(--ash-300); }
+.oauth-scope-toggle:has(input:focus-visible) { border-color: var(--ash-950); }
+.oauth-scope-toggle:has(input:disabled) { cursor: not-allowed; opacity: 0.7; }
+.oauth-scope-icon { display: inline-grid; width: 32px; height: 32px; flex: none; place-items: center; border-radius: 8px; background: var(--ash-950); color: var(--lime); }
+.oauth-scope-text { display: grid; min-width: 0; flex: 1; gap: 2px; }
+.oauth-scope-text strong { color: var(--ink); font-size: 13px; font-weight: 650; }
+.oauth-scope-text span { color: var(--muted); font-size: 12px; font-weight: 450; line-height: 1.4; }
+.oauth-scope-badge { flex: none; padding: 3px 8px; border-radius: 999px; background: var(--ash-200); color: var(--ash-800); font-size: 11px; font-weight: 650; }
+
+.oauth-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 18px; }
+.oauth-button { gap: 8px; font-family: inherit; font-size: 14px; }
+.oauth-actions .primary-button { min-width: 0; }
+.auth-secondary-button.oauth-button:disabled { cursor: not-allowed; opacity: 0.58; }
+.auth-secondary-button.oauth-button:focus-visible { outline: 0; box-shadow: 0 0 0 3px color-mix(in srgb, var(--lime) 45%, transparent); }
+.oauth-feedback { margin-top: 10px; }
+.oauth-feedback:empty { min-height: 0; }
+
+@media (max-width: 380px) {
+  .oauth-actions { grid-template-columns: 1fr; }
+}

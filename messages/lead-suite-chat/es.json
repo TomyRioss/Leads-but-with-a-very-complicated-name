@@ -113,8 +113,8 @@
       "body": "Empezá un chat nuevo para seguir: tus leads y contactos no se pierden."
     },
     "aiLimit": {
-      "title": "Llegaste a los {limit} mensajes de IA gratis de hoy.",
-      "body": "Se renuevan a las 00:00 UTC. Con un plan no hay límite diario.",
+      "title": "Usaste los {limit} mensajes de IA gratis.",
+      "body": "Con un plan no hay límite.",
       "cta": "Ver planes",
       "rate": "Muchos mensajes seguidos. Esperá un minuto y reintentá."
     },
@@ -171,7 +171,10 @@
       "send_email_batch": "Listo: envié {delivered, plural, one {# mail} other {# mails}}{failed, plural, =0 {} other {, # fallaron}}{skipped, plural, =0 {} other {, # quedaron sin enviar}}. Quedaron registrados en Lead Suite.",
       "send_whatsapp_batch": "Listo: puse {queued, plural, one {# WhatsApp} other {# WhatsApp}} en cola{skipped, plural, =0 {} other {; omití #}}{failed, plural, =0 {} other {; # sin WhatsApp o con número inválido}}. Salen de a uno y quedan registrados en Lead Suite.",
       "create_meeting": "Listo: agendé la reunión con **{lead}** y la registré como Reunión en Lead Suite. [Abrir en Google Calendar]({event})",
-      "update_commercial_profile": "Listo: guardé tu perfil comercial. Lo uso para analizar dolores y sugerirte rubros."
+      "update_commercial_profile": "Listo: guardé tu perfil comercial. Lo uso para analizar dolores y sugerirte rubros.",
+      "topup_batch": "Listo: {delivered, plural, =0 {no encontré leads nuevos para el lote} one {sumé # lead al lote} other {sumé # leads al lote}}{charged, plural, =0 {} other {, # créditos cobrados}}. [Ver el lote]({href})",
+      "filter_batch": "Listo: descarté {discarded}, quedan {kept}.{refunded, plural, =0 {} other { Te devolví # créditos.}}",
+      "update_lead": "Listo: actualicé **{lead}**."
     },
     "gmailDailyLimitReached": "Llegaste al límite de mails por Gmail (40 por día o el cupo mensual de tu plan).",
     "quota": {
@@ -182,7 +185,8 @@
       "sent": "{used} de {limit} enviados hoy",
       "progress": "{channel}: {used} de {limit} mensajes enviados hoy",
       "ai": "Mensajes IA",
-      "aiProgress": "Mensajes de IA: {used} de {limit} usados hoy",
+      "aiProgress": "Mensajes de IA gratis: {used} de {limit} usados",
+      "aiTotal": "{used}/{limit} gratis",
       "month": "{used}/{limit} este mes",
       "monthRemaining": "{count, plural, =0 {Sin WhatsApp restantes este mes} one {<n>#</n> restante este mes} other {<n>#</n> restantes este mes}}",
       "monthSent": "{used} de {limit} usados este mes (incluye en cola y programados)",
@@ -243,7 +247,7 @@
       "empty": "Sin contenido legible.",
       "extract": "No se pudo leer.",
       "rate": "Demasiados archivos seguidos, esperá unos minutos.",
-      "aiDaily": "Límite diario de IA alcanzado."
+      "aiDaily": "Mensajes de IA gratis agotados."
     },
     "targets": {
       "manual": "Lote Manual",
@@ -274,7 +278,10 @@
       "send_email_batch": "Enviar {count, plural, one {# mail} other {# mails}}",
       "send_whatsapp_batch": "Enviar WhatsApp a {count, plural, one {# lead} other {# leads}}",
       "create_meeting": "Agendar reunión con {lead}",
-      "update_commercial_profile": "Guardar tu perfil comercial"
+      "update_commercial_profile": "Guardar tu perfil comercial",
+      "topup_batch": "Completar {missing, plural, one {# lead faltante} other {# leads faltantes}}{hasQuery, select, yes { de {query}} other {}}",
+      "filter_batch": "Filtrar el lote {query}",
+      "update_lead": "Editar {lead}"
     },
     "filters": {
       "website": {
@@ -315,11 +322,54 @@
       "doubtful": "{n, plural, one {# dudoso} other {# dudosos}}",
       "unmatched": "{n} sin lead"
     },
+    "rules": {
+      "fields": {
+        "phone": "Teléfono",
+        "email": "Email",
+        "website": "Web",
+        "name": "Nombre",
+        "category": "Rubro",
+        "address": "Dirección"
+      },
+      "starts_with": "{field} empieza con {value}",
+      "contains": "{field} contiene {value}",
+      "not_contains": "{field} no contiene {value}",
+      "empty": {
+        "phone": "Sin teléfono",
+        "email": "Sin email",
+        "website": "Sin web",
+        "name": "Sin nombre",
+        "category": "Sin rubro",
+        "address": "Sin dirección"
+      },
+      "not_empty": {
+        "phone": "Con teléfono",
+        "email": "Con email",
+        "website": "Con web",
+        "name": "Con nombre",
+        "category": "Con rubro",
+        "address": "Con dirección"
+      }
+    },
+    "batchFilter": {
+      "kept": "Conserva {n}",
+      "discarded": "Descarta {n}",
+      "refund": "Reembolso {n} créditos"
+    },
+    "leadEdit": {
+      "set": "{field}: {value}",
+      "clear": "{field}: (borrar)"
+    },
+    "topup": {
+      "autoRunning": "Faltan {missing, plural, one {# lead} other {# leads}}: busco más sin costo…",
+      "offer": "Siguen faltando {missing, plural, one {# lead} other {# leads}}. ¿Busco más? Cuesta hasta {credits} créditos, solo se cobran los entregados."
+    },
     "result": {
       "title": {
         "search_businesses": "{count, plural, one {# lead entregado} other {# leads entregados}}",
         "search_people": "{count, plural, one {# persona entregada} other {# personas entregadas}}",
-        "import_leads": "{count, plural, one {# lead cargado} other {# leads cargados}}"
+        "import_leads": "{count, plural, one {# lead cargado} other {# leads cargados}}",
+        "topup_batch": "{count, plural, one {# lead sumado al lote} other {# leads sumados al lote}}"
       },
       "charged": "{count} créditos cobrados",
       "preview": "Primeros leads del lote",
@@ -334,6 +384,13 @@
       "analyzeBatch": "Analizar dolores del lote",
       "analyzeLead": "Analizar dolores de {lead}",
       "analyzedOne": "Analizado",
+      "enrich": "Enriquecer",
+      "enriching": "Enriqueciendo…",
+      "enrichRetry": "Reintentar",
+      "enrichBatch": "Enriquecer lote",
+      "enrichLead": "Buscar mail y redes de {lead}",
+      "enrichDone": "{count, plural, =0 {No había leads nuevos para enriquecer.} one {Enriquecí # lead: sumé los mails y redes que encontré.} other {Enriquecí # leads: sumé los mails y redes que encontré.}}",
+      "enrichError": "No se pudo enriquecer. Probá de nuevo en un rato.",
       "pains": "Dolores detectados",
       "noPains": "Sin dolores con evidencia.",
       "viewMore": "Ver más",
@@ -346,7 +403,12 @@
       "proposalTitle": "Propuesta para {lead}",
       "proposals": "Propuestas",
       "sources": "Fuentes",
-      "viewSource": "Ver fuente"
+      "viewSource": "Ver fuente",
+      "focusTitle": "¿Qué servicio les querés ofrecer?",
+      "focusHint": "Analizo los dolores con este foco. Si lo cambiás, queda guardado como tu servicio.",
+      "focusPlaceholder": "Ej.: sistema de reservas online",
+      "focusSubmit": "Analizar",
+      "focusCancel": "Cancelar"
     },
     "placeholderShort": "Pedile algo a Leadtita…",
     "newChat": "Nuevo chat",

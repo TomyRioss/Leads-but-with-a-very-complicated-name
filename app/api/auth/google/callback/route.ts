@@ -7,6 +7,7 @@ import { pocketBaseFetch } from "@/lib/server/pocketbase";
 const stateCookie = "leadta_google_state";
 const verifierCookie = "leadta_google_verifier";
 const localeCookie = "leadta_google_locale";
+const nextCookie = "leadta_google_next";
 const sessionDurationSeconds = 60 * 60 * 24 * 30;
 const signupCredits = 50;
 
@@ -29,7 +30,7 @@ function sameState(actual: string, expected: string) {
 }
 
 function clearOauthCookies(response: NextResponse) {
-  for (const name of [stateCookie, verifierCookie, localeCookie]) {
+  for (const name of [stateCookie, verifierCookie, localeCookie, nextCookie]) {
     response.cookies.set(name, "", {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
@@ -145,7 +146,10 @@ export async function GET(request: NextRequest) {
     }
     const isOwner = toUserRole(auth.record.role) === "owner";
     const destination = locale === "en" ? (isOwner ? "/en/owner" : "/en/buscar") : (isOwner ? "/owner" : "/buscar");
-    const response = NextResponse.redirect(new URL(destination, origin));
+    // Return path set by /api/auth/google (already validated there); re-checked to stay on this origin.
+    const next = request.cookies.get(nextCookie)?.value ?? "";
+    const back = next.startsWith("/") && !next.startsWith("//") ? new URL(next, origin) : null;
+    const response = NextResponse.redirect(back && back.origin === origin ? back : new URL(destination, origin));
     setSessionCookie(response, auth.token);
     clearOauthCookies(response);
     response.headers.set("Cache-Control", "no-store");

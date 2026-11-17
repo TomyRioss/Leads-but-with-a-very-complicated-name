@@ -96,6 +96,39 @@
       "never": "Don't show this again"
     },
     "dialogClose": "Close",
-    "attachFromChat": "Drive files are attached to a single message from the Leadtita chat (+ → Google Drive). They aren't stored on your account."
+    "attachFromChat": "Drive files are attached to a single message from the Leadtita chat (+ → Google Drive). They aren't stored on your account.",
+    "apps": {
+      "title": "Connected apps",
+      "description": "Use leadta from Claude or ChatGPT with your account. Available on paid plans.",
+      "loading": "Checking your apps…",
+      "loadError": "We couldn't load your connected apps.",
+      "retry": "Retry",
+      "connectedAt": "Connected on {date}",
+      "lastUsed": "Last used: {date}",
+      "neverUsed": "Not used yet",
+      "scopesLabel": "Permissions",
+      "scopes": {
+        "read": "View data",
+        "write": "Edit CRM",
+        "credits": "Spend credits",
+        "send": "Send messages"
+      },
+      "disconnect": "Disconnect",
+      "disconnectTitle": "Disconnect {client}",
+      "disconnectBody": "{client} loses access to your account right away. To use it again you'll need to reconnect it.",
+      "disconnectConfirm": "Yes, disconnect",
+      "disconnecting": "Disconnecting…",
+      "disconnectError": "We couldn't disconnect. Please try again.",
+      "cancel": "Cancel",
+      "disconnected": "{client} was disconnected.",
+      "empty": "You haven't connected any apps yet.",
+      "howTo": "How to connect an app",
+      "urlLabel": "Connector URL",
+      "copy": "Copy URL",
+      "copied": "Copied",
+      "copyError": "We couldn't copy it. Select the URL and copy it manually.",
+      "claude": "In claude.ai: Settings → Connectors → Add custom connector. Paste the URL and accept the permissions.",
+      "chatgpt": "In ChatGPT: Settings → Connectors (with developer mode on) → add an MCP server with the URL."
+    }
   }
 }

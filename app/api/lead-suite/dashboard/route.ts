@@ -4,23 +4,7 @@ import { getLatestWeeklyReport, getLeadSuiteMetrics, listLeadContacts } from "@/
 import { PocketBaseRequestError } from "@/lib/server/pocketbase";
 import { errorTranslator } from "@/lib/server/locale";
 import { uiError } from "@/lib/server/public-error";
-
-const dayMs = 86_400_000;
-const maxRangeMs = 366 * dayMs;
-
-function parseDate(value: string | null) {
-  if (!value) return null;
-  const time = Date.parse(value);
-  return Number.isFinite(time) ? time : NaN;
-}
-
-/** Rango validado: default últimos 30 días; `from` <= `to` y como máximo un año. */
-function resolveRange(url: URL) {
-  const to = parseDate(url.searchParams.get("to")) ?? Date.now();
-  const from = parseDate(url.searchParams.get("from")) ?? to - 30 * dayMs;
-  if (Number.isNaN(to) || Number.isNaN(from) || from > to || to - from > maxRangeMs) return null;
-  return { from: new Date(from).toISOString(), to: new Date(to).toISOString() };
-}
+import { resolveMetricsRange } from "@/lib/server/lead-suite-range";
 
 export async function GET(request: Request) {
   const t = errorTranslator(request);
@@ -32,7 +16,8 @@ export async function GET(request: Request) {
   }
   if (!session) return NextResponse.json({ error: t("signInToContinue") }, { status: 401 });
 
-  const range = resolveRange(new URL(request.url));
+  const params = new URL(request.url).searchParams;
+  const range = resolveMetricsRange(params.get("from"), params.get("to"));
   if (!range) return NextResponse.json({ error: t("generic") }, { status: 400 });
 
   const userId = session.user.id;
