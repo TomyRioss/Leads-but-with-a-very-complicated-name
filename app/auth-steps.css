@@ -25,3 +25,4 @@ a.primary-button.auth-submit { text-decoration: none; }
 .requirement { display: inline-flex; align-items: center; gap: 6px; }
 .requirement svg { flex: none; color: var(--ash-400); }
 .requirement.met svg { color: var(--lime-dark); }
+.auth-forgot { margin: -8px 0 0; text-align: right; }

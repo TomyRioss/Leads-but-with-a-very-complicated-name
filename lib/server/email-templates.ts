@@ -23,6 +23,27 @@ export function renderVerificationEmail(input: { name?: string; locale: Locale; 
   };
 }
 
+export function renderPasswordResetEmail(input: { name?: string; locale: Locale; origin: string; token: string }) {
+  const t = getTranslator(input.locale, "Email");
+  const url = new URL(localizedPath(input.locale, "/restablecer"), input.origin);
+  url.searchParams.set("token", input.token);
+  const greeting = t(input.name ? "resetGreetingNamed" : "resetGreeting", { name: input.name ?? "" });
+  const htmlGreeting = t(input.name ? "resetGreetingNamed" : "resetGreeting", { name: escapeHtml(input.name ?? "") });
+  const intro = t("resetIntro");
+  const expiration = t("resetExpiration");
+  return {
+    subject: t("resetSubject"),
+    text: `${greeting}
+
+${intro}
+
+${url}
+
+${expiration}`,
+    html: `<div style="font-family:Arial,sans-serif;max-width:560px;margin:32px auto;color:#202320;line-height:1.6"><p>${htmlGreeting}</p><p>${intro}</p><p>${button(url.toString(), t("resetButton"))}</p><p style="color:#676e67;font-size:14px">${expiration}</p></div>`,
+  };
+}
+
 export function renderWelcomeEmail(locale: Locale) {
   const t = getTranslator(locale, "Email");
   const demoUrl = `https://wa.me/5491134083140?text=${encodeURIComponent(t("welcomeDemoMessage"))}`;

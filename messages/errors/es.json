@@ -167,6 +167,12 @@
     "feedbackThanksP1": "Hola, ¡gracias por tomarte el tiempo de escribirnos!",
     "feedbackThanksP2": "Ya revisamos tu comentario y, como agradecimiento, sumamos {credits} créditos a tu cuenta.",
     "feedbackThanksP3": "Si encontrás algo más o tenés otra idea, respondé este correo o escribinos desde «Comentarios» en la app.",
-    "feedbackThanksSignoff": "¡Gracias de nuevo!"
+    "feedbackThanksSignoff": "¡Gracias de nuevo!",
+    "resetSubject": "Restablecé tu contraseña de Leadta",
+    "resetGreeting": "Hola.",
+    "resetGreetingNamed": "Hola, {name}.",
+    "resetIntro": "Recibimos un pedido para restablecer la contraseña de tu cuenta de Leadta. Tocá el botón para elegir una nueva.",
+    "resetButton": "Elegir contraseña nueva",
+    "resetExpiration": "Este enlace vence en 1 hora y sirve una sola vez. Si no lo pediste, ignorá este correo: tu contraseña no cambia."
   }
 }

@@ -4,7 +4,7 @@ import { isPocketBaseConfigured } from "@/lib/server/pocketbase";
 import { isClientId, isConversationInactive } from "@/lib/server/leadtita-conversations";
 import { uiError } from "@/lib/server/public-error";
 import { errorTranslator, resolveLocale } from "@/lib/server/locale";
-import { confirmPendingChange } from "@/lib/server/lead-suite-confirm";
+import { confirmLeadtitaViaMcp } from "@/lib/server/mcp/leadtita-confirm";
 
 // Confirmed lead searches run here (through /api/search and /api/people/search), so allow their full duration.
 export const maxDuration = 300;
@@ -38,7 +38,14 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: t("accountService") }, { status: 503 });
   }
 
-  const outcome = await confirmPendingChange(session.user, { token: body.token, keywords: body.keywords, edits: body.edits, review: body.review, sendAt: body.sendAt, auto: body.auto }, { locale: resolveLocale(request) });
+  let outcome: Awaited<ReturnType<typeof confirmLeadtitaViaMcp>>;
+  try {
+    outcome = await confirmLeadtitaViaMcp(session.user, { token: body.token, keywords: body.keywords, edits: body.edits, review: body.review, sendAt: body.sendAt, auto: body.auto }, { locale: resolveLocale(request) });
+  } catch (error) {
+    // A broken MCP connection must never fall back to executing the action directly.
+    console.error("Leadtita confirmation MCP failed", error instanceof Error ? error.name : "unknown");
+    return withRefreshedSession(NextResponse.json({ error: t("generic") }, { status: 503 }), session.token);
+  }
   if (outcome.ok) return withRefreshedSession(NextResponse.json({ result: outcome.result }), session.token);
   // Malformed confirmations (bad token/subsets/sendAt) answer without refreshing the session, as before.
   const invalidBody = outcome.status === 400 && outcome.code !== "invalid";

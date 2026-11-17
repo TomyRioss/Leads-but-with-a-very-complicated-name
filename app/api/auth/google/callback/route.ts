@@ -42,7 +42,7 @@ function clearOauthCookies(response: NextResponse) {
 }
 
 function errorRedirect(locale: string) {
-  const pathname = locale === "en" ? "/en/buscar" : "/buscar";
+  const pathname = locale === "en" ? "/en/login" : "/login";
   const response = NextResponse.redirect(new URL(`${pathname}?authError=google`, appOrigin()));
   clearOauthCookies(response);
   response.headers.set("Cache-Control", "no-store");
@@ -137,7 +137,7 @@ export async function GET(request: NextRequest) {
     });
     if (!user.phone) {
       // No session until the phone is saved (POST /api/auth/phone); AuthForm shows the phone step.
-      const response = NextResponse.redirect(new URL(`${locale === "en" ? "/en/buscar" : "/buscar"}?authStep=phone`, origin));
+      const response = NextResponse.redirect(new URL(`${locale === "en" ? "/en/login" : "/login"}?authStep=phone`, origin));
       setPendingPhoneCookie(response, auth.token);
       clearSessionCookie(response);
       clearOauthCookies(response);

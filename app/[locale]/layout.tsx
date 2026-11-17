@@ -42,8 +42,13 @@ export default async function RootLayout({ children, params }: { children: React
   return (
     <html
       lang={locale}
-      className={`${geistSans.variable} h-full antialiased`}
+      translate="no"
+      className={`${geistSans.variable} notranslate h-full antialiased`}
     >
+      <head>
+        {/* Native locales own the UI text; browser translation can break React updates. */}
+        <meta name="google" content="notranslate" />
+      </head>
       <body className="min-h-full flex flex-col">
         <NextIntlClientProvider
           locale={locale}

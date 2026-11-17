@@ -1,5 +1,5 @@
 import { createHash, createHmac, timingSafeEqual } from "node:crypto";
-import { renderFeedbackHtml, renderFeedbackThanksEmail, renderLeadSuiteWeeklyReportEmail, renderVerificationEmail, renderWelcomeEmail } from "@/lib/server/email-templates";
+import { renderFeedbackHtml, renderFeedbackThanksEmail, renderLeadSuiteWeeklyReportEmail, renderPasswordResetEmail, renderVerificationEmail, renderWelcomeEmail } from "@/lib/server/email-templates";
 import type { WeeklyReport } from "@/lib/lead-suite";
 import type { Locale } from "@/lib/server/locale";
 import { pocketBaseFetch } from "@/lib/server/pocketbase";
@@ -7,6 +7,7 @@ import { pocketBaseFetch } from "@/lib/server/pocketbase";
 const verificationSender = "Leadta <noreply@leadta.app>";
 const welcomeSender = "Tomas Rios <tomas@leadta.app>";
 const verificationLifetimeSeconds = 60 * 60 * 24;
+const passwordResetLifetimeSeconds = 60 * 60;
 const resendUrl = "https://api.resend.com/emails";
 
 type UserEmailRecord = {
@@ -14,6 +15,7 @@ type UserEmailRecord = {
   email: string;
   name?: string;
   verified?: boolean;
+  updated?: string;
   verification_sent_at?: string;
   welcome_email_sent_at?: string;
 };
@@ -25,47 +27,73 @@ function appOrigin() {
   return url.origin;
 }
 
-function signatureFor(payload: string) {
+type TokenPurpose = "email-verification" | "password-reset";
+
+/** The purpose is part of the signed input, so a verification token never passes as a reset token (or vice versa). */
+function signatureFor(payload: string, purpose: TokenPurpose) {
   const secret = process.env.EMAIL_VERIFICATION_SECRET || process.env.RESEND_API_KEY;
   if (!secret) throw new Error("RESEND_API_KEY is not configured.");
-  return createHmac("sha256", secret).update(`leadta-email-verification-v1.${payload}`).digest("base64url");
+  return createHmac("sha256", secret).update(`leadta-${purpose}-v1.${payload}`).digest("base64url");
 }
 
-export function createEmailVerificationToken(user: Pick<UserEmailRecord, "id" | "email">, locale: Locale) {
-  const payload = Buffer.from(JSON.stringify({
-    id: user.id,
-    email: user.email.toLowerCase(),
-    locale,
-    exp: Math.floor(Date.now() / 1000) + verificationLifetimeSeconds,
-  })).toString("base64url");
-  return `${payload}.${signatureFor(payload)}`;
+function signToken(data: Record<string, unknown>, purpose: TokenPurpose) {
+  const payload = Buffer.from(JSON.stringify(data)).toString("base64url");
+  return `${payload}.${signatureFor(payload, purpose)}`;
 }
 
-export function readEmailVerificationToken(token: string): { id: string; email: string; locale: Locale } | null {
+/** Payload of a well-signed, unexpired token with a valid user id and email; null otherwise. */
+function readToken(token: string, purpose: TokenPurpose): (Record<string, unknown> & { id: string; email: string }) | null {
   if (token.length > 2048) return null;
   const [payload, signature, extra] = token.split(".");
   if (!payload || !signature || extra) return null;
-  const expected = Buffer.from(signatureFor(payload));
+  const expected = Buffer.from(signatureFor(payload, purpose));
   const received = Buffer.from(signature);
   if (expected.length !== received.length || !timingSafeEqual(expected, received)) return null;
 
   try {
-    const data = JSON.parse(Buffer.from(payload, "base64url").toString("utf8")) as {
-      id?: unknown;
-      email?: unknown;
-      locale?: unknown;
-      exp?: unknown;
-    };
+    const data = JSON.parse(Buffer.from(payload, "base64url").toString("utf8")) as Record<string, unknown>;
     if (
       typeof data.id !== "string" || !/^[a-zA-Z0-9]{8,32}$/.test(data.id) ||
       typeof data.email !== "string" || !/^\S+@\S+\.\S+$/.test(data.email) ||
-      (data.locale !== "es" && data.locale !== "en") ||
       typeof data.exp !== "number" || data.exp < Math.floor(Date.now() / 1000)
     ) return null;
-    return { id: data.id, email: data.email.toLowerCase(), locale: data.locale };
+    return { ...data, id: data.id, email: data.email.toLowerCase() };
   } catch {
     return null;
   }
+}
+
+export function createEmailVerificationToken(user: Pick<UserEmailRecord, "id" | "email">, locale: Locale) {
+  return signToken({
+    id: user.id,
+    email: user.email.toLowerCase(),
+    locale,
+    exp: Math.floor(Date.now() / 1000) + verificationLifetimeSeconds,
+  }, "email-verification");
+}
+
+export function readEmailVerificationToken(token: string): { id: string; email: string; locale: Locale } | null {
+  const data = readToken(token, "email-verification");
+  if (!data || (data.locale !== "es" && data.locale !== "en")) return null;
+  return { id: data.id, email: data.email, locale: data.locale };
+}
+
+/**
+ * `v` is the record's `updated` timestamp when the link was sent. Setting the new password changes it,
+ * so a link works once (and dies if the account changes meanwhile).
+ */
+export function createPasswordResetToken(user: Pick<UserEmailRecord, "id" | "email" | "updated">) {
+  return signToken({
+    id: user.id,
+    email: user.email.toLowerCase(),
+    v: user.updated ?? "",
+    exp: Math.floor(Date.now() / 1000) + passwordResetLifetimeSeconds,
+  }, "password-reset");
+}
+
+export function readPasswordResetToken(token: string): { id: string; email: string; v: string } | null {
+  const data = readToken(token, "password-reset");
+  return data && typeof data.v === "string" ? { id: data.id, email: data.email, v: data.v } : null;
 }
 
 async function sendEmail(input: { from: string; to: string; subject: string; text: string; html: string; idempotencyKey: string; replyTo?: string }) {
@@ -106,6 +134,16 @@ export async function sendVerificationEmail(user: Pick<UserEmailRecord, "id" | "
   });
 }
 
+export async function sendPasswordResetEmail(user: Pick<UserEmailRecord, "id" | "email" | "name" | "updated">, locale: Locale) {
+  const token = createPasswordResetToken(user);
+  await sendEmail({
+    from: verificationSender,
+    to: user.email,
+    ...renderPasswordResetEmail({ name: user.name, locale, origin: appOrigin(), token }),
+    idempotencyKey: `leadta-password-reset-${user.id}-${createHash("sha256").update(token).digest("hex")}`,
+  });
+}
+
 export async function sendWelcomeEmail(user: Pick<UserEmailRecord, "id" | "email">, locale: Locale) {
   await sendEmail({ from: welcomeSender, to: user.email, ...renderWelcomeEmail(locale), idempotencyKey: `leadta-welcome-${user.id}` });
 }
@@ -124,7 +162,7 @@ export async function sendFeedbackThanksEmail(input: { to: string; locale: Local
 }
 
 export async function getEmailUser(id: string) {
-  return pocketBaseFetch<UserEmailRecord>(`/api/collections/users/records/${encodeURIComponent(id)}?fields=id,email,name,verified,verification_sent_at,welcome_email_sent_at`);
+  return pocketBaseFetch<UserEmailRecord>(`/api/collections/users/records/${encodeURIComponent(id)}?fields=id,email,name,verified,updated,verification_sent_at,welcome_email_sent_at`);
 }
 
 export async function updateEmailUser(id: string, data: Record<string, unknown>) {
@@ -138,7 +176,7 @@ export async function findEmailUser(email: string) {
   const filter = new URLSearchParams({
     filter: `email = ${JSON.stringify(email)}`,
     perPage: "1",
-    fields: "id,email,name,verified,verification_sent_at,welcome_email_sent_at",
+    fields: "id,email,name,verified,updated,verification_sent_at,welcome_email_sent_at",
   });
   const response = await pocketBaseFetch<{ items: UserEmailRecord[] }>(`/api/collections/users/records?${filter.toString()}`);
   return response.items[0] || null;

@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import type { FormEvent } from "react";
 import { useLocale, useTranslations } from "next-intl";
-import { Check, Circle, CircleCheck, LoaderCircle, Mail, TriangleAlert } from "lucide-react";
+import { Check, Circle, CircleCheck, KeyRound, LoaderCircle, Mail, TriangleAlert } from "lucide-react";
 import { FcGoogle } from "react-icons/fc";
 import { isValidPhoneNumber } from "libphonenumber-js/min";
 import PhoneInput from "react-phone-number-input";
@@ -16,8 +16,8 @@ import "./auth-steps.css";
 import "./auth-layout.css";
 import { invalidateSession } from "@/lib/client/session";
 
-/** `paths`: on /login and /register, switching modes also swaps the URL (no reload). Omitted on the /buscar gate. */
-type AuthFormProps = { onAuthenticated: () => void; initialError?: string; initialMode?: "login" | "register"; paths?: Record<"login" | "register", string> };
+/** `paths`: switching login/register also swaps the URL (no reload). */
+type AuthFormProps = { onAuthenticated: () => void; initialMode?: "login" | "register"; paths?: Record<"login" | "register", string> };
 type VerifyStepState = { email: string; sent: boolean; fromLogin: boolean };
 
 const resendCooldownSeconds = 60;
@@ -25,7 +25,8 @@ const emailPattern = /^\S+@\S+\.\S+$/;
 
 type ResendStatus = "idle" | "sending" | "sent" | "error";
 
-function useResendVerification(email: string, initialCooldown = 0) {
+/** POSTs `{ email, locale }` to `endpoint` (verification or password-reset link) with a resend cooldown. */
+function useResendVerification(email: string, initialCooldown = 0, endpoint = "/api/auth/verification") {
   const locale = useLocale();
   const [status, setStatus] = useState<ResendStatus>("idle");
   const [remaining, setRemaining] = useState(initialCooldown);
@@ -40,7 +41,7 @@ function useResendVerification(email: string, initialCooldown = 0) {
     if (status === "sending" || remaining > 0) return;
     setStatus("sending");
     try {
-      const response = await fetch("/api/auth/verification", {
+      const response = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, locale }),
@@ -284,6 +285,151 @@ export function VerifyEmailPanel({ token, locale, initialResult }: { token: stri
   );
 }
 
+function ForgotPasswordStep({ initialEmail, onBack }: { initialEmail: string; onBack: () => void }) {
+  const t = useTranslations("Auth");
+  const [email, setEmail] = useState(initialEmail);
+  const headingRef = useRef<HTMLHeadingElement>(null);
+  const request = useResendVerification(email.trim().toLowerCase(), 0, "/api/auth/password-reset");
+  const sending = request.status === "sending";
+
+  useEffect(() => {
+    headingRef.current?.focus();
+  }, []);
+
+  function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    void request.resend();
+  }
+
+  return (
+    <>
+      <span className="auth-verify-icon" aria-hidden="true"><KeyRound size={22} /></span>
+      <h1 id="auth-title" ref={headingRef} tabIndex={-1}>{t("forgotTitle")}<span className="brand-dot" aria-hidden="true">.</span></h1>
+      <p className="auth-intro">{t("forgotIntro")}</p>
+      <form className="auth-fields" onSubmit={submit}>
+        <label className="field">
+          <span className="field-label">{t("email")}<span className="required-mark" aria-hidden="true"> *</span></span>
+          <input type="email" autoComplete="email" value={email} onChange={(event) => setEmail(event.target.value)} required maxLength={254} />
+        </label>
+        <button className="primary-button auth-submit" type="submit" disabled={sending || request.remaining > 0 || !emailPattern.test(email.trim())}>
+          {sending && <LoaderCircle className="auth-spin" size={16} aria-hidden="true" />}
+          {sending ? t("forgotSending") : request.remaining > 0 ? t("forgotResendIn", { seconds: request.remaining }) : request.status === "sent" ? t("forgotResend") : t("forgotSubmit")}
+        </button>
+        <p className="auth-feedback" role="status" data-tone={request.status === "error" ? "error" : undefined}>
+          {request.status === "sent" ? t("forgotSent") : request.status === "error" ? t("forgotFailed") : ""}
+        </p>
+      </form>
+      <p className="auth-switch">
+        {t("forgotRemembered")}{" "}
+        <button type="button" onClick={onBack}>{t("startSession")}</button>
+      </p>
+    </>
+  );
+}
+
+type ResetState = "ready" | "saving" | "reset" | "invalid";
+
+/** /restablecer: new password from the emailed link. */
+export function ResetPasswordPanel({ token, locale }: { token: string; locale: string }) {
+  const t = useTranslations("Auth");
+  const [state, setState] = useState<ResetState>(token ? "ready" : "invalid");
+  const [password, setPassword] = useState("");
+  const [passwordConfirm, setPasswordConfirm] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [error, setError] = useState("");
+  const mismatch = Boolean(passwordConfirm && password !== passwordConfirm);
+
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setError("");
+    if (password.length < 6) {
+      setError(t("passwordLength"));
+      document.getElementById("password")?.focus();
+      return;
+    }
+    if (password !== passwordConfirm) {
+      setError(t("passwordMismatch"));
+      document.getElementById("password-confirm")?.focus();
+      return;
+    }
+    setState("saving");
+    try {
+      const response = await fetch("/api/auth/password-reset/confirm", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token, password, passwordConfirm, locale }),
+      });
+      const payload = (await response.json()) as { result?: string; error?: string };
+      if (payload.result === "reset" || payload.result === "invalid") {
+        setState(payload.result);
+        return;
+      }
+      setError(payload.error || t("resetFailed"));
+    } catch {
+      setError(t("resetFailed"));
+    }
+    setState("ready");
+  }
+
+  if (state === "reset") {
+    return (
+      <div role="status" aria-live="polite">
+        <span className="auth-verify-icon" aria-hidden="true"><CircleCheck size={22} /></span>
+        <h1 id="reset-password-title">{t("resetDoneTitle")}<span className="brand-dot" aria-hidden="true">.</span></h1>
+        <p className="auth-intro">{t("resetDone")}</p>
+        <div className="auth-verify-actions">
+          <Link className="primary-button auth-submit" href="/login">{t("goToLogin")}</Link>
+        </div>
+      </div>
+    );
+  }
+
+  if (state === "invalid") {
+    return (
+      <>
+        <span className="auth-verify-icon" data-tone="error" aria-hidden="true"><TriangleAlert size={22} /></span>
+        <h1 id="reset-password-title">{t("resetInvalidTitle")}</h1>
+        <p className="auth-intro">{t("resetInvalid")}</p>
+        <div className="auth-verify-actions">
+          <Link className="primary-button auth-submit" href="/login">{t("goToLogin")}</Link>
+        </div>
+      </>
+    );
+  }
+
+  return (
+    <>
+      <h1 id="reset-password-title">{t("resetTitle")}<span className="brand-dot" aria-hidden="true">.</span></h1>
+      <p className="auth-intro">{t("resetIntro")}</p>
+      <form className="auth-fields" onSubmit={submit}>
+        <label className="field">
+          <span className="field-label">{t("newPassword")}<span className="required-mark" aria-hidden="true"> *</span></span>
+          <span className="password-control">
+            <input id="password" type={showPassword ? "text" : "password"} autoComplete="new-password" value={password} onChange={(event) => setPassword(event.target.value)} required minLength={6} maxLength={128} aria-describedby="password-help" />
+            <button className="password-toggle" type="button" aria-label={showPassword ? t("hidePassword") : t("showPassword")} aria-pressed={showPassword} onClick={() => setShowPassword(!showPassword)}>
+              {showPassword ? t("hidePassword") : t("showPassword")}
+            </button>
+          </span>
+          <span className="field-help password-requirements" id="password-help" aria-live="polite">
+            <span className={password.length >= 6 ? "requirement met" : "requirement"}>{password.length >= 6 ? <Check size={14} aria-hidden="true" /> : <Circle size={14} aria-hidden="true" />}{t("minimumPassword")}</span>
+            <span className={passwordConfirm && password === passwordConfirm ? "requirement met" : "requirement"}>{passwordConfirm && password === passwordConfirm ? <Check size={14} aria-hidden="true" /> : <Circle size={14} aria-hidden="true" />}{t("confirmMatch")}</span>
+          </span>
+        </label>
+        <label className="field">
+          <span className="field-label">{t("confirmPassword")}<span className="required-mark" aria-hidden="true"> *</span></span>
+          <input id="password-confirm" type={showPassword ? "text" : "password"} autoComplete="new-password" value={passwordConfirm} onChange={(event) => setPasswordConfirm(event.target.value)} required maxLength={128} aria-invalid={mismatch} aria-describedby={mismatch ? "password-confirm-error" : undefined} />
+          {mismatch && <span className="field-help auth-inline-error" id="password-confirm-error" role="status">{t("passwordMismatch")}</span>}
+        </label>
+        {error && <p className="auth-error" role="alert">{error}</p>}
+        <button className="primary-button auth-submit" type="submit" disabled={state === "saving"}>
+          {state === "saving" && <LoaderCircle className="auth-spin" size={16} aria-hidden="true" />}
+          {state === "saving" ? t("resetSaving") : t("resetSubmit")}
+        </button>
+      </form>
+    </>
+  );
+}
+
 // Email que deja el popup de registro de la landing (app/landing/signup-popup.tsx). Se lee y borra una vez;
 // el valor queda en memoria para que el doble render de StrictMode reciba lo mismo.
 let signupEmail: string | null = null;
@@ -299,7 +445,13 @@ function takeSignupEmail() {
   return signupEmail;
 }
 
-export function AuthForm({ onAuthenticated, initialError = "", initialMode = "login", paths }: AuthFormProps) {
+const noSubscribe = () => () => {};
+/** Query param read without a hydration mismatch: null on the server and during hydration, then the real value. */
+function useQueryParam(name: string) {
+  return useSyncExternalStore(noSubscribe, () => new URLSearchParams(window.location.search).get(name), () => null);
+}
+
+export function AuthForm({ onAuthenticated, initialMode = "login", paths }: AuthFormProps) {
   const t = useTranslations("Auth");
   const locale = useLocale();
   const localizedError = (message: string) => {
@@ -327,10 +479,19 @@ export function AuthForm({ onAuthenticated, initialError = "", initialMode = "lo
   const [passwordConfirm, setPasswordConfirm] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showPasswordConfirm, setShowPasswordConfirm] = useState(false);
-  const [error, setError] = useState(() => localizedError(initialError));
+  const [error, setError] = useState("");
   const [verifyStep, setVerifyStep] = useState<VerifyStepState | null>(null);
+  const [forgotStep, setForgotStep] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [phoneStep] = useState(() => typeof window !== "undefined" && new URLSearchParams(window.location.search).get("authStep") === "phone");
+  // Google's callback lands here with ?authStep=phone or ?authError=google. Read as an external store: null while prerendering.
+  const phoneStep = useQueryParam("authStep") === "phone";
+  const googleFailed = useQueryParam("authError") === "google";
+  const [googleErrorCleared, setGoogleErrorCleared] = useState(false);
+  const shownError = error || (googleFailed && !googleErrorCleared ? t("googleLoginFailed") : "");
+  const clearError = () => {
+    setError("");
+    setGoogleErrorCleared(true);
+  };
   const captchaRef = useRef<TurnstileFieldHandle>(null);
   // `?next=` return path (e.g. the MCP consent page), read on mount: switching login/register drops the query.
   // The Google route validates it server-side.
@@ -339,7 +500,7 @@ export function AuthForm({ onAuthenticated, initialError = "", initialMode = "lo
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setError("");
+    clearError();
     const captcha = new FormData(event.currentTarget).get("cf-turnstile-response");
 
     if (mode === "register") {
@@ -407,13 +568,14 @@ export function AuthForm({ onAuthenticated, initialError = "", initialMode = "lo
   }
 
   function switchMode() {
-    setError("");
+    clearError();
     changeMode(mode === "register" ? "login" : "register");
   }
 
   function backToForm(nextMode: "login" | "register") {
     setVerifyStep(null);
-    setError("");
+    setForgotStep(false);
+    clearError();
     changeMode(nextMode);
     requestAnimationFrame(() => document.getElementById("auth-title")?.focus());
   }
@@ -440,6 +602,8 @@ export function AuthForm({ onAuthenticated, initialError = "", initialMode = "lo
             }} />
           ) : verifyStep ? (
             <VerifyStep state={verifyStep} onChangeEmail={() => backToForm(mode)} onLogin={() => backToForm("login")} />
+          ) : forgotStep ? (
+            <ForgotPasswordStep initialEmail={email} onBack={() => backToForm("login")} />
           ) : (
           <>
           <h1 id="auth-title" tabIndex={-1}>{mode === "register" ? t("registerTitle") : t("loginTitle")}<span className="brand-dot" aria-hidden="true">.</span></h1>
@@ -499,6 +663,11 @@ export function AuthForm({ onAuthenticated, initialError = "", initialMode = "lo
                 </span>
               )}
             </label>
+            {mode === "login" && (
+              <p className="auth-forgot">
+                <button className="auth-switch-link" type="button" onClick={() => { clearError(); setForgotStep(true); }}>{t("forgotLink")}</button>
+              </p>
+            )}
             {mode === "register" && (
               <label className="field">
                 <span className="field-label">{t("confirmPassword")}<span className="required-mark" aria-hidden="true"> *</span></span>
@@ -522,7 +691,7 @@ export function AuthForm({ onAuthenticated, initialError = "", initialMode = "lo
               </label>
             )}
             <TurnstileField ref={captchaRef} locale={locale} />
-            {error && <p className="auth-error" role="alert">{error}</p>}
+            {shownError && <p className="auth-error" role="alert">{shownError}</p>}
             <button className="primary-button auth-submit" type="submit" disabled={busy}>
               {busy ? t("connecting") : mode === "register" ? t("createAccount") : t("signIn")}
             </button>

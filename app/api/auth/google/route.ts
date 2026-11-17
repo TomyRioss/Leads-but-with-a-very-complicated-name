@@ -32,7 +32,7 @@ function setOauthCookie(response: NextResponse, name: string, value: string, sec
 export async function GET(request: NextRequest) {
   const origin = appOrigin();
   const clientId = process.env.GOOGLE_CLIENT_ID;
-  if (!clientId) return NextResponse.redirect(new URL("/buscar?authError=google", origin));
+  if (!clientId) return NextResponse.redirect(new URL("/login?authError=google", origin));
 
   const state = randomBytes(32).toString("base64url");
   const verifier = randomBytes(32).toString("base64url");

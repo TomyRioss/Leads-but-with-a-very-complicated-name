@@ -9,7 +9,7 @@ import { FaFacebook, FaInstagram, FaLinkedin, FaWhatsapp, FaYoutube } from "reac
 import { findingsForTag, painView } from "@/lib/analysis-format";
 import type { AnalysisDetail, Lead, LeadBatch, LeadColumnKey, LeadColumnLabeler } from "@/lib/types";
 import { getLeadColumnValue, getLeadColumns, getSocialProfileUrl } from "@/lib/types";
-import { AuthForm } from "@/app/auth-form";
+import { getPathname } from "@/i18n/navigation";
 import { AppSidebar } from "@/app/app-sidebar";
 import { ErrorReportButton } from "@/app/feedback-dialog";
 import CellDetailsPopover from "@/app/cell-details-popover";
@@ -202,7 +202,6 @@ export default function Home() {
     return cached ? { id: String(cached.id), email: String(cached.email), credits: Number(cached.credits) || 0 } : null;
   });
   const [authLoading, setAuthLoading] = useState(true);
-  const [authProblem, setAuthProblem] = useState("");
   const [activeTableAction, setActiveTableAction] = useState<TableAction | null>(null);
   const [analysisBusy, setAnalysisBusy] = useState<TableAction | null>(null);
   const [analysisRowBusyId, setAnalysisRowBusyId] = useState("");
@@ -264,9 +263,13 @@ export default function Home() {
   }, [painFocus, currentUserId, profileLoaded]);
   const batchSizes = guidedCount ? [guidedCount] : devOnly ? [1, 2, ...productionBatchSizes] : productionBatchSizes;
   const numberLocale = locale === "es" ? "es-AR" : "en-US";
-  const googleAuthError = typeof window !== "undefined" && new URLSearchParams(window.location.search).get("authError") === "google"
-    ? s("googleAuthFailed")
-    : "";
+  // Signed out: login lives on its own URL (/login, or /register for ?signup=1), never under /buscar.
+  const signedOut = !authLoading && !currentUser;
+  useEffect(() => {
+    if (!signedOut) return;
+    const target = new URLSearchParams(window.location.search).get("signup") === "1" ? "/register" : "/login";
+    window.location.replace(getPathname({ href: target, locale }));
+  }, [signedOut, locale]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -469,7 +472,6 @@ export default function Home() {
         if (current && leadsResponse.ok) setLeads(leadsPayload.leads);
       } catch (error) {
         if (!current) return;
-        setAuthProblem(error instanceof Error ? error.message : s("accountConnectionFailed"));
         setAuthLoading(false);
         setHistoryLoading(false);
         setProblem(error instanceof Error ? error.message : s("historyConnectionFailed"));
@@ -668,13 +670,12 @@ export default function Home() {
   }
 
   // Shell visible from the first paint: sidebar skeleton (or cached session) while auth resolves.
-  if (authLoading) return (
+  if (authLoading || !currentUser) return (
     <main className="app-shell">
       <AppSidebar active="search" user={currentUser} onSignOut={signOut} announce={false} />
       <div className="workspace"><p className="auth-loading" aria-live="polite">{t("t_50aa6fdfd6")}</p></div>
     </main>
   );
-  if (!currentUser) return <AuthForm initialError={authProblem || googleAuthError} initialMode={typeof window !== "undefined" && new URLSearchParams(window.location.search).get("signup") === "1" ? "register" : "login"} onAuthenticated={() => window.location.reload()} />;
 
   return (
     <main className="app-shell">
