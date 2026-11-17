@@ -146,7 +146,7 @@ export default function UsersSection({ onUnauthorized, onAction }: { onUnauthori
               <SortableTh {...sorting} column="credits" kind="number" label={common("credits")} />
               <th className={thClass} scope="col">{common("plan")}</th>
               <SortableTh {...sorting} column="created" kind="date" label={common("created")} />
-              <th className={thClass} scope="col">{t("lastActivity")}</th>
+              <SortableTh {...sorting} column="lastActivity" kind="date" label={t("lastActivity")} />
               <SortableTh {...sorting} column="phone" label={t("whatsapp")} />
               <th className={thClass} scope="col">{common("actions")}</th>
             </tr>
