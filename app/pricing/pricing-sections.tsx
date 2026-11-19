@@ -16,7 +16,7 @@ function Dotted({ text }: { text: string }) {
 export async function MarketPricing({ locale }: { locale: string }) {
   const argentina = isArgentinaMarket(await headers());
   const showSubscribe = argentina || isDevEnvironment();
-  return <><PriceHero locale={locale} argentina={argentina} /><PriceSections locale={locale} argentina={argentina} showSubscribe={showSubscribe} /></>;
+  return <PriceSections locale={locale} argentina={argentina} showSubscribe={showSubscribe} />;
 }
 
 async function CallButton({ tone = "light", argentina }: { tone?: "light" | "dark"; argentina: boolean }) {
@@ -27,36 +27,6 @@ async function CallButton({ tone = "light", argentina }: { tone?: "light" | "dar
       <a className={`price-button price-button-${tone}`} href={callHref} target="_blank" rel="noreferrer">
       {argentina ? t("call") : t("customCtaInternational")}<ArrowRight size={16} aria-hidden="true" />
     </a>
-  );
-}
-
-export async function PriceHero({ locale, argentina }: { locale: string; argentina: boolean }) {
-  setRequestLocale(locale);
-  const t = await getTranslations("Pricing");
-  const number = new Intl.NumberFormat(locale);
-  const fromPrice = argentina
-    ? t("planPriceArs", { price: number.format(subscriptionPlans[0].priceArs) })
-    : t("planPriceUsd", { price: number.format(subscriptionPlans[0].priceUsd) });
-  return (
-    <section className="price-hero" aria-labelledby="price-title">
-      <div className="price-inner">
-        <h1 id="price-title" className="sr-only">{t("pageTitle").split(" | ")[0]}</h1>
-        <p className="price-eyebrow">{t("from")}</p>
-        <p className="price-amount">{fromPrice}</p>
-        <p className="price-lede">{t("monthly")}</p>
-        <div className="price-hero-row">
-          <ul className="price-facts" aria-label={t("conditionsLabel")}>
-            <li>{t("noSetup")}</li>
-            <li>{t("noSeatPrice")}</li>
-            <li>{t("monthlyPlan")}</li>
-          </ul>
-          <div className="price-hero-cta">
-            <CallButton argentina={argentina} />
-            <p>{argentina ? t("supportNote") : t("customOnly")}</p>
-          </div>
-        </div>
-      </div>
-    </section>
   );
 }
 
@@ -108,7 +78,7 @@ export async function PriceSections({ locale, argentina, showSubscribe }: { loca
         <div className="price-inner">
           <div className="price-head">
             <p className="price-kicker">{t("plansKicker")}</p>
-            <h2 id="price-plans"><Dotted text={t("plansTitle")} /></h2>
+            <h1 id="price-plans"><Dotted text={t("plansTitle")} /></h1>
             <p>{t("plansText")}</p>
             <p className="price-plans-note">{argentina ? t("paymentsNote") : t("customOnly")}</p>
           </div>
