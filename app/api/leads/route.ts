@@ -68,7 +68,7 @@ export async function GET(request: Request) {
 
     const filter = encodeURIComponent(`batch = "${batchId}"`);
     const response = await pocketBaseFetch<{ items: Lead[] }>(
-      `/api/collections/leads/records?perPage=100&sort=created_at&filter=${filter}`,
+      `/api/collections/leads/records?perPage=150&sort=created_at&filter=${filter}`,
     );
     return withRefreshedSession(NextResponse.json({ leads: response.items }), session.token);
   } catch (error) {

@@ -4,7 +4,7 @@ import { getLeadPainBrief, getUserLead, recordLeadContact } from "@/lib/server/l
 import { GmailNotConnectedError, isValidEmail, sendGmail } from "@/lib/server/google-gmail";
 import { hasGmail } from "@/lib/server/google-connections";
 import { reserveGmailDailyUsage } from "@/lib/server/gmail-daily-usage";
-import { enqueueWhatsApp, getLeadWhatsApp, getWhatsAppSession, isWhatsAppConnected, WhatsAppNotConnectedError, WHATSAPP_TEXT_MAX } from "@/lib/server/whatsapp";
+import { enqueueWhatsApp, getLeadWhatsApp, getWhatsAppMessageStatus, getWhatsAppSession, isWhatsAppConnected, WhatsAppNotConnectedError, WHATSAPP_TEXT_MAX } from "@/lib/server/whatsapp";
 import { getPlanLimits } from "@/lib/server/usage-limits";
 import type { PendingPayload } from "@/lib/server/lead-suite-agent";
 
@@ -13,7 +13,7 @@ import type { PendingPayload } from "@/lib/server/lead-suite-agent";
 // an immediate send (Gmail daily quota, WhatsApp worker queue, Lead Suite contact log).
 
 export type ScheduledChannel = "email" | "whatsapp";
-export type ScheduledStatus = "scheduled" | "sending" | "sent" | "failed" | "cancelled";
+export type ScheduledStatus = "scheduled" | "sending" | "queued" | "sent" | "delivered" | "failed" | "cancelled";
 export type ScheduledMessage = { id: string; channel: ScheduledChannel; leadId: string; leadName: string; recipient: string; subject: string; body: string; sendAt: string; status: ScheduledStatus; error: string; sentAt: string };
 type Row = { id: string; user: string; channel: ScheduledChannel; lead_id: string; lead_name?: string; recipient: string; subject?: string; body: string; send_at: string; status: ScheduledStatus; error?: string; sent_at?: string; updated?: string };
 
@@ -168,7 +168,7 @@ export async function createScheduled(userId: string, input: { channel?: unknown
 export async function listScheduled(userId: string): Promise<ScheduledMessage[]> {
   const since = pbDate(new Date(Date.now() - 14 * 24 * 60 * 60_000).toISOString());
   const params = new URLSearchParams({
-    filter: `user = ${quote(userId)} && (status = "scheduled" || status = "sending" || status = "failed" || send_at >= ${quote(since)})`,
+    filter: `user = ${quote(userId)} && (status = "scheduled" || status = "sending" || status = "queued" || status = "delivered" || status = "failed" || send_at >= ${quote(since)})`,
     sort: "send_at",
     perPage: "200",
     skipTotal: "1",
@@ -203,7 +203,31 @@ export async function updateScheduled(userId: string, id: string, input: { actio
 
 const patchRow = (id: string, data: Record<string, unknown>) => pocketBaseFetch(`${RECORDS}/${id}`, { method: "PATCH", body: JSON.stringify(data) });
 
-async function sendRow(row: Row): Promise<"sent" | "failed" | "retry"> {
+/** Encode the PocketBase row id into the worker's 40-hex ref so callbacks can settle the right schedule without a schema field. */
+function scheduledWhatsAppRef(rowId: string) {
+  if (!ID.test(rowId)) throw new ScheduleError("not_found");
+  return `${Buffer.from(rowId, "utf8").toString("hex")}${createHash("sha256").update(`scheduled:${rowId}`).digest("hex").slice(0, 10)}`;
+}
+
+function scheduledIdFromWhatsAppRef(ref: string) {
+  if (!/^[a-f0-9]{40}$/.test(ref)) return null;
+  const rowId = Buffer.from(ref.slice(0, 30), "hex").toString("utf8");
+  return ID.test(rowId) && scheduledWhatsAppRef(rowId) === ref ? rowId : null;
+}
+
+/** Worker callbacks are the only source of truth for when a queued WhatsApp message was actually sent. */
+export async function settleScheduledWhatsApp(userId: string, ref: string, outcome: "sent" | "failed", at: string) {
+  const id = scheduledIdFromWhatsAppRef(ref);
+  if (!id) return false;
+  const row = await pocketBaseFetch<Row>(`${RECORDS}/${encodeURIComponent(id)}`).catch(() => null);
+  if (!row || row.user !== userId || row.channel !== "whatsapp" || row.status !== "queued") return false;
+  await patchRow(id, outcome === "sent"
+    ? { status: "delivered", sent_at: pbDate(at), error: "" }
+    : { status: "failed", error: "send_failed" });
+  return true;
+}
+
+async function sendRow(row: Row): Promise<"sent" | "queued" | "failed" | "retry"> {
   if (row.channel === "email") {
     const quota = await reserveGmailDailyUsage(row.user, 1);
     if (!quota.granted) { await patchRow(row.id, { status: "failed", error: "gmail_daily_limit" }); return "failed"; }
@@ -220,11 +244,30 @@ async function sendRow(row: Row): Promise<"sent" | "failed" | "retry"> {
   }
   // WhatsApp: handed to the worker queue (spaced, daily cap); the worker's "sent" callback logs the contact.
   try {
-    const ref = createHash("sha256").update(`scheduled:${row.id}`).digest("hex").slice(0, 40);
+    const ref = scheduledWhatsAppRef(row.id);
     const result = await enqueueWhatsApp(row.user, [{ ref, leadId: row.lead_id, phone: row.recipient, text: row.body }]);
     if (result.invalid.length) { await patchRow(row.id, { status: "failed", error: "invalid_number" }); return "failed"; }
-    await patchRow(row.id, { status: "sent", sent_at: pbDate(new Date().toISOString()), error: "" });
-    return "sent";
+    if (result.queued.includes(ref)) {
+      await patchRow(row.id, { status: "queued", error: "" });
+      return "queued";
+    }
+    if (result.duplicates.includes(ref)) {
+      const state = await getWhatsAppMessageStatus(row.user, ref);
+      if (state.status === "sent") {
+        await patchRow(row.id, { status: "delivered", sent_at: pbDate(new Date().toISOString()), error: "" });
+        return "sent";
+      }
+      if (state.status === "queued") {
+        await patchRow(row.id, { status: "queued", error: "" });
+        return "queued";
+      }
+      if (state.status === "failed") {
+        await patchRow(row.id, { status: "failed", error: "send_failed" });
+        return "failed";
+      }
+      throw new Error("whatsapp_status_unknown");
+    }
+    throw new Error("whatsapp_not_accepted");
   } catch (error) {
     if (error instanceof WhatsAppNotConnectedError) { await patchRow(row.id, { status: "failed", error: "needs_whatsapp" }); return "failed"; }
     // Worker hiccup: back to the queue for the next tick.
@@ -245,7 +288,7 @@ export async function dispatchDue(deadline: number, now = Date.now()) {
   const params = new URLSearchParams({ filter: `status = "scheduled" && send_at <= ${quote(pbDate(new Date(now).toISOString()))}`, sort: "send_at", perPage: String(DUE_BATCH), skipTotal: "1" });
   const due = (await pocketBaseFetch<{ items: Row[] }>(`${RECORDS}?${params}`)).items;
   const emailedThisTick = new Set<string>();
-  const counts = { sent: 0, failed: 0, retry: 0, deferred: 0 };
+  const counts = { sent: 0, queued: 0, failed: 0, retry: 0, deferred: 0 };
   for (const row of due) {
     if (Date.now() > deadline) break;
     if (row.channel === "email" && emailedThisTick.has(row.user)) { counts.deferred++; continue; }

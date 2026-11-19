@@ -81,8 +81,16 @@
   /* En móvil/tablet el chat es una pestaña propia: no se apila debajo del contenido. */
   .ls-shell:not(.is-chat-tab) .ls-chat-slot { display: none; }
   .ls-shell.is-chat-tab .ls-panels { display: none; }
-  .ls-shell.is-chat-tab .ls-main { padding-bottom: 0; }
-  .ls-shell.is-chat-tab .ls-chat-slot { height: calc(100dvh - 160px - var(--campaign-banner-h, 0px)); min-height: 480px; border-top: 0; }
+  .ls-shell.is-chat-tab { display: grid; grid-template-rows: auto minmax(0, 1fr); height: calc(100dvh - var(--campaign-banner-h, 0px)); min-height: 0; overflow: hidden; }
+  .ls-shell.is-chat-tab .ls-main { min-height: 0; padding: 8px 12px 0; gap: 0; }
+  .ls-shell.is-chat-tab .ls-header { display: none; }
+  .ls-shell.is-chat-tab .ls-tabs { min-height: 42px; }
+  .ls-shell.is-chat-tab .ls-chat-slot { height: auto; min-height: 0; border-top: 0; overflow: hidden; }
+  .ls-shell.is-chat-tab .ls-chat-body { min-height: 0; height: 100%; }
+  .ls-shell.is-chat-tab .ls-chat-body > .ls-chat { min-height: 0; height: 100%; }
+}
+@media (max-width: 900px) {
+  .ls-shell.is-chat-tab { height: calc(100dvh - 58px - var(--campaign-banner-h, 0px)); }
 }
 @media (max-width: 640px) { .ls-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 

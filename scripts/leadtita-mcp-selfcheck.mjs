@@ -64,7 +64,13 @@ register(`data:text/javascript,${encodeURIComponent(`export async function resol
   if (specifier.startsWith("@/")) return next(${JSON.stringify(root)} + specifier.slice(2) + ".ts", context);
   return next(specifier, context);
 }`)}`);
-const { leadSuiteTools } = await import("../lib/server/lead-suite-agent.ts");
+const { leadSuiteTools, canonicalToolArgs, createToolCallCache } = await import("../lib/server/lead-suite-agent.ts");
+assert.equal(canonicalToolArgs('{"query":"Jalisco","limit":5}'), canonicalToolArgs('{ "limit": 5, "query": "Jalisco" }'), "Equivalent duplicate tool args share one cache key");
+const toolCallCache = createToolCallCache();
+toolCallCache.set("search_leads", '{"query":"Jalisco"}', { leads: [] });
+assert.deepEqual(toolCallCache.get("search_leads", '{"query":"Jalisco"}'), { leads: [] }, "Repeated tool calls reuse their first result");
+assert.equal(toolCallCache.has("search_leads", '{"query":"Jalisco"}'), true);
+assert.equal(toolCallCache.has("search_leads", '{"query":"Colima"}'), false);
 const actual = await connectLeadtitaMcp(leadSuiteTools, async () => { throw new Error("Catalog checks cannot execute actions"); });
 try {
   assert.equal(actual.tools.length, leadSuiteTools.length);

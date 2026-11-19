@@ -35,6 +35,7 @@
 .price-plan-features svg { flex: none; margin-top: 1px; padding: 2px; border-radius: 999px; background: var(--ash-950); color: var(--lime); box-sizing: content-box; }
 .price-plan-text { margin: 0; color: var(--muted); font-size: 15px; line-height: 1.6; }
 .price-plan .price-button { margin-top: auto; align-self: flex-start; }
+.price-plan-unavailable { margin: auto 0 0; padding-top: 16px; border-top: 1px solid var(--line); color: var(--muted); font-size: 14px; line-height: 1.5; }
 .price-plans-note { margin-top: 12px; color: var(--muted); font-size: 14px; }
 .price-subscribe { display: grid; justify-items: start; gap: 10px; margin-top: auto; }
 .price-subscribe .price-button { margin-top: 0; }

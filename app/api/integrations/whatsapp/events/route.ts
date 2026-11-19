@@ -1,5 +1,6 @@
 import { ensureLeadContacted, getUserLead, listLeadContacts, recordLeadContact } from "@/lib/server/lead-suite";
 import { isWorkerRequest } from "@/lib/server/whatsapp";
+import { settleScheduledWhatsApp } from "@/lib/server/scheduled-messages";
 import { json } from "../../google/_shared";
 
 // Worker → app callbacks (shared secret, never a browser). Retried by the worker, so each effect is idempotent.
@@ -10,7 +11,7 @@ const REPLY_NOTE_MAX = 500;
 // Lead statuses a reply may move forward (never downgrade a meeting / won / lost).
 const BEFORE_REPLY = new Set(["not_contacted", "contacted"]);
 
-type WorkerEvent = { type?: unknown; userId?: unknown; leadId?: unknown; text?: unknown; at?: unknown; reason?: unknown };
+type WorkerEvent = { type?: unknown; userId?: unknown; leadId?: unknown; ref?: unknown; text?: unknown; at?: unknown; reason?: unknown };
 
 function eventTime(value: unknown) {
   const date = new Date(typeof value === "string" ? value : "");
@@ -46,6 +47,7 @@ export async function POST(request: Request) {
       if (!logged) {
         await recordLeadContact(userId, { leadId, channel: "whatsapp", message, contactedAt: at });
       } else await ensureLeadContacted(userId, leadId, at);
+      if (typeof event.ref === "string") await settleScheduledWhatsApp(userId, event.ref, "sent", at);
       return json({ ok: true });
     }
 
@@ -62,6 +64,7 @@ export async function POST(request: Request) {
 
     if (event.type === "failed") {
       console.warn("WhatsApp send failed", typeof event.reason === "string" ? event.reason.slice(0, 80) : "unknown");
+      if (typeof event.ref === "string") await settleScheduledWhatsApp(userId, event.ref, "failed", at);
       return json({ ok: true });
     }
 

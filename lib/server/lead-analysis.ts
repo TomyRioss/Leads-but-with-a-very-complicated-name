@@ -19,8 +19,8 @@ const showDiagnostics = isDevOnlyEnabled("analysis_diagnostics");
 type AnalysisKind = "pain_points" | "enrichment";
 const supportedSocialNetworks: SocialNetwork[] = ["facebook", "instagram", "youtube", "linkedin"];
 const maxReviewsPerPlace = 50;
-// maxDuration es 300 s y cada lead puede usar hasta 2 llamadas de 75 s: no se inician leads nuevos pasado este tiempo.
-const analysisStartDeadlineMs = 130_000;
+// Leave margin under the route's 300 s limit. Bounded parallel work prevents medium batches from timing out mid-list.
+const analysisStartDeadlineMs = 270_000;
 type ModelFinding = { title: string; detail: string; source_ids: string[] };
 type ModelSocialProfile = { network: SocialNetwork; url: string };
 type ContactField = "email" | "phone" | "website" | "whatsapp";
@@ -599,18 +599,18 @@ async function enrichLead(t: Translator, lead: Lead, baseSources: Source[], soci
   };
 }
 
-async function forEachLimit<T>(items: T[], limit: number, task: (item: T) => Promise<void>) {
+async function forEachLimit<T>(items: T[], limit: number, task: (item: T) => Promise<void>, onDone?: (item: T) => void) {
   let index = 0;
   await Promise.all(Array.from({ length: Math.min(limit, items.length) }, async () => {
     while (index < items.length) {
       const current = items[index++];
-      await task(current);
+      try { await task(current); } finally { onDone?.(current); }
     }
   }));
 }
 
 /** POST /api/analysis after auth: pain-point analysis or enrichment of a batch (or one row), with free caps and credits. */
-export async function runLeadAnalysis(user: Pick<AppUser, "id" | "role">, rawBody: unknown, opts: { locale: Locale }): Promise<ApiResult> {
+export async function runLeadAnalysis(user: Pick<AppUser, "id" | "role">, rawBody: unknown, opts: { locale: Locale; onProgress?: (event: { leadId: string; leadName: string; state: "started" | "finished"; completed: number; total: number }) => void }): Promise<ApiResult> {
   const locale = opts.locale;
   const t = getTranslator(locale, "Errors");
 
@@ -620,11 +620,12 @@ export async function runLeadAnalysis(user: Pick<AppUser, "id" | "role">, rawBod
   const limited = await aiRequestLimit(user, t, { daily: false });
   if (limited) return apiResultFrom(limited);
 
-  const body = rawBody as { batchId?: unknown; action?: unknown; leadId?: unknown; socialNetworks?: unknown; focus?: unknown };
+  const body = rawBody as { batchId?: unknown; action?: unknown; leadId?: unknown; socialNetworks?: unknown; focus?: unknown; reuseExistingPain?: unknown };
   const batchId = typeof body.batchId === "string" ? body.batchId : "";
   const action = body.action;
   const leadId = typeof body.leadId === "string" ? body.leadId : "";
   let painFocus = typeof body.focus === "string" ? text(body.focus, 300) : "";
+  const reuseExistingPain = body.reuseExistingPain === true;
   // Without an explicit focus, analyze pains against the service the user sells (their commercial profile).
   if (!painFocus && action === "pain_points") painFocus = await getCommercialProfile(user.id).then((profile) => profile.serviceOffering).catch(() => "");
   const requestedNetworks = Array.isArray(body.socialNetworks)
@@ -662,9 +663,12 @@ export async function runLeadAnalysis(user: Pick<AppUser, "id" | "role">, rawBod
     // En lote no se repite un análisis ya completado con el mismo foco; en una fila el usuario lo pide explícitamente.
     // El enriquecimiento se saltea si ya cubrió todas las redes pedidas; los fallidos (sin social_networks) se reintentan.
     const alreadyAnalyzed = new Set(leadId ? [] : targets.filter((lead) => action === "pain_points"
-      ? isPainAnalysisCurrent(lead.pain_points_detail, painFocus)
+      ? reuseExistingPain
+        ? Boolean(lead.pain_points_detail?.status === "completed" || (lead.pain_points_detail?.status === "no_data" && !(sourcesByLead.get(lead.id)?.length ?? 0)))
+        : isPainAnalysisCurrent(lead.pain_points_detail, painFocus) || Boolean(lead.pain_points_detail?.status === "no_data" && !(sourcesByLead.get(lead.id)?.length ?? 0))
       : socialNetworks.every((network) => lead.enrichment_detail?.social_networks?.includes(network))).map((lead) => lead.id));
     let analysisTargets = targets.filter((lead) => !alreadyAnalyzed.has(lead.id));
+    // Batch pain analysis follows the visible table from top to bottom.
     let limitedCount = 0;
     if (action === "enrichment") {
       // Tope por cuenta: cuenta leads con enriquecimiento completado (los fallidos no tienen social_networks).
@@ -707,7 +711,9 @@ export async function runLeadAnalysis(user: Pick<AppUser, "id" | "role">, rawBod
     const skipped: string[] = [];
     const startedAt = Date.now();
     const diagnostics: { leadId: string; leadName: string; model: string; webSearchEngine: string; webFetchEngine: string; webSearchRequests: number; toolCallsExecuted: number; savedReviewCount: number; detailsStatus: string; mapsUrl: string; response: string }[] = [];
-    await forEachLimit(analysisTargets, 3, async (lead) => {
+    let progressCompleted = 0;
+    await forEachLimit(analysisTargets, action === "pain_points" ? 5 : 1, async (lead) => {
+      opts.onProgress?.({ leadId: lead.id, leadName: lead.name, state: "started", completed: progressCompleted, total: analysisTargets.length });
       if (Date.now() - startedAt > analysisStartDeadlineMs) {
         skipped.push(lead.id);
         return;
@@ -842,9 +848,17 @@ export async function runLeadAnalysis(user: Pick<AppUser, "id" | "role">, rawBod
           });
         }
       }
+    }, (lead) => {
+      progressCompleted += 1;
+      opts.onProgress?.({ leadId: lead.id, leadName: lead.name, state: "finished", completed: progressCompleted, total: analysisTargets.length });
     });
 
     const leads = saved.items.map((lead) => updated.get(lead.id) ?? lead);
+    const analyzedCount = updated.size + alreadyAnalyzed.size;
+    const findingCount = targets.filter((lead) => {
+      const result = updated.get(lead.id) ?? lead;
+      return result.pain_points_detail ? hasPainResult(result.pain_points_detail) : Boolean(result.pain_points?.trim());
+    }).length;
     await usageReservation?.settle(completedCount()).catch(() => undefined);
     let credits: number | undefined;
     if (creditReservation) {
@@ -858,11 +872,12 @@ export async function runLeadAnalysis(user: Pick<AppUser, "id" | "role">, rawBod
       body: {
         leads,
         ...(credits === undefined ? {} : { credits }),
-        analyzedCount: updated.size,
+        analyzedCount,
+        totalCount: targets.length,
         skippedCount: skipped.length,
         limitedCount,
         alreadyAnalyzedCount: alreadyAnalyzed.size,
-        findingCount: leadsWithFindings.size,
+        findingCount,
         noEvidenceCount: noEvidence.length,
         failedCount: failures.length,
         failures,

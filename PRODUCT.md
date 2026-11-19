@@ -63,3 +63,7 @@ The active Apify Actor is `k-data-lab/google-maps-scraper`, with a monitor scope
 - V5: WhatsApp connection attempts that end disconnected surface an actionable error; brand controls use the WhatsApp logo.
 - B7 | 2026-11-14 | A WhatsApp callback retry found its contact log already saved and skipped repairing the lead status after a partial write failure. | V6
 - V6: A duplicate successful-send callback repairs a still-uncontacted lead without adding another contact log or downgrading an advanced status.
+- B8 | 2026-11-17 | A batch-wide WhatsApp drafting request fell into repeated per-lead fuzzy searches and exhausted the chat tool budget before analyzing pains or drafting messages. | V7
+- V7: Batch-wide message requests resolve one batch, analyze it once, draft one card per lead with evidence, and reuse results for identical tool calls; they do not search or analyze leads individually.
+- B9 | 2026-11-18 | Completed pain analyses with no findings were treated as incomplete, leaving the per-lead analyze action visible; sequential batch work also stopped starting leads after 130 seconds. | V8
+- V8: A completed pain analysis for the current focus is terminal even with no findings and renders “Sin datos” instead of an analyze action; batch analysis uses bounded concurrency and reports any unfinished leads with a retry action.

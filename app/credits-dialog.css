@@ -1,5 +1,25 @@
 .credits-plans-price { display: flex; align-items: baseline; gap: 6px; margin: 0; color: var(--muted); font-size: 14px; }
 .credits-plans-price strong { color: var(--ink); font-size: 32px; font-weight: 700; letter-spacing: -0.04em; font-variant-numeric: tabular-nums; }
+.credits-plans-dialog { width: min(980px, calc(100vw - 32px)); }
+.credits-plans-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.credits-plan-card { display: flex; min-width: 0; flex-direction: column; gap: 14px; padding: 16px; border: 1px solid var(--line); border-radius: 12px; background: var(--ash-50); }
+.credits-plan-card-featured { border: 2px solid var(--lime-dark); background: var(--ash-100); }
+.credits-plan-heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.credits-plan-badge { display: inline-flex; align-items: center; gap: 5px; padding: 5px 9px; border-radius: 999px; background: var(--lime); color: var(--ash-950); font-size: 11px; font-weight: 700; line-height: 1; white-space: nowrap; }
+.credits-plan-badge svg { color: var(--ash-950); }
+.credits-plan-card h3 { margin: 0; font-size: 17px; font-weight: 680; letter-spacing: -.02em; }
+.credits-plan-amount { display: flex; flex-wrap: wrap; align-items: baseline; gap: 5px; margin: 0; }
+.credits-plan-amount strong { font-size: clamp(21px, 2vw, 28px); line-height: 1.1; letter-spacing: -.04em; font-variant-numeric: tabular-nums; }
+.credits-plan-amount span { color: var(--muted); font-size: 12px; }
+.credits-plan-card ul { display: grid; gap: 7px; margin: 0; padding: 0; color: var(--muted); font-size: 12px; line-height: 1.4; list-style: none; }
+.credits-plan-card li { display: flex; align-items: flex-start; gap: 7px; }
+.credits-plan-card li svg { flex: none; margin-top: 1px; color: var(--lime-dark); }
+.credits-plan-card .price-subscribe { margin-top: auto; }
+.credits-plan-card .price-button, .credits-plan-card .primary-button { width: 100%; justify-content: center; padding-inline: 10px; font-size: 13px; }
+.credits-plan-card-featured .price-button-dark { background: var(--lime); color: var(--ash-950); }
+.credits-plan-unavailable, .credits-plan-custom-text { margin: auto 0 0; color: var(--muted); font-size: 12px; line-height: 1.45; }
+.credits-plan-custom-price { margin: 0; font-size: 23px; font-weight: 680; }
+.credits-plan-card-custom .primary-button { margin-top: auto; }
 .credits-plans-cta { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 46px; font-family: inherit; font-size: 15px; text-decoration: none; }
 .credits-plans-cta:focus-visible { outline: 0; box-shadow: 0 0 0 3px color-mix(in srgb, var(--lime) 45%, transparent); }
 .credits-plans-phone { margin: -4px 0 0; color: var(--muted); font-size: 12px; text-align: center; }
@@ -12,3 +32,4 @@
 .credits-plan-keep:hover:not(:disabled) { background: var(--ash-100); }
 .credits-plan-keep:disabled { opacity: .55; cursor: not-allowed; }
 .credits-plan-keep:focus-visible, .credits-plan-link:focus-visible { outline: 0; box-shadow: 0 0 0 3px color-mix(in srgb, var(--lime) 45%, transparent); }
+@media (max-width: 760px) { .credits-plans-grid { grid-template-columns: minmax(0, 1fr); } }

@@ -21,7 +21,16 @@ export async function POST(request: Request) {
   } catch {
     return NextResponse.json({ error: t("invalidRequestBody") }, { status: 400 });
   }
-  const result = await runLeadAnalysis(session.user, body, { locale: resolveLocale(request) });
-  const response = NextResponse.json(result.body, { status: result.status, headers: result.headers });
-  return result.refreshSession ? withRefreshedSession(response, session.token) : response;
+  const encoder = new TextEncoder();
+  const stream = new ReadableStream<Uint8Array>({
+    start(controller) {
+      const send = (event: unknown) => { try { controller.enqueue(encoder.encode(`${JSON.stringify(event)}\n`)); } catch { /* Client disconnected; finish the analysis and persistence normally. */ } };
+      const close = () => { try { controller.close(); } catch { /* Stream was cancelled. */ } };
+      void runLeadAnalysis(session.user, body, { locale: resolveLocale(request), onProgress: (progress) => send({ type: "progress", ...progress }) })
+        .then((result) => { send({ type: "result", status: result.status, body: result.body }); close(); })
+        .catch(() => { send({ type: "result", status: 500, body: { error: t("generic") } }); close(); });
+    },
+  });
+  const response = new NextResponse(stream, { status: 200, headers: { "Content-Type": "application/x-ndjson; charset=utf-8", "Cache-Control": "no-cache, no-transform", "X-Accel-Buffering": "no" } });
+  return withRefreshedSession(response, session.token);
 }

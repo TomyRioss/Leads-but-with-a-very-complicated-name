@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { useTranslations } from "next-intl";
-import { Activity, Minus, Plus, Search, Settings2, Trash2, X } from "lucide-react";
+import { Activity, Check, Minus, Plus, Search, Settings2, Trash2, X } from "lucide-react";
 import {
   blockClass, confirmBox, controlClass, exclusivePill, countBadge, dangerButton, errorBox, ghostButton,
   hintText, iconButton, isUnauthorized, mutedText, okBox, ownerFetch, primaryButton, rightCell, sectionHead, smallButton,
@@ -14,7 +14,7 @@ import { SortableTh } from "./sortable-th";
 import UserActivity from "./user-activity";
 
 type SubscriptionSummary = { id: string; planId: string; status: string; priceArs: number; monthlyCredits: number };
-type UserRow = { id: string; email: string; name: string; credits: number; created: string; phone?: string; lastActivity?: string; role?: string; subscription: SubscriptionSummary | null };
+type UserRow = { id: string; email: string; name: string; credits: number; created: string; phone?: string; lastActivity?: string; role?: string; ownerContacted: boolean; subscription: SubscriptionSummary | null };
 type UserDetail = {
   user: { id: string; email: string; name: string; credits: number; created: string; phone?: string; role?: string };
   subscriptions: (SubscriptionSummary & { externalReference?: string; created: string })[];
@@ -60,6 +60,8 @@ export default function UsersSection({ onUnauthorized, onAction }: { onUnauthori
   const [bulkConfirm, setBulkConfirm] = useState<string | null>(null);
   const [bulkBusy, setBulkBusy] = useState(false);
   const [bulkError, setBulkError] = useState("");
+  const [contactBusyIds, setContactBusyIds] = useState<ReadonlySet<string>>(() => new Set());
+  const [contactError, setContactError] = useState("");
   const confirmWord = t("bulkConfirmWord");
   const deletable = data?.items.filter((user) => user.role !== "owner") ?? [];
   const pageAllPicked = deletable.length > 0 && deletable.every((user) => picked.has(user.id));
@@ -76,6 +78,24 @@ export default function UsersSection({ onUnauthorized, onAction }: { onUnauthori
     }
     return next;
   });
+
+  async function toggleContacted(user: UserRow) {
+    if (contactBusyIds.has(user.id)) return;
+    setContactError("");
+    setContactBusyIds((current) => new Set(current).add(user.id));
+    const result = await ownerFetch<{ ownerContacted: boolean }>(`/api/owner/users/${encodeURIComponent(user.id)}`, {
+      method: "PATCH",
+      body: { ownerContacted: !user.ownerContacted },
+    });
+    setContactBusyIds((current) => { const next = new Set(current); next.delete(user.id); return next; });
+    if (isUnauthorized(result.status)) return onUnauthorized();
+    if (result.ok) {
+      onAction?.(t("contactStatusUpdated"));
+      void reload();
+    } else {
+      setContactError(t("contactStatusError"));
+    }
+  }
 
   async function deletePicked() {
     if (bulkBusy || bulkConfirm?.trim().toUpperCase() !== confirmWord) return;
@@ -110,6 +130,7 @@ export default function UsersSection({ onUnauthorized, onAction }: { onUnauthori
       </div>
       {error && <p className={errorBox} role="alert">{error}</p>}
       {bulkError && <p className={errorBox} role="alert">{bulkError}</p>}
+      {contactError && <p className={errorBox} role="alert">{contactError}</p>}
       {picked.size > 0 && (
         <div className={`${confirmBox} mb-3`} role="region" aria-label={t("bulkRegion")}>
           <div className="flex flex-wrap items-center justify-between gap-2.5">
@@ -148,6 +169,7 @@ export default function UsersSection({ onUnauthorized, onAction }: { onUnauthori
               <SortableTh {...sorting} column="created" kind="date" label={common("created")} />
               <SortableTh {...sorting} column="lastActivity" kind="date" label={t("lastActivity")} />
               <SortableTh {...sorting} column="phone" label={t("whatsapp")} />
+              <th className={thClass} scope="col">{t("contacted")}</th>
               <th className={thClass} scope="col">{common("actions")}</th>
             </tr>
           </thead>
@@ -172,6 +194,19 @@ export default function UsersSection({ onUnauthorized, onAction }: { onUnauthori
                 <td className={tdClass} data-label={common("created")}>{formatDate(user.created)}</td>
                 <td className={`${tdClass} whitespace-nowrap`} data-label={t("lastActivity")}>{user.lastActivity ? formatDateTime(user.lastActivity) : "—"}</td>
                 <td className={tdClass} data-label={t("whatsapp")}>{whatsappLink(user.phone, t("whatsappAria", { email: user.email }))}</td>
+                <td className={tdClass} data-label={t("contacted")}>
+                  <button
+                    type="button"
+                    className={`${user.ownerContacted ? primaryButton : ghostButton} ${smallButton} whitespace-nowrap`}
+                    disabled={contactBusyIds.has(user.id)}
+                    aria-pressed={user.ownerContacted}
+                    aria-label={t(user.ownerContacted ? "markNotContacted" : "markContacted", { email: user.email })}
+                    onClick={() => void toggleContacted(user)}
+                  >
+                    {user.ownerContacted && <Check size={14} aria-hidden="true" />}
+                    {contactBusyIds.has(user.id) ? t("contactSaving") : t(user.ownerContacted ? "contacted" : "notContacted")}
+                  </button>
+                </td>
                 <td className={`${tdClass} max-md:justify-end`} data-label={common("actions")}>
                   <button type="button" className={`${primaryButton} ${smallButton}`} onClick={(event) => open(event.currentTarget, user.id)} aria-label={t("manageAria", { email: user.email })}><Settings2 size={14} aria-hidden="true" /> {t("manage")}</button>
                 </td>

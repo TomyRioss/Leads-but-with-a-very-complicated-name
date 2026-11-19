@@ -5,10 +5,10 @@ import { isClientId, isConversationInactive } from "@/lib/server/leadtita-conver
 import { uiError } from "@/lib/server/public-error";
 import { errorTranslator, resolveLocale } from "@/lib/server/locale";
 import { DEFAULT_TIME_ZONE, isValidTimeZone, parseChatMessages, runLeadSuiteChat } from "@/lib/server/lead-suite-agent";
-import { claimChatTurn, finishChatTurn, type ChatTurnOutcome } from "@/lib/server/leadtita-chat-turns";
+import { ChatTurnResultError, claimChatTurn, finishChatTurn, type ChatTurnOutcome } from "@/lib/server/leadtita-chat-turns";
 import { aiRequestLimit } from "@/lib/server/ai-daily-limit";
 
-export const maxDuration = 300;
+export const maxDuration = 900;
 // Attachment contexts (CSV rows up to 2,000 per file) travel with the conversation.
 const MAX_BODY_BYTES = 3_000_000;
 const CONTEXT_FULL = "context_full";
@@ -30,15 +30,15 @@ export async function POST(request: Request) {
   const limited = await aiRequestLimit(session.user, t);
   if (limited) return limited;
 
-  let body: { conversationId?: unknown; turnId?: unknown; messages?: unknown; timeZone?: unknown; mode?: unknown; salesChannel?: unknown; permission?: unknown };
+  let body: { conversationId?: unknown; turnId?: unknown; messages?: unknown; timeZone?: unknown; mode?: unknown; salesChannel?: unknown; permission?: unknown; messageModelId?: unknown; messageModelChoiceMade?: unknown };
   try {
     const raw = await request.text();
     if (raw.length > MAX_BODY_BYTES) return NextResponse.json({ error: t("invalidRequestBody"), code: CONTEXT_FULL }, { status: 413 });
     body = JSON.parse(raw);
   } catch {
-    return NextResponse.json({ error: t("invalidRequestBody") }, { status: 400 });
+    return NextResponse.json({ error: t("invalidRequestBody"), code: "invalid_request" }, { status: 400 });
   }
-  if (!isClientId(body?.conversationId) || !isClientId(body?.turnId)) return NextResponse.json({ error: t("invalidRequestBody") }, { status: 400 });
+  if (!isClientId(body?.conversationId) || !isClientId(body?.turnId)) return NextResponse.json({ error: t("invalidRequestBody"), code: "invalid_request" }, { status: 400 });
   try {
     if (await isConversationInactive(session.user.id, body.conversationId)) return NextResponse.json({ error: t("generic"), code: "conversation_inactive" }, { status: 410 });
   } catch {
@@ -49,8 +49,10 @@ export async function POST(request: Request) {
   const mode = body?.mode === undefined ? "seller" : body.mode;
   const salesChannel = body?.salesChannel === undefined ? null : body.salesChannel;
   const permission = body?.permission === undefined ? "ask" : body.permission;
-  if (!messages || !timeZone || !["seller", "generator", "planner"].includes(String(mode)) || !(salesChannel === null || salesChannel === "whatsapp" || salesChannel === "gmail") || !(permission === "ask" || permission === "skip" || permission === "danger")) {
-    return NextResponse.json({ error: t("invalidRequestBody") }, { status: 400 });
+  const messageModelId = body?.messageModelId === undefined || body.messageModelId === null ? null : body.messageModelId;
+  const messageModelChoiceMade = body?.messageModelChoiceMade === true;
+  if (!messages || !timeZone || !["seller", "generator", "planner"].includes(String(mode)) || !(salesChannel === null || salesChannel === "whatsapp" || salesChannel === "gmail") || !(permission === "ask" || permission === "skip" || permission === "danger") || !(messageModelId === null || typeof messageModelId === "string" && /^[a-zA-Z0-9]{15}$/.test(messageModelId)) || (body?.messageModelChoiceMade !== undefined && typeof body.messageModelChoiceMade !== "boolean")) {
+    return NextResponse.json({ error: t("invalidRequestBody"), code: "invalid_request" }, { status: 400 });
   }
 
   const locale = resolveLocale(request);
@@ -83,6 +85,8 @@ export async function POST(request: Request) {
             mode: mode as "seller" | "generator" | "planner",
             salesChannel,
             permission,
+            messageModelId,
+            messageModelChoiceMade,
             signal: request.signal,
             internalCall: { locale },
             onToolProgress: (event) => send("progress", event),
@@ -91,10 +95,16 @@ export async function POST(request: Request) {
           await finishChatTurn(session.user.id, body.conversationId as string, body.turnId as string, { status: "completed", result });
           send("complete", result);
         } catch (error) {
-          console.error("Lead Suite chat failed", error);
+          if (error instanceof ChatTurnResultError) {
+            console.error("Lead Suite chat result rejected", { issue: error.issue, replyChars: error.replyChars, actionCount: error.actionCount, resultBytes: error.resultBytes, actionTypes: error.actionTypes });
+          } else {
+            console.error("Lead Suite chat failed", error);
+          }
           const detail = error instanceof Error ? error.message : String(error);
-          const code = CONTEXT_ERROR.test(detail) || detail === "context_full" ? CONTEXT_FULL : request.signal.aborted ? "aborted" : "chat_failed";
-          const outcome: ChatTurnOutcome = { status: "failed", errorCode: code === CONTEXT_FULL ? "context_full" : code };
+          const code = error instanceof ChatTurnResultError
+            ? error.issue === "result_too_large" || error.issue === "reply_too_long" || error.issue === "too_many_actions" ? "result_too_large" : "result_invalid"
+            : CONTEXT_ERROR.test(detail) || detail === "context_full" ? CONTEXT_FULL : request.signal.aborted ? "aborted" : "chat_failed";
+          const outcome: ChatTurnOutcome = { status: "failed", errorCode: code };
           await finishChatTurn(session.user.id, body.conversationId as string, body.turnId as string, outcome).catch(() => undefined);
           send("failure", { code });
         } finally {

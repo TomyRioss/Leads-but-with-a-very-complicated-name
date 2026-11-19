@@ -5,7 +5,7 @@ import { config, logger } from './config.mjs';
 import { flushAllSync } from './store.mjs';
 import { kick as kickCallbacks, stopCallbacks } from './callbacks.mjs';
 import { startScheduler, stopScheduler } from './scheduler.mjs';
-import { enqueue, isKnownRef, pumpAll, stopQueue } from './queue.mjs';
+import { enqueue, isKnownRef, messageStatus, pumpAll, stopQueue } from './queue.mjs';
 import { deleteSession, getSocket, getState, restoreSessions, shutdownSessions, startSession } from './sessions.mjs';
 
 const BODY_LIMIT = 64 * 1024;
@@ -124,11 +124,22 @@ async function route(req, res) {
 
   if (req.method === 'GET' && url.pathname === '/health') return send(res, 200, { ok: true });
   if (!authorized(req)) return send(res, 401, { error: 'unauthorized' });
-  if (parts[0] !== 'sessions' || parts.length < 2 || parts.length > 3) return send(res, 404, { error: 'not_found' });
+  if (parts[0] !== 'sessions' || parts.length < 2 || parts.length > 4) return send(res, 404, { error: 'not_found' });
 
   const userId = parts[1];
   if (!USER_ID_RE.test(userId)) return send(res, 400, { error: 'invalid_user_id' });
   const action = parts[2];
+
+  if (action === 'messages' && parts.length === 4 && req.method === 'GET') {
+    const ref = parts[3];
+    if (!/^[a-f0-9]{40}$/.test(ref)) return send(res, 400, { error: 'invalid_ref' });
+    return send(res, 200, { status: messageStatus(userId, ref), connection: getState(userId).status });
+  }
+  if (action === 'messages' && parts.length === 3 && req.method === 'GET') {
+    const refs = url.searchParams.getAll('ref');
+    if (!refs.length || refs.length > 25 || refs.some((ref) => !/^[a-f0-9]{40}$/.test(ref))) return send(res, 400, { error: 'invalid_refs' });
+    return send(res, 200, { statuses: Object.fromEntries(refs.map((ref) => [ref, messageStatus(userId, ref)])), connection: getState(userId).status });
+  }
 
   if (!action && req.method === 'GET') return send(res, 200, getState(userId));
   if (!action && req.method === 'DELETE') return send(res, 200, await deleteSession(userId));

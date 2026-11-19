@@ -1,5 +1,8 @@
 import { ArrowRight, Check, Download, History, MapPin, Plus, Sparkles, Table2 } from "lucide-react";
 import { getTranslations, setRequestLocale } from "next-intl/server";
+import { headers } from "next/headers";
+import { isArgentinaMarket } from "@/lib/market";
+import { isDevEnvironment } from "@/lib/env-features";
 import { CUSTOM_PLAN_WHATSAPP, publicPlans, subscriptionPlans } from "@/lib/plans";
 import { CREDITS_PER_LEAD } from "@/lib/server/credits";
 import { SubscribeButton } from "./subscribe-button";
@@ -10,25 +13,36 @@ function Dotted({ text }: { text: string }) {
   return <>{text.slice(0, -1)}<span className="price-dot" aria-hidden="true">.</span></>;
 }
 
-async function CallButton({ tone = "light" }: { tone?: "light" | "dark" }) {
+export async function MarketPricing({ locale }: { locale: string }) {
+  const argentina = isArgentinaMarket(await headers());
+  const showSubscribe = argentina || isDevEnvironment();
+  return <><PriceHero locale={locale} argentina={argentina} /><PriceSections locale={locale} argentina={argentina} showSubscribe={showSubscribe} /></>;
+}
+
+async function CallButton({ tone = "light", argentina }: { tone?: "light" | "dark"; argentina: boolean }) {
   const t = await getTranslations("Pricing");
-  const callHref = `https://wa.me/5491134083140?text=${encodeURIComponent(t("callMessage"))}`;
+  const message = argentina ? t("callMessage") : t("customMessage");
+  const callHref = `https://wa.me/5491134083140?text=${encodeURIComponent(message)}`;
   return (
       <a className={`price-button price-button-${tone}`} href={callHref} target="_blank" rel="noreferrer">
-      {t("call")}<ArrowRight size={16} aria-hidden="true" />
+      {argentina ? t("call") : t("customCtaInternational")}<ArrowRight size={16} aria-hidden="true" />
     </a>
   );
 }
 
-export async function PriceHero({ locale }: { locale: string }) {
+export async function PriceHero({ locale, argentina }: { locale: string; argentina: boolean }) {
   setRequestLocale(locale);
   const t = await getTranslations("Pricing");
+  const number = new Intl.NumberFormat(locale);
+  const fromPrice = argentina
+    ? t("planPriceArs", { price: number.format(subscriptionPlans[0].priceArs) })
+    : t("planPriceUsd", { price: number.format(subscriptionPlans[0].priceUsd) });
   return (
     <section className="price-hero" aria-labelledby="price-title">
       <div className="price-inner">
         <h1 id="price-title" className="sr-only">{t("pageTitle").split(" | ")[0]}</h1>
         <p className="price-eyebrow">{t("from")}</p>
-        <p className="price-amount">{t("price")}</p>
+        <p className="price-amount">{fromPrice}</p>
         <p className="price-lede">{t("monthly")}</p>
         <div className="price-hero-row">
           <ul className="price-facts" aria-label={t("conditionsLabel")}>
@@ -37,8 +51,8 @@ export async function PriceHero({ locale }: { locale: string }) {
             <li>{t("monthlyPlan")}</li>
           </ul>
           <div className="price-hero-cta">
-            <CallButton />
-            <p>{t("supportNote")}</p>
+            <CallButton argentina={argentina} />
+            <p>{argentina ? t("supportNote") : t("customOnly")}</p>
           </div>
         </div>
       </div>
@@ -46,7 +60,7 @@ export async function PriceHero({ locale }: { locale: string }) {
   );
 }
 
-export async function PriceSections({ locale }: { locale: string }) {
+export async function PriceSections({ locale, argentina, showSubscribe }: { locale: string; argentina: boolean; showSubscribe: boolean }) {
   setRequestLocale(locale);
   const t = await getTranslations("Pricing");
   const number = new Intl.NumberFormat(locale);
@@ -58,12 +72,11 @@ export async function PriceSections({ locale }: { locale: string }) {
       t("planWhatsapp", { count: number.format(plan.limits.whatsappMonthly) }),
       t("planEmail", { count: number.format(plan.limits.emailMonthly) }),
       t("planScheduled", { count: number.format(plan.limits.scheduledMonthly) }),
+      t("unlimitedAgent"),
     ],
   }));
   const customHref = `https://wa.me/${CUSTOM_PLAN_WHATSAPP}?text=${encodeURIComponent(t("customMessage"))}`;
-  // Mercado Pago only charges in Argentina (ARS): Spanish shows ARS + checkout, English shows USD + contact.
-  const argentina = locale === "es";
-  const abroadHref = `https://wa.me/${CUSTOM_PLAN_WHATSAPP}?text=${encodeURIComponent(t("abroadMessage"))}`;
+  const abroadHref = `https://wa.me/${CUSTOM_PLAN_WHATSAPP}?text=${encodeURIComponent(t("customMessage"))}`;
   const examples = [
     { credits: "100", leads: "50", note: t("trial") },
     { credits: "500", leads: "250", note: t("monthlyAreas") },
@@ -83,7 +96,7 @@ export async function PriceSections({ locale }: { locale: string }) {
     { title: t("startSearching"), text: t("startSearchingText") },
   ];
   const faqs = [
-    { q: t("faqCostQ"), a: t("faqCostA") },
+    { q: t("faqCostQ"), a: argentina ? t("faqCostArgentina") : t("faqCostInternational") },
     { q: t("faqFeesQ"), a: t("faqFeesA") },
     { q: t("faqVolumeQ"), a: t("faqVolumeA") },
     { q: t("faqIncludedQ"), a: t("faqIncludedA") },
@@ -97,7 +110,7 @@ export async function PriceSections({ locale }: { locale: string }) {
             <p className="price-kicker">{t("plansKicker")}</p>
             <h2 id="price-plans"><Dotted text={t("plansTitle")} /></h2>
             <p>{t("plansText")}</p>
-            <p className="price-plans-note">{t("paymentsNote")}</p>
+            <p className="price-plans-note">{argentina ? t("paymentsNote") : t("customOnly")}</p>
           </div>
           <ul className="price-plans">
             {plans.map((plan) => (
@@ -107,7 +120,9 @@ export async function PriceSections({ locale }: { locale: string }) {
                   {plan.featured ? <span className="price-plan-badge">{t("featuredBadge")}</span> : null}
                 </div>
                 <p className="price-plan-amount">
-                  <strong>{t("planPrice", { price: number.format(argentina ? plan.priceArs : plan.priceUsd) })}</strong>
+                  <strong>{argentina
+                    ? t("planPriceArs", { price: number.format(plan.priceArs) })
+                    : t("planPriceUsd", { price: number.format(plan.priceUsd) })}</strong>
                   <span>{t("perMonth")}</span>
                 </p>
                 <ul className="price-plan-features">
@@ -115,11 +130,7 @@ export async function PriceSections({ locale }: { locale: string }) {
                     <li key={feature}><Check size={16} aria-hidden="true" />{feature}</li>
                   ))}
                 </ul>
-                {argentina ? <SubscribeButton planId={plan.id} /> : (
-                  <a className="price-button price-button-dark" href={abroadHref} target="_blank" rel="noreferrer">
-                    {t("abroadCta")}<ArrowRight size={16} aria-hidden="true" />
-                  </a>
-                )}
+                {showSubscribe ? <SubscribeButton planId={plan.id} /> : <p className="price-plan-unavailable">{t("customOnly")}</p>}
               </li>
             ))}
             <li className="price-plan">
@@ -128,8 +139,8 @@ export async function PriceSections({ locale }: { locale: string }) {
               </div>
               <p className="price-plan-amount"><strong>{t("customPrice")}</strong></p>
               <p className="price-plan-text">{t("customText")}</p>
-              <a className="price-button price-button-dark" href={customHref} target="_blank" rel="noreferrer">
-                {t("customCta")}<ArrowRight size={16} aria-hidden="true" />
+              <a className="price-button price-button-dark" href={argentina ? customHref : abroadHref} target="_blank" rel="noreferrer">
+                {argentina ? t("customCta") : t("customCtaInternational")}<ArrowRight size={16} aria-hidden="true" />
               </a>
             </li>
           </ul>
@@ -210,7 +221,7 @@ export async function PriceSections({ locale }: { locale: string }) {
       <section className="price-final" aria-labelledby="price-final-title">
         <div className="price-inner price-final-row">
           <h2 id="price-final-title"><Dotted text={t("talkVolume")} /></h2>
-          <CallButton tone="dark" />
+          <CallButton tone="dark" argentina={argentina} />
         </div>
       </section>
     </>

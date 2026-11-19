@@ -11,6 +11,7 @@ export type WhatsAppStatus = "disconnected" | "connecting" | "qr" | "connected";
 export type WhatsAppSession = { status: WhatsAppStatus; qr: string | null; phone: string | null; sentThisMonth: number; monthlyLimit: number; queued: number };
 export type WhatsAppOutgoing = { ref: string; leadId: string; phone: string; text: string };
 export type WhatsAppEnqueueResult = { queued: string[]; duplicates: string[]; invalid: { ref: string; reason: string }[]; etaSeconds: number };
+export type WhatsAppMessageStatus = { status: "queued" | "sent" | "failed" | "unknown"; connection: WhatsAppStatus };
 
 export const WHATSAPP_BATCH_MAX = 10;
 export const WHATSAPP_TEXT_MAX = 1500;
@@ -70,6 +71,13 @@ const sessionPath = (userId: string) => {
 };
 
 export const getWhatsAppSession = (userId: string) => worker<WhatsAppSession>(sessionPath(userId));
+export const getWhatsAppMessageStatus = (userId: string, ref: string) =>
+  worker<WhatsAppMessageStatus>(`${sessionPath(userId)}/messages/${encodeURIComponent(ref)}`);
+export const getWhatsAppMessageStatuses = (userId: string, refs: string[]) => {
+  if (!refs.length || refs.length > 25 || refs.some((ref) => !/^[a-f0-9]{40}$/.test(ref))) throw new Error("Invalid WhatsApp message refs.");
+  const query = new URLSearchParams(refs.map((ref) => ["ref", ref]));
+  return worker<{ statuses: Record<string, WhatsAppMessageStatus["status"]>; connection: WhatsAppStatus }>(`${sessionPath(userId)}/messages?${query}`);
+};
 export const startWhatsAppSession = (userId: string) => worker<WhatsAppSession>(`${sessionPath(userId)}/start`, { method: "POST" });
 export const stopWhatsAppSession = (userId: string) => worker<{ status: WhatsAppStatus }>(sessionPath(userId), { method: "DELETE" });
 

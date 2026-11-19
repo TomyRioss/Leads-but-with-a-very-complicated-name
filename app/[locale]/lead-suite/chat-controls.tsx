@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
-import { BriefcaseBusiness, CalendarCheck, Check, ChartNoAxesCombined, ChevronDown, CircleAlert, Search } from "lucide-react";
+import { Check, ChartNoAxesCombined, ChevronDown, CircleAlert } from "lucide-react";
 import { SiGmail, SiWhatsapp } from "react-icons/si";
 import { GoogleFeatureConnectButton } from "@/app/google-drive-connect";
 import { WhatsAppConnectCard } from "@/app/whatsapp-connect";
@@ -15,8 +15,6 @@ export type LeadtitaSalesChannel = "whatsapp" | "gmail" | null;
 type WhatsAppStatus = { configured: boolean; status: "disconnected" | "connecting" | "qr" | "connected" };
 type GoogleStatus = { configured: boolean; email?: string; features?: { gmail?: boolean } };
 type Props = {
-  mode: LeadtitaMode;
-  onModeChange: (mode: LeadtitaMode) => void;
   salesChannel: LeadtitaSalesChannel;
   onSalesChannelChange: (channel: LeadtitaSalesChannel) => void;
   onResumeTyping: () => void;
@@ -27,10 +25,7 @@ type Props = {
 /** Leadtita shortcuts ask the sales popover to open on a channel's connect step (detail: "whatsapp" | "gmail"). */
 export const OPEN_CHANNEL_CONNECT_EVENT = "leadta:open-channel-connect";
 
-const modes: LeadtitaMode[] = ["seller", "generator", "planner"];
-const modeIcons = { seller: BriefcaseBusiness, generator: Search, planner: CalendarCheck } as const;
-
-export function ChatControls({ mode, onModeChange, salesChannel, onSalesChannelChange, onResumeTyping, onChannelsChange }: Props) {
+export function ChatControls({ salesChannel, onSalesChannelChange, onResumeTyping, onChannelsChange }: Props) {
   const t = useTranslations("leadSuiteChat");
   const [open, setOpen] = useState<"mode" | "sales" | null>(null);
   const [connectView, setConnectView] = useState<"whatsapp" | "gmail" | null>(null);
@@ -43,7 +38,6 @@ export function ChatControls({ mode, onModeChange, salesChannel, onSalesChannelC
   const [disconnecting, setDisconnecting] = useState<"whatsapp" | "gmail" | null>(null);
   const [disconnectBusy, setDisconnectBusy] = useState(false);
   const [disconnectError, setDisconnectError] = useState(false);
-  const modeAnchor = useRef<HTMLButtonElement>(null);
   const salesAnchor = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
@@ -94,20 +88,25 @@ export function ChatControls({ mode, onModeChange, salesChannel, onSalesChannelC
     return () => window.removeEventListener(OPEN_CHANNEL_CONNECT_EVENT, onOpen);
   }, []);
 
-  const chooseMode = (value: LeadtitaMode) => {
-    onModeChange(value);
+  const chooseChannel = (value: Exclude<LeadtitaSalesChannel, null>) => {
+    const missing = value === "whatsapp" ? waStatus?.configured && !waConnected : googleStatus?.configured && !gmailConnected;
+    // An unconnected channel always opens its connect step, even when it is already selected.
+    // Toggling the selected channel off here used to close the menu before the user could connect it.
+    if (missing) {
+      if (salesChannel !== value) onSalesChannelChange(value);
+      setConnectView(value);
+      setOpen("sales");
+      return;
+    }
+    const selecting = salesChannel !== value;
+    onSalesChannelChange(selecting ? value : null);
     setOpen(null);
     window.setTimeout(onResumeTyping, 0);
   };
 
-  const chooseChannel = (value: Exclude<LeadtitaSalesChannel, null>) => {
-    const selecting = salesChannel !== value;
-    onSalesChannelChange(selecting ? value : null);
-    // Picking a channel that isn't connected keeps the popover open on its connect step.
-    const missing = value === "whatsapp" ? waStatus?.configured && !waConnected : googleStatus?.configured && !gmailConnected;
-    if (selecting && missing) { setConnectView(value); return; }
-    setOpen(null);
-    window.setTimeout(onResumeTyping, 0);
+  const openChannelConnect = (value: "whatsapp" | "gmail") => {
+    setConnectView(value);
+    setOpen("sales");
   };
 
   const disconnect = async (channel: "whatsapp" | "gmail") => {
@@ -134,39 +133,14 @@ export function ChatControls({ mode, onModeChange, salesChannel, onSalesChannelC
     </div>
   ) : null;
 
-  const ModeIcon = modeIcons[mode];
-
   return (
     <div className="ls-chat__controls">
-      <div className="ls-chat__control-wrap">
-        <button ref={modeAnchor} type="button" className={`ls-chat__control ls-chat__control--mode${open === "mode" ? " is-open" : ""}`} onClick={() => { setConnectView(null); setOpen((value) => value === "mode" ? null : "mode"); }} aria-haspopup="menu" aria-expanded={open === "mode"}>
-          <ModeIcon className="ls-chat__control-icon" size={15} aria-hidden="true" /><span>{t("modeLabel")}</span><span className="ls-chat__control-current">{t(`modes.${mode}`)}</span><ChevronDown size={13} aria-hidden="true" />
-        </button>
-        {open === "mode" && (
-          <Popover open onClose={() => setOpen(null)} anchorRef={modeAnchor} role="menu" placement="top-start" offset={8} className="ls-chat__mode-menu" aria-label={t("modeLabel")}>
-            <div className="ls-chat__mode-head"><strong>{t("modeTitle")}</strong><span>{t("modeHelp")}</span></div>
-            <div className="ls-chat__mode-options" role="group" aria-label={t("modeLabel")}>
-              {modes.map((value) => {
-                const ModeOptionIcon = modeIcons[value];
-                return (
-                  <button key={value} type="button" role="menuitem" aria-current={mode === value ? "true" : undefined} className="ls-chat__mode-option" onClick={() => chooseMode(value)}>
-                    <span className="ls-chat__mode-option-icon"><ModeOptionIcon size={16} aria-hidden="true" /></span>
-                    <span className="ls-chat__mode-option-copy"><strong>{t(`modes.${value}`)}</strong><small>{t(`modeHints.${value}`)}</small></span>
-                    {mode === value ? <Check className="ls-chat__mode-check" size={16} aria-hidden="true" /> : null}
-                  </button>
-                );
-              })}
-            </div>
-          </Popover>
-        )}
-      </div>
-
       <div className="ls-chat__control-wrap">
         <button ref={salesAnchor} type="button" className={`ls-chat__control ls-chat__control--sales${open === "sales" ? " is-open" : ""}${salesChannel ? " has-selection" : ""}`} onClick={() => { setConnectView(null); setStatusErrors({ whatsapp: false, gmail: false }); if (open !== "sales") setStatusReload((value) => value + 1); setOpen((value) => value === "sales" ? null : "sales"); }} aria-haspopup="dialog" aria-expanded={open === "sales"}>
           <ChartNoAxesCombined className="ls-chat__control-icon" size={16} aria-hidden="true" /><span>{t("salesLabel")}</span>{salesChannel ? <span className="ls-chat__control-current">{t(`channels.${salesChannel}`)}</span> : null}{channelsMissing ? <><CircleAlert className="ls-chat__control-alert" size={14} aria-hidden="true" /><span className="ls-chat__sr">{t("salesMissing")}</span></> : null}<ChevronDown size={13} aria-hidden="true" />
         </button>
         {open === "sales" && (
-          <Popover open onClose={() => { setOpen(null); setConnectView(null); setDisconnecting(null); }} anchorRef={salesAnchor} role="dialog" placement="top-start" offset={10} initialFocus="none" className="ls-chat__sales-menu" aria-label={t("salesLabel")}>
+          <Popover open onClose={() => { setOpen(null); setConnectView(null); setDisconnecting(null); }} anchorRef={salesAnchor} role="dialog" placement="top-start" offset={10} initialFocus="none" dismissOnBlur={!connectView} className="ls-chat__sales-menu" aria-label={t("salesLabel")}>
             <div className="ls-chat__sales-head">
               <strong>{t("salesTitle")}</strong>
               <span>{t("salesHint")}</span>
@@ -178,7 +152,7 @@ export function ChatControls({ mode, onModeChange, salesChannel, onSalesChannelC
                     <span><strong>WhatsApp</strong><small>{statusErrors.whatsapp ? t("salesStatusError") : waConnected ? t("salesConnected") : waStatus ? t(!waStatus.configured ? "salesUnavailable" : waStatus.status === "connecting" || waStatus.status === "qr" ? "salesConnecting" : "salesDisconnected") : t("salesChecking")}</small></span>
                     {salesChannel === "whatsapp" ? <Check className="is-selected" size={15} aria-hidden="true" /> : null}
                   </button>
-                  {!waConnected && waStatus?.configured ? <button type="button" className="ls-chat__sales-connect" onClick={() => setConnectView("whatsapp")}>{t("salesConnect")}</button> : null}
+                  {!waConnected && waStatus?.configured ? <button type="button" className="ls-chat__sales-connect" onClick={() => openChannelConnect("whatsapp")}>{t("salesConnect")}</button> : null}
                   {waConnected && disconnecting !== "whatsapp" ? <button type="button" className="ls-chat__sales-connect" onClick={() => { setDisconnecting("whatsapp"); setDisconnectError(false); }}>{t("salesDisconnect")}</button> : null}
                 </div>
                 {disconnectRow("whatsapp")}
@@ -188,7 +162,7 @@ export function ChatControls({ mode, onModeChange, salesChannel, onSalesChannelC
                     <span><strong>Gmail</strong><small>{statusErrors.gmail ? t("salesStatusError") : gmailConnected ? `${t("salesConnected")}${googleStatus?.email ? ` · ${googleStatus.email}` : ""}` : googleStatus ? t(googleStatus.configured ? "salesDisconnected" : "salesUnavailable") : t("salesChecking")}</small></span>
                     {salesChannel === "gmail" ? <Check className="is-selected" size={15} aria-hidden="true" /> : null}
                   </button>
-                  {!gmailConnected && googleStatus?.configured ? <button type="button" className="ls-chat__sales-connect" onClick={() => setConnectView("gmail")}>{t("salesConnect")}</button> : null}
+                  {!gmailConnected && googleStatus?.configured ? <button type="button" className="ls-chat__sales-connect" onClick={() => openChannelConnect("gmail")}>{t("salesConnect")}</button> : null}
                   {gmailConnected && disconnecting !== "gmail" ? <button type="button" className="ls-chat__sales-connect" onClick={() => { setDisconnecting("gmail"); setDisconnectError(false); }}>{t("salesDisconnect")}</button> : null}
                 </div>
                 {disconnectRow("gmail")}

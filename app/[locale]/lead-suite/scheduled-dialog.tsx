@@ -8,7 +8,7 @@ import { defaultSendAt, fromLocalInput, SCHEDULED_EVENT, sendAtValid, toLocalInp
 import "@/app/modal-dialog.css";
 import "./scheduled.css";
 
-type Item = { id: string; channel: "email" | "whatsapp"; leadId: string; leadName: string; recipient: string; subject: string; body: string; sendAt: string; status: "scheduled" | "sending" | "sent" | "failed" | "cancelled"; error: string; sentAt: string };
+type Item = { id: string; channel: "email" | "whatsapp"; leadId: string; leadName: string; recipient: string; subject: string; body: string; sendAt: string; status: "scheduled" | "sending" | "queued" | "sent" | "delivered" | "failed" | "cancelled"; error: string; sentAt: string };
 type Draft = { sendAt: string; subject: string; body: string };
 type LeadOption = { id: string; name: string; category: string; city: string };
 const CREATE_ERRORS = ["invalid_send_at", "invalid", "not_found", "needs_gmail", "needs_whatsapp", "schedule_limit", "whatsapp_monthly_limit"];
@@ -44,7 +44,13 @@ export function ScheduledButton() {
     return () => window.removeEventListener(SCHEDULED_EVENT, load);
   }, [load]);
 
-  const pending = items?.filter((item) => item.status === "scheduled" || item.status === "sending").length ?? 0;
+  useEffect(() => {
+    if (!open || !items?.some((item) => item.status === "queued")) return;
+    const timer = window.setInterval(() => void load(), 30_000);
+    return () => window.clearInterval(timer);
+  }, [items, load, open]);
+
+  const pending = items?.filter((item) => item.status === "scheduled" || item.status === "sending" || item.status === "queued").length ?? 0;
   const failed = items?.filter((item) => item.status === "failed").length ?? 0;
 
   return (
@@ -107,8 +113,8 @@ function ScheduledDialog({ open, onClose, items, freeLeft, loadError, onReload, 
     setDraft({ sendAt: sendAtValid(item.sendAt) ? item.sendAt : new Date(Date.now() + 60 * 60_000).toISOString(), subject: item.subject, body: item.body });
   };
 
-  const pending = items?.filter((item) => item.status === "scheduled" || item.status === "sending" || item.status === "failed") ?? [];
-  const history = items?.filter((item) => item.status === "sent" || item.status === "cancelled").reverse() ?? [];
+  const pending = items?.filter((item) => item.status === "scheduled" || item.status === "sending" || item.status === "queued" || item.status === "failed") ?? [];
+  const history = items?.filter((item) => item.status === "sent" || item.status === "delivered" || item.status === "cancelled").reverse() ?? [];
 
   const renderItem = (item: Item) => {
     const Icon = item.channel === "email" ? SiGmail : SiWhatsapp;
@@ -125,7 +131,7 @@ function ScheduledDialog({ open, onClose, items, freeLeft, loadError, onReload, 
           <span className="ls-scheduled__status">{t(`status.${item.status}`, { channel: item.channel })}</span>
         </div>
         <p className="ls-scheduled__when">
-          {item.status === "sent" ? t("sentAt", { date: format(item.sentAt || item.sendAt) }) : t("sendAt", { date: format(item.sendAt) })}
+          {item.status === "sent" || item.status === "delivered" ? t("sentAt", { date: format(item.sentAt || item.sendAt) }) : item.status === "queued" ? t("queuedAt") : t("sendAt", { date: format(item.sendAt) })}
         </p>
         {item.status === "failed" && item.error ? <p className="ls-scheduled__error">{t(`reasons.${ERRORS.includes(item.error) ? item.error : "send_failed"}`)}</p> : null}
 

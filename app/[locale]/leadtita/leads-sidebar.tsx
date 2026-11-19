@@ -1,12 +1,14 @@
 "use client";
 
-import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore, type FormEvent } from "react";
 import { useLocale, useTranslations } from "next-intl";
-import { AtSign, ChevronRight, LayoutDashboard, LoaderCircle, Search, Star, X } from "lucide-react";
+import { AtSign, ChevronRight, LayoutDashboard, LoaderCircle, Search, Star, X, Plus } from "lucide-react";
 import { Link } from "@/i18n/navigation";
 import { LEAD_DRAG_TYPE, requestLeadMention, type MentionLeadOption } from "@/app/[locale]/lead-suite/lead-mention-popover";
 
 type View = "saved" | "recent" | "contacted";
+type SidebarTab = "leads" | "messages";
+type MessageModel = { id: string; name: string; text: string; isDefault: boolean };
 type Lead = MentionLeadOption;
 const VIEWS: View[] = ["saved", "recent", "contacted"];
 
@@ -34,12 +36,23 @@ export function LeadsSidebar() {
   const locale = useLocale();
   const open = useSyncExternalStore(subscribeOpen, readOpen, () => false);
   const [view, setView] = useState<View>("saved");
+  const [activeTab, setActiveTab] = useState<SidebarTab>("leads");
   const [query, setQuery] = useState("");
   const [leads, setLeads] = useState<Lead[]>([]);
   const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
   const [reload, setReload] = useState(0);
+  const [models, setModels] = useState<MessageModel[]>([]);
+  const [modelsStatus, setModelsStatus] = useState<"idle" | "loading" | "ready" | "error">("idle");
+  const [modelsAction, setModelsAction] = useState(false);
+  const [expandedModel, setExpandedModel] = useState<MessageModel | null>(null);
+  const [modelError, setModelError] = useState("");
+  const [addingModel, setAddingModel] = useState(false);
+  const [editingModel, setEditingModel] = useState<string | null>(null);
+  const [editModelName, setEditModelName] = useState("");
+  const [modelText, setModelText] = useState("");
   const searchRef = useRef<HTMLInputElement>(null);
   const toggleRef = useRef<HTMLButtonElement>(null);
+  const expandedModelDialogRef = useRef<HTMLDialogElement>(null);
   const term = query.trim();
 
   useEffect(() => {
@@ -60,7 +73,22 @@ export function LeadsSidebar() {
     return () => { controller.abort(); window.clearTimeout(timer); };
   }, [open, view, term, reload]);
 
+  useEffect(() => {
+    if (!open || activeTab !== "messages" || modelsStatus === "ready") return;
+    const controller = new AbortController();
+    fetch("/api/lead-suite/chat/message-models", { cache: "no-store", signal: controller.signal })
+      .then(async (response) => { if (!response.ok) throw new Error(); return response.json() as Promise<{ items?: MessageModel[] }>; })
+      .then((data) => { setModels(data.items ?? []); setModelsStatus("ready"); })
+      .catch(() => { if (!controller.signal.aborted) setModelsStatus("error"); });
+    return () => controller.abort();
+  }, [open, activeTab, modelsStatus]);
+
   const close = () => { writeOpen(false); requestAnimationFrame(() => toggleRef.current?.focus()); };
+
+  useEffect(() => {
+    const dialog = expandedModelDialogRef.current;
+    if (expandedModel && dialog && !dialog.open) dialog.showModal();
+  }, [expandedModel]);
 
   async function toggleSaved(lead: Lead) {
     const saved = !lead.saved;
@@ -76,6 +104,38 @@ export function LeadsSidebar() {
     }
   }
 
+  async function updateModel(method: "POST" | "PATCH" | "DELETE", payload: Record<string, string | boolean>, errorKey: string) {
+    setModelsAction(true); setModelError("");
+    try {
+      const queryString = method === "DELETE" ? `?id=${encodeURIComponent(String(payload.id))}` : "";
+      const response = await fetch(`/api/lead-suite/chat/message-models${queryString}`, {
+        method,
+        ...(method !== "DELETE" ? { headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) } : {}),
+      });
+      if (!response.ok) throw new Error();
+      if (method === "DELETE") setModels((items) => items.filter((item) => item.id !== payload.id));
+      else {
+        const data = await response.json() as { item: MessageModel };
+        setModels((items) => method === "POST" ? [data.item, ...items] : items.map((item) => item.id === data.item.id ? data.item : { ...item, isDefault: data.item.isDefault ? false : item.isDefault }));
+      }
+      return true;
+    } catch { setModelError(t(errorKey)); return false; }
+    finally { setModelsAction(false); }
+  }
+
+  async function saveModel(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!modelText.trim()) return;
+    const ok = await updateModel("POST", { text: modelText.trim() }, "modelError");
+    if (ok) { setModelText(""); setAddingModel(false); }
+  }
+
+  async function renameModel(event: FormEvent<HTMLFormElement>, id: string) {
+    event.preventDefault();
+    if (!editModelName.trim()) return;
+    if (await updateModel("PATCH", { id, name: editModelName.trim() }, "modelError")) setEditingModel(null);
+  }
+
   const empty = term ? t("emptySearch") : t(`empty.${view}`);
   // Both stay mounted so open/close can animate; the closed side is inert (no focus, no screen reader).
   return (
@@ -89,6 +149,10 @@ export function LeadsSidebar() {
         <h2 id="leads-sidebar-title">{t("title")}</h2>
         <button type="button" className="leads-sidebar__close" onClick={close} aria-label={t("close")} title={t("close")}><X aria-hidden="true" size={18} /></button>
       </header>
+      <div className="leads-sidebar__section-tabs" role="tablist" aria-label={t("title")}>
+        {(["leads", "messages"] as const).map((tab) => <button key={tab} type="button" role="tab" id={`leads-sidebar-tab-${tab}`} aria-controls={`leads-sidebar-panel-${tab}`} aria-selected={activeTab === tab} tabIndex={activeTab === tab ? 0 : -1} onClick={() => { setActiveTab(tab); setQuery(""); }} onKeyDown={(event) => { if (event.key === "ArrowRight" || event.key === "ArrowLeft") { event.preventDefault(); const next = activeTab === "leads" ? "messages" : "leads"; setActiveTab(next); document.getElementById(`leads-sidebar-tab-${next}`)?.focus(); } }}>{t(tab === "leads" ? "leadsTab" : "messagesTab")}</button>)}
+      </div>
+      {activeTab === "leads" ? <div id="leads-sidebar-panel-leads" role="tabpanel" aria-labelledby="leads-sidebar-tab-leads" className="leads-sidebar__tab-panel">
       <label className="leads-sidebar__search">
         <Search aria-hidden="true" size={15} />
         <span className="ls-chat__sr">{t("search")}</span>
@@ -136,8 +200,37 @@ export function LeadsSidebar() {
               )}
       </div>
       <Link className="leads-sidebar__all" href="/lead-suite">{t("viewAll")}<ChevronRight aria-hidden="true" size={15} /></Link>
+      </div> : <div id="leads-sidebar-panel-messages" role="tabpanel" aria-labelledby="leads-sidebar-tab-messages" className="leads-sidebar__tab-panel leads-sidebar__models">
+        {modelsStatus === "loading" || modelsStatus === "idle" ? <p className="leads-sidebar__state" role="status"><LoaderCircle className="ls-chat__spin" aria-hidden="true" size={15} />{t("loadingModels")}</p>
+          : modelsStatus === "error" ? <p className="leads-sidebar__state" role="alert">{t("modelError")} <button type="button" onClick={() => { setModelsStatus("idle"); }}>{ts("retry")}</button></p>
+            : models.length ? <ul className="leads-sidebar__model-list">{models.map((model) => <li key={model.id} className="leads-sidebar__model">
+                <div className="leads-sidebar__model-heading"><strong>{model.name}</strong>{model.isDefault ? <span className="leads-sidebar__default">{t("defaultBadge")}</span> : null}</div>
+                <button type="button" className="leads-sidebar__model-preview" onClick={() => setExpandedModel(model)} aria-label={t("readFullMessage", { name: model.name })}>{model.text}</button>
+                <div className="leads-sidebar__model-actions">
+                  <button type="button" disabled={modelsAction} onClick={() => { setEditingModel(model.id); setEditModelName(model.name); }}>{t("renameModel")}</button>
+                  <button type="button" disabled={modelsAction} onClick={() => void updateModel("PATCH", { id: model.id, isDefault: !model.isDefault }, "defaultError")}>{t("makeDefault")}</button>
+                  <button type="button" disabled={modelsAction} onClick={() => void updateModel("DELETE", { id: model.id }, "removeError")}>{t("removeModel")}</button>
+                </div>
+                {editingModel === model.id ? <form className="leads-sidebar__model-rename" onSubmit={(event) => void renameModel(event, model.id)}>
+                  <label><span>{t("modelName")}</span><input value={editModelName} onChange={(event) => setEditModelName(event.target.value)} maxLength={80} required autoFocus /></label>
+                  <div><button type="submit" disabled={modelsAction || !editModelName.trim()}>{modelsAction ? <LoaderCircle className="ls-chat__spin" aria-hidden="true" size={14} /> : null}{t("saveModelName")}</button><button type="button" onClick={() => setEditingModel(null)}>{t("cancel")}</button></div>
+                </form> : null}
+              </li>)}</ul> : <p className="leads-sidebar__state">{t("modelsEmpty")}</p>}
+        {modelError && modelsStatus === "ready" ? <p className="leads-sidebar__model-error" role="alert">{modelError}</p> : null}
+        {addingModel ? <form className="leads-sidebar__model-form" onSubmit={(event) => void saveModel(event)}>
+          <label>{t("modelText")}<textarea value={modelText} onChange={(event) => setModelText(event.target.value)} placeholder={t("textPlaceholder")} maxLength={4096} rows={5} required /></label>
+          <p>{t("nameGenerated")}</p>
+          <div><button type="submit" disabled={modelsAction || !modelText.trim()}>{modelsAction ? <LoaderCircle className="ls-chat__spin" aria-hidden="true" size={14} /> : null}{t("saveModel")}</button><button type="button" onClick={() => { setAddingModel(false); setModelText(""); }}>{t("cancel")}</button></div>
+        </form> : <button type="button" className="leads-sidebar__add-model" onClick={() => setAddingModel(true)}><Plus aria-hidden="true" size={16} />{t("addModel")}</button>}
+      </div>}
       </div>
     </aside>
+    <dialog ref={expandedModelDialogRef} className="leads-sidebar__model-dialog" aria-labelledby="expanded-message-model-title" onClose={() => setExpandedModel(null)}>
+      {expandedModel ? <>
+        <header><h2 id="expanded-message-model-title">{expandedModel.name}</h2><button type="button" onClick={() => expandedModelDialogRef.current?.close()} aria-label={t("closeFullMessage")}><X aria-hidden="true" size={18} /></button></header>
+        <p>{expandedModel.text}</p>
+      </> : null}
+    </dialog>
     </>
   );
 }

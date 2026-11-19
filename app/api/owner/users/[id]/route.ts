@@ -15,6 +15,7 @@ import {
   type UserRecord,
 } from "../../_shared";
 import { errorTranslator } from "@/lib/server/locale";
+import { pocketBaseFetch } from "@/lib/server/pocketbase";
 
 const historyLimit = 50;
 
@@ -75,6 +76,19 @@ export async function PATCH(request: Request, context: Context) {
   const hasAbsolute = body.credits !== undefined;
   const hasDelta = body.addCredits !== undefined;
   const hasProfile = body.name !== undefined || body.email !== undefined || body.phone !== undefined;
+  const hasContacted = body.ownerContacted !== undefined;
+  if (hasContacted) {
+    if (typeof body.ownerContacted !== "boolean" || hasAbsolute || hasDelta || hasProfile) return errorResponse(t("ownerCreditsInvalid"), 400);
+    try {
+      await pocketBaseFetch(`/api/collections/users/records/${encodeURIComponent(id)}`, {
+        method: "PATCH",
+        body: JSON.stringify({ owner_contacted: body.ownerContacted }),
+      });
+      return NextResponse.json({ ownerContacted: body.ownerContacted });
+    } catch {
+      return errorResponse(t("ownerUserUpdateFailed"), 502);
+    }
+  }
   if (hasAbsolute && hasDelta) return errorResponse(t("ownerCreditsOnlyOne"), 400);
   if (hasProfile && (hasAbsolute || hasDelta)) return errorResponse(t("ownerCreditsAndProfile"), 400);
   if (!hasProfile && !hasAbsolute && !hasDelta) return errorResponse(t("ownerSendCreditsOrProfile"), 400);

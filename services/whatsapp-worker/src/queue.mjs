@@ -5,6 +5,7 @@ import { emitCallback } from './callbacks.mjs';
 
 const MAX_SENT_REFS = 2000;
 const MAX_SEND_ATTEMPTS = 3;
+const MAX_TRANSIENT_SEND_ATTEMPTS = 10;
 const RETRY_DELAY_MS = 60_000;
 
 const dayFmt = new Intl.DateTimeFormat('en-CA', {
@@ -66,6 +67,15 @@ export function isKnownRef(userId, ref) {
   const u = state.users[userId];
   if (!u) return false;
   return u.queue.some((q) => q.ref === ref) || u.sentRefs.includes(ref);
+}
+
+export function messageStatus(userId, ref) {
+  const u = state.users[userId];
+  if (!u) return "unknown";
+  if (u.queue.some((item) => item.ref === ref)) return "queued";
+  if (u.failedRefs?.includes(ref)) return "failed";
+  if (u.sentRefs.includes(ref)) return "sent";
+  return "unknown";
 }
 
 /** Estimated seconds until the item at queue index `idx` is sent. */
@@ -146,12 +156,13 @@ async function sendHead(userId, u, sock) {
     item.attempts += 1;
     const transient = isConnectionError(err);
     logger.warn({ userId, ref: item.ref, attempts: item.attempts, transient, err: err?.message }, 'send failed');
-    if (!transient && item.attempts >= MAX_SEND_ATTEMPTS) {
+    const maxAttempts = transient ? MAX_TRANSIENT_SEND_ATTEMPTS : MAX_SEND_ATTEMPTS;
+    if (item.attempts >= maxAttempts) {
       u.queue.shift();
-      pushSentRef(u, item.ref);
+      pushRef(u, "failedRefs", item.ref);
       emitCallback({
         type: 'failed', userId, leadId: item.leadId, ref: item.ref,
-        reason: String(err?.message || 'send_failed').slice(0, 200), at: new Date().toISOString(),
+        reason: String(err?.message || (transient ? 'connection_unavailable' : 'send_failed')).slice(0, 200), at: new Date().toISOString(),
       });
     }
     u.nextAt = Date.now() + RETRY_DELAY_MS;
@@ -160,7 +171,7 @@ async function sendHead(userId, u, sock) {
   }
 
   u.queue.shift();
-  pushSentRef(u, item.ref);
+  pushRef(u, "sentRefs", item.ref);
   userState(userId).sentMonth += 1;
   u.nextAt = Date.now() + randomDelay();
   saveState();
@@ -177,9 +188,10 @@ async function sendHead(userId, u, sock) {
   emitCallback({ type: 'sent', userId, leadId: item.leadId, ref: item.ref, text: item.text, at: new Date().toISOString() });
 }
 
-function pushSentRef(u, ref) {
-  u.sentRefs.push(ref);
-  if (u.sentRefs.length > MAX_SENT_REFS) u.sentRefs.splice(0, u.sentRefs.length - MAX_SENT_REFS);
+function pushRef(u, key, ref) {
+  u[key] ??= [];
+  u[key].push(ref);
+  if (u[key].length > MAX_SENT_REFS) u[key].splice(0, u[key].length - MAX_SENT_REFS);
 }
 
 export function pumpAll() {

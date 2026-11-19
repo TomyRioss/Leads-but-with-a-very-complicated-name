@@ -22,6 +22,19 @@ import { pump, stats, dropQueue, setSessionProvider } from './queue.mjs';
 const SESSIONS_DIR = path.join(config.dataDir, 'sessions');
 const QR_WINDOW_MS = 3 * 60_000;
 const MAX_BACKOFF_MS = 60_000;
+const MAX_RECONNECT_ATTEMPTS = 7;
+
+// libsignal 6.0.0 writes the full Signal session object to stderr from this
+// warning. That object contains key material, so keep the event but drop its
+// arguments before they reach the worker logs.
+const originalConsoleWarn = console.warn.bind(console);
+console.warn = (...args) => {
+  if (args[0] === 'Closing open session in favor of incoming prekey bundle') {
+    logger.warn('replaced an old Signal session with a new prekey bundle');
+    return;
+  }
+  originalConsoleWarn(...args);
+};
 
 /** userId -> { sock, status, qr, phone, attempts, reconnectTimer, qrTimer, qrStartedAt, closing } */
 const sessions = new Map();
@@ -53,6 +66,7 @@ export async function startSession(userId) {
   const s = existing ?? { sock: null, status: 'connecting', qr: null, phone: null, attempts: 0 };
   s.status = 'connecting';
   s.closing = false;
+  s.attempts = 0;
   s.qrStartedAt = null;
   sessions.set(userId, s);
   try {
@@ -112,7 +126,8 @@ async function connect(userId, s) {
       if (s.closing || shuttingDown) return;
       const code = lastDisconnect?.error?.output?.statusCode;
       const registered = !!state.creds.me?.id;
-      logger.warn({ userId, code, registered }, 'connection closed');
+      const reason = Object.entries(DisconnectReason).find(([, value]) => value === code)?.[0] ?? 'unknown';
+      logger.warn({ userId, code, reason, registered }, 'connection closed');
 
       if (code === DisconnectReason.loggedOut) {
         void wipe(userId, s);
@@ -144,6 +159,15 @@ async function connect(userId, s) {
 }
 
 function scheduleReconnect(userId, s, forcedDelay) {
+  if (s.attempts >= MAX_RECONNECT_ATTEMPTS) {
+    clearTimeout(s.reconnectTimer);
+    s.reconnectTimer = null;
+    s.status = 'disconnected';
+    s.qr = null;
+    s.sock = null;
+    logger.warn({ userId, attempts: s.attempts }, 'reconnect limit reached; waiting for manual retry');
+    return;
+  }
   s.status = 'connecting';
   const delay = forcedDelay ?? Math.min(MAX_BACKOFF_MS, 1000 * 2 ** s.attempts);
   s.attempts += 1;

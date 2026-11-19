@@ -260,6 +260,8 @@ body {
 .price-button-light:hover { background: var(--lime); }
 .price-button-dark { background: var(--ash-950); color: var(--paper); }
 .price-button-dark:hover { background: var(--ash-800); }
+.price-button-subscribe { background: var(--lime); color: var(--ash-950); cursor: pointer; }
+.price-button-subscribe:hover:not(:disabled) { background: var(--lime-dark); }
 .price-button:focus-visible { outline: 2px solid var(--lime-dark); outline-offset: 3px; }
 .price-hero .price-button:focus-visible { outline-color: var(--lime); }
 .price-button:active { transform: translateY(1px); }
@@ -791,6 +793,15 @@ body {
 .lead-delete-button { display: inline-grid; width: 28px; height: 28px; place-items: center; padding: 0; border: 0; border-radius: 8px; background: transparent; color: var(--muted); vertical-align: middle; cursor: pointer; }
 .lead-delete-button:hover:not(:disabled) { background: var(--ash-150); color: #b3261e; }
 .lead-delete-button:disabled { opacity: .45; cursor: not-allowed; }
+.lead-save-button { display: inline-grid; width: 28px; height: 28px; place-items: center; padding: 0; border: 0; border-radius: 8px; background: transparent; color: var(--ash-500); vertical-align: middle; cursor: pointer; }
+.lead-save-button:hover:not(:disabled), .lead-save-button.is-saved { background: color-mix(in srgb, var(--lime) 42%, transparent); color: var(--ash-950); }
+.lead-save-button:disabled { opacity: .55; cursor: wait; }
+.lead-save-button:focus-visible { outline: 2px solid var(--ash-950); outline-offset: 2px; }
+.analysis-live-progress { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 12px 0; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--paper); color: var(--ash-700); font-size: 13px; }
+.analysis-live-progress svg { flex: none; animation: button-spin .8s linear infinite; }
+.analysis-live-progress strong { color: var(--ink); font-weight: 650; }
+.save-all-leads { display: inline-flex; align-items: center; gap: 7px; }
+@media (prefers-reduced-motion: reduce) { .analysis-live-progress svg { animation: none; } }
 tr.is-selected > td { background: var(--ash-50); }
 .export-button:disabled { cursor: not-allowed; opacity: 0.5; }
 

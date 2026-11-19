@@ -3,10 +3,10 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, Fragment } from "react";
 import type { FormEvent, KeyboardEvent as ReactKeyboardEvent, MouseEvent } from "react";
 import { useLocale, useTranslations } from "next-intl";
-import { Bug, CircleAlert, CircleCheck, ExternalLink, LoaderCircle, Sparkles, Stars, Trash2, X } from "lucide-react";
+import { Bookmark, Bug, CircleAlert, CircleCheck, ExternalLink, LoaderCircle, Sparkles, Stars, Trash2, X } from "lucide-react";
 import type { IconType } from "react-icons";
 import { FaFacebook, FaInstagram, FaLinkedin, FaWhatsapp, FaYoutube } from "react-icons/fa";
-import { findingsForTag, painView } from "@/lib/analysis-format";
+import { findingsForTag, isPainAnalysisCurrent, painView } from "@/lib/analysis-format";
 import type { AnalysisDetail, Lead, LeadBatch, LeadColumnKey, LeadColumnLabeler } from "@/lib/types";
 import { getLeadColumnValue, getLeadColumns, getSocialProfileUrl } from "@/lib/types";
 import { getPathname } from "@/i18n/navigation";
@@ -205,6 +205,9 @@ export default function Home() {
   const [activeTableAction, setActiveTableAction] = useState<TableAction | null>(null);
   const [analysisBusy, setAnalysisBusy] = useState<TableAction | null>(null);
   const [analysisRowBusyId, setAnalysisRowBusyId] = useState("");
+  const [analysisProgress, setAnalysisProgress] = useState<{ completed: number; total: number; active: string[]; activeIds: string[]; queuedIds: string[]; finishedIds: string[] } | null>(null);
+  const [savingLeadIds, setSavingLeadIds] = useState<ReadonlySet<string>>(() => new Set());
+  const [savingAll, setSavingAll] = useState(false);
   const [analysisDiagnostics, setAnalysisDiagnostics] = useState<AnalysisDiagnostic[]>([]);
   const [analysisDiagnosticsOpen, setAnalysisDiagnosticsOpen] = useState(false);
   const [analysisScope, setAnalysisScope] = useState<AnalysisScope>("batch");
@@ -588,6 +591,10 @@ export default function Home() {
     if ((rowLeadId || analysisScope === "row") && !targetLead) return;
     setAnalysisBusy(action);
     setAnalysisRowBusyId(rowLeadId || (analysisScope === "row" ? targetLeadId || "" : ""));
+    const queuedIds = action === "pain_points" && !targetLeadId
+      ? leads.filter((lead) => !isPainAnalysisCurrent(analysisDetail(lead.pain_points_detail), painFocus.trim())).map((lead) => lead.id)
+      : [];
+    setAnalysisProgress({ completed: 0, total: 0, active: [], activeIds: [], queuedIds, finishedIds: [] });
     setProblem("");
     setAnalysisDiagnostics([]);
     setAnalysisDiagnosticsOpen(false);
@@ -604,35 +611,80 @@ export default function Home() {
           ...(action === "pain_points" ? { focus: painFocus.trim() } : {}),
         }),
       });
-      const payload = await response.json();
-      if (typeof payload.credits === "number") {
-        setSessionCredits(payload.credits);
-        setCurrentUser((user) => user ? { ...user, credits: payload.credits } : user);
+      let payload: Record<string, unknown>;
+      if (response.headers.get("content-type")?.includes("application/x-ndjson") && response.body) {
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+        let finalPayload: Record<string, unknown> | null = null;
+        while (true) {
+          const { value, done } = await reader.read();
+          buffer += decoder.decode(value ?? new Uint8Array(), { stream: !done });
+          const lines = buffer.split("\n");
+          buffer = lines.pop() ?? "";
+          for (const line of lines) {
+            if (!line.trim()) continue;
+            const event = JSON.parse(line) as { type: string; leadId?: string; leadName?: string; state?: string; completed?: number; total?: number; status?: number; body?: Record<string, unknown> };
+            if (event.type === "progress" && event.leadId && event.leadName) {
+              setAnalysisProgress((current) => {
+                const active = new Set(current?.active ?? []);
+                const activeIds = new Set(current?.activeIds ?? []);
+                const queued = new Set(current?.queuedIds ?? []);
+                const finished = new Set(current?.finishedIds ?? []);
+                if (event.state === "started") {
+                  active.add(event.leadName!);
+                  activeIds.add(event.leadId!);
+                  queued.delete(event.leadId!);
+                } else {
+                  active.delete(event.leadName!);
+                  activeIds.delete(event.leadId!);
+                  queued.delete(event.leadId!);
+                  finished.add(event.leadId!);
+                }
+                return { completed: event.completed ?? current?.completed ?? 0, total: event.total ?? current?.total ?? 0, active: [...active], activeIds: [...activeIds], queuedIds: [...queued], finishedIds: [...finished] };
+              });
+            } else if (event.type === "result") {
+              if ((event.status ?? 500) >= 400) throw new Error(String(event.body?.error || s("analysisFailed")));
+              finalPayload = event.body ?? {};
+            }
+          }
+          if (done) break;
+        }
+        if (!finalPayload) throw new Error(s("analysisFailed"));
+        payload = finalPayload;
+      } else {
+        payload = await response.json() as Record<string, unknown>;
+        if (!response.ok) throw new Error(String(payload.error || s("analysisFailed")));
       }
-      if (!response.ok) throw new Error(payload.error || s("analysisFailed"));
+      if (typeof payload.credits === "number") {
+        const refreshedCredits = payload.credits;
+        setSessionCredits(refreshedCredits);
+        setCurrentUser((user) => user ? { ...user, credits: refreshedCredits } : user);
+      }
+      if (!response.ok) throw new Error(String(payload.error || s("analysisFailed")));
       setLeads(payload.leads as Lead[]);
       const diagnostics = Array.isArray(payload.diagnostics) ? payload.diagnostics as AnalysisDiagnostic[] : [];
       setAnalysisDiagnostics(diagnostics);
       if (diagnostics.length > 0) setAnalysisDiagnosticsOpen(true);
       if (action === "pain_points") {
-        setNotice(s("painsDone", { analyzed: payload.analyzedCount, findings: payload.findingCount || 0 }));
+        setNotice(s("painsDone", { analyzed: Number(payload.analyzedCount), findings: Number(payload.findingCount || 0) }));
       } else {
-        setNotice(s("enrichDone", { count: payload.analyzedCount }));
+        setNotice(s("enrichDone", { count: Number(payload.analyzedCount) }));
       }
-      if (payload.noEvidenceCount > 0 || payload.failedCount > 0 || payload.skippedCount > 0 || payload.limitedCount > 0) {
+      if (Number(payload.noEvidenceCount) > 0 || Number(payload.failedCount) > 0 || Number(payload.skippedCount) > 0 || Number(payload.limitedCount) > 0) {
         const issues: string[] = [];
-        if (payload.noEvidenceCount > 0) {
+        if (Number(payload.noEvidenceCount) > 0) {
           issues.push(action === "pain_points"
-            ? s("issueNoEvidencePains", { count: payload.noEvidenceCount })
-            : s("issueNoEvidenceEnrich", { count: payload.noEvidenceCount }));
+            ? s("issueNoEvidencePains", { count: Number(payload.noEvidenceCount) })
+            : s("issueNoEvidenceEnrich", { count: Number(payload.noEvidenceCount) }));
         }
         const failureMessages = Array.isArray(payload.failures)
-          ? [...new Set(payload.failures.map((failure: { message?: unknown }) => typeof failure?.message === "string" ? failure.message : "" ).filter(Boolean))]
+          ? [...new Set((payload.failures as { message?: unknown }[]).map((failure) => typeof failure?.message === "string" ? failure.message : "" ).filter(Boolean))]
           : [];
-        if (payload.skippedCount > 0) issues.push(s("issueSkipped", { count: payload.skippedCount }));
-        if (payload.limitedCount > 0) issues.push(s("issueEnrichLimit", { count: payload.limitedCount, limit: 250 }));
-        if (payload.failedCount > 0) {
-          issues.push(failureMessages.length ? s("issueFailedDetail", { count: payload.failedCount, details: failureMessages.join("; ") }) : s("issueFailed", { count: payload.failedCount }));
+        if (Number(payload.skippedCount) > 0) issues.push(s("issueSkipped", { count: Number(payload.skippedCount) }));
+        if (Number(payload.limitedCount) > 0) issues.push(s("issueEnrichLimit", { count: Number(payload.limitedCount), limit: 250 }));
+        if (Number(payload.failedCount) > 0) {
+          issues.push(failureMessages.length ? s("issueFailedDetail", { count: Number(payload.failedCount), details: failureMessages.join("; ") }) : s("issueFailed", { count: Number(payload.failedCount) }));
         }
         setProblem(`${issues.join(". ")}.`);
       }
@@ -642,6 +694,28 @@ export default function Home() {
     } finally {
       setAnalysisBusy(null);
       setAnalysisRowBusyId("");
+      setAnalysisProgress(null);
+    }
+  }
+
+  async function saveLeadSelection(ids: string[], saved = true) {
+    const selected = [...new Set(ids)].filter((id) => leads.some((lead) => lead.id === id));
+    if (!selected.length) return;
+    setSavingLeadIds((current) => new Set([...current, ...selected]));
+    if (selected.length === leads.length) setSavingAll(true);
+    try {
+      const response = await fetch("/api/lead-suite/leads/saved", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ leadIds: selected, saved }) });
+      const payload = await response.json() as { savedIds?: string[]; error?: string };
+      if (!response.ok) throw new Error(payload.error || s("saveLeadsFailed"));
+      const updated = new Set(payload.savedIds ?? []);
+      setLeads((current) => current.map((lead) => updated.has(lead.id) ? { ...lead, saved_at: saved ? new Date().toISOString() : "" } : lead));
+      if (updated.size !== selected.length) setProblem(s("saveLeadsPartial", { saved: updated.size, total: selected.length }));
+      else setNotice(s(saved ? "leadsSaved" : "leadsUnsaved", { count: updated.size }));
+    } catch (error) {
+      setProblem(error instanceof Error ? error.message : s("saveLeadsFailed"));
+    } finally {
+      setSavingLeadIds((current) => new Set([...current].filter((id) => !selected.includes(id))));
+      setSavingAll(false);
     }
   }
 
@@ -835,6 +909,13 @@ export default function Home() {
             {problem && <button type="button" className="dismiss-button" onClick={() => setProblem("")}>{t("t_4b0816bbd5")}</button>}
           </div>
         )}
+        {analysisProgress && (
+          <div className="analysis-live-progress" role="status" aria-live="polite">
+            <LoaderCircle size={16} aria-hidden="true" />
+            <span>{s("analysisLiveProgress", { completed: analysisProgress.completed, total: analysisProgress.total || "…" })}</span>
+            {analysisProgress.active.length > 0 && <strong>{analysisProgress.active.join(", ")}</strong>}
+          </div>
+        )}
 
         <section className="results-section" id="history-section" aria-labelledby="results-title">
           <div className="results-heading">
@@ -852,6 +933,9 @@ export default function Home() {
               })()}
             </div>
             <div className="results-actions">
+              {leads.some((lead) => !lead.saved_at) && <button className="export-button save-all-leads" type="button" disabled={savingAll || Boolean(analysisBusy)} onClick={() => void saveLeadSelection(leads.filter((lead) => !lead.saved_at).map((lead) => lead.id))}>
+                {savingAll ? <LoaderCircle className="button-spinner-icon" size={15} aria-hidden="true" /> : <Bookmark size={15} aria-hidden="true" />}{s("saveAllLeads", { count: leads.filter((lead) => !lead.saved_at).length })}
+              </button>}
           <label className="full-data-toggle">
                 <input type="checkbox" role="switch" checked={showFullData} onChange={(event) => setShowFullData(event.target.checked)} />
                 <span className="full-data-track" aria-hidden="true" />
@@ -1000,6 +1084,9 @@ export default function Home() {
                   <tr key={lead.id} className={selectedLeadIds.has(lead.id) ? "is-selected" : undefined}>
                     <td className="lead-select-cell">
                       <input type="checkbox" checked={selectedLeadIds.has(lead.id)} disabled={deletingLeads} aria-label={s("selectLead", { name: lead.name })} onChange={() => toggleLeadSelection(lead.id)} />
+                      <button className={`lead-save-button${lead.saved_at ? " is-saved" : ""}`} type="button" disabled={savingLeadIds.has(lead.id)} aria-pressed={Boolean(lead.saved_at)} aria-label={s(lead.saved_at ? "unsaveLead" : "saveLead", { name: lead.name })} title={s(lead.saved_at ? "unsaveLead" : "saveLead", { name: lead.name })} onClick={() => void saveLeadSelection([lead.id], !lead.saved_at)}>
+                        {savingLeadIds.has(lead.id) ? <LoaderCircle size={15} aria-hidden="true" /> : <Bookmark size={15} fill={lead.saved_at ? "currentColor" : "none"} aria-hidden="true" />}
+                      </button>
                       <button className="lead-delete-button" type="button" disabled={deletingLeads || busy} aria-label={s("deleteLead", { name: lead.name })} title={s("deleteLead", { name: lead.name })} onClick={() => setPendingDelete([lead.id])}><Trash2 size={15} aria-hidden="true" /></button>
                     </td>
                     {tableColumns.map((column) => {
@@ -1091,6 +1178,7 @@ export default function Home() {
                               detail?.findings.map((finding) => [finding.title, finding.detail, ...finding.sources.map((source) => `${source.label}: ${source.text}${source.url ? ` (${source.url})` : ""}`)].filter(Boolean).join("\n")).join("\n\n"),
                             ].filter(Boolean).join("\n\n") || content
                           : [detail?.summary, content].filter((part, index, parts) => Boolean(part) && parts.indexOf(part) === index).join("\n\n");
+                        const painAnalysisFoundNothing = action === "pain_points" && detail?.status === "completed" && !content;
                         const noData = !content && Boolean(detail?.status);
                         const needsAnalysis = !content && !noData;
                         const cellText = content || (action === "pain_points" && detail?.status === "completed" ? s("noPains") : noData ? s("noData") : s("notAnalyzed"));
@@ -1107,7 +1195,9 @@ export default function Home() {
                               setAnalysisDialog({ leadId: lead.id, action: "pain_points", tag: pain.tags[0] });
                             },
                           } : {})}>
-                            {needsAnalysis && action === "pain_points"
+                            {painAnalysisFoundNothing
+                              ? <span className="analysis-cell-empty is-no-data">{s("noPains")}</span>
+                              : needsAnalysis && action === "pain_points"
                               ? <button
                                 className="analysis-cell-trigger is-enrich"
                                 type="button"
@@ -1115,7 +1205,13 @@ export default function Home() {
                                 onClick={() => requestPainAnalysis(lead.id)}
                                 aria-label={s("analyzePainAria", { name: lead.name })}
                               >
-                                {analysisBusy === action && (!analysisRowBusyId || analysisRowBusyId === lead.id) ? s("analyzing") : s("analyzePain")}
+                                {analysisBusy === action && (analysisProgress?.activeIds.includes(lead.id) || (analysisRowBusyId === lead.id && !analysisProgress?.activeIds.length))
+                                  ? s("analyzing")
+                                  : analysisBusy === action && analysisProgress?.queuedIds.includes(lead.id)
+                                    ? s("queued")
+                                  : analysisBusy === action && analysisProgress?.finishedIds.includes(lead.id)
+                                    ? s("analysisItemDone")
+                                    : s("analyzePain")}
                               </button>
                               : pain && pain.tags.length > 0
                               ? <span className="pain-tags">

@@ -20,7 +20,7 @@ async function tick() {
     });
     const body = await res.json().catch(() => ({}));
     if (!res.ok) logger.warn({ status: res.status }, 'scheduled dispatch failed');
-    else if (body.sent || body.failed) logger.info(body, 'scheduled dispatch');
+    else if (body.sent || body.queued || body.failed) logger.info(body, 'scheduled dispatch');
   } catch (err) {
     logger.warn({ err: err.message }, 'scheduled dispatch error');
   } finally {

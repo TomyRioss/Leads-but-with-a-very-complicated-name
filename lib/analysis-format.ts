@@ -162,7 +162,7 @@ export function painView(detail: AnalysisDetail | null, plainText: string | null
   return { tags, report, hasContent: tags.length > 0 || Boolean(report) };
 }
 
-/** ¿Ya hay un análisis de dolores completado con resultado para este mismo foco? Evita repetir llamadas y cobros. */
+/** ¿Ya se completó un análisis para este mismo foco? Un resultado vacío también está completo. */
 export function isPainAnalysisCurrent(detail: AnalysisDetail | null | undefined, focus: string) {
-  return Boolean(detail && detail.status === "completed" && hasPainResult({ tags: detail.tags, report: detail.report, findings: detail.findings ?? [] }) && clean(detail.focus, 300) === clean(focus, 300));
+  return Boolean(detail && detail.status === "completed" && clean(detail.focus, 300) === clean(focus, 300));
 }

@@ -45,7 +45,7 @@ export async function GET(request: Request) {
     page,
     perPage,
     sort: resolveSort(params.get("sort"), sortColumns, "-created"),
-    fields: "id,email,name,credits,created,updated,role,phone",
+    fields: "id,email,name,credits,created,updated,role,phone,owner_contacted",
   };
   if (q) query.filter = `email ~ ${filterString(q)} || name ~ ${filterString(q)}`;
 
@@ -126,6 +126,7 @@ export async function GET(request: Request) {
           credits: normalizeCredits(user.credits),
           created: user.created,
           phone: user.phone || "",
+          ownerContacted: user.owner_contacted === true,
           lastActivity: lastActivity.get(user.id) ?? "",
           role: user.role === "owner" ? "owner" : "user",
           subscription: subscription ? toSubscriptionSummary(subscription) : null,

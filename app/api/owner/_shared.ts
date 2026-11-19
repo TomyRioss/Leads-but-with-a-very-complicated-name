@@ -9,7 +9,7 @@ export const maxCredits = 1_000_000;
 const recordIdPattern = /^[A-Za-z0-9]{1,30}$/;
 const maxPages = 500;
 
-export type UserRecord = { id: string; email: string; name?: string; credits?: number; created: string; updated?: string; phone?: string; role?: string };
+export type UserRecord = { id: string; email: string; name?: string; credits?: number; created: string; updated?: string; phone?: string; role?: string; owner_contacted?: boolean };
 export type SubscriptionRecord = {
   id: string;
   user: string;

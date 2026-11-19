@@ -90,14 +90,14 @@ export async function findUserLeads(userId: string, query: string, limit = 10): 
   return result.items.map(toLead);
 }
 
-export type MentionLead = Pick<LeadMatch, "id" | "name" | "category" | "city" | "contactStatus"> & { batchDate: string | null; saved: boolean };
+export type MentionLead = Pick<LeadMatch, "id" | "name" | "category" | "city" | "phone" | "website" | "contactStatus"> & { batchDate: string | null; saved: boolean };
 type MentionRow = LeadRow & { saved_at?: string; expand?: { batch?: { created_at?: string } } };
 const MENTION_CANDIDATES = 50;
 const MENTION_FIELDS = `${LEAD_FIELDS},saved_at,expand.batch.created_at`;
 
 function toMention(row: MentionRow): MentionLead {
   const lead = toLead(row);
-  return { id: lead.id, name: lead.name, category: lead.category, city: lead.city, contactStatus: lead.contactStatus, batchDate: fromPbDate(row.expand?.batch?.created_at), saved: Boolean(row.saved_at) };
+  return { id: lead.id, name: lead.name, category: lead.category, city: lead.city, phone: lead.phone, website: lead.website, contactStatus: lead.contactStatus, batchDate: fromPbDate(row.expand?.batch?.created_at), saved: Boolean(row.saved_at) };
 }
 
 export const SIDEBAR_VIEWS = ["saved", "recent", "contacted"] as const;
@@ -114,7 +114,7 @@ export async function listSidebarLeads(userId: string, view: SidebarView, limit 
   const result = await pocketBaseFetch<List<MentionRow>>(listPath("leads", {
     filter: [ownLead(userId), filter].filter(Boolean).join(" && "),
     sort,
-    perPage: String(clampInt(limit, 1, 50, 30)),
+    perPage: String(clampInt(limit, 1, 150, 30)),
     skipTotal: "1",
     expand: "batch",
     fields: MENTION_FIELDS,
@@ -127,6 +127,37 @@ export async function setLeadSaved(userId: string, leadId: string, saved: boolea
   if (!(await getUserLead(userId, leadId))) return false;
   await pocketBaseFetch(recordPath("leads", leadId), { method: "PATCH", body: JSON.stringify({ saved_at: saved ? toPbDate(new Date().toISOString()) : "" }) });
   return true;
+}
+
+export async function setLeadsSaved(userId: string, leadIds: string[], saved: boolean): Promise<string[]> {
+  const ids = [...new Set(leadIds)].filter((id) => /^[a-zA-Z0-9]{15}$/.test(id)).slice(0, 150);
+  if (!ids.length) return [];
+  const filter = `${ownLead(userId)} && (${ids.map((id) => `id = ${quote(id)}`).join(" || ")})`;
+  const owned = await pocketBaseFetch<List<{ id: string }>>(listPath("leads", { filter, perPage: "150", skipTotal: "1", fields: "id" }));
+  const ownedIds = owned.items.map(({ id }) => id);
+  const savedIds: string[] = [];
+  for (let offset = 0; offset < ownedIds.length; offset += 5) {
+    const chunk = ownedIds.slice(offset, offset + 5);
+    const results = await Promise.all(chunk.map(async (id) => {
+      try {
+        await pocketBaseFetch(recordPath("leads", id), { method: "PATCH", body: JSON.stringify({ saved_at: saved ? toPbDate(new Date().toISOString()) : "" }) });
+        return id;
+      } catch { return null; }
+    }));
+    savedIds.push(...results.filter((id): id is string => Boolean(id)));
+  }
+  return savedIds;
+}
+
+export async function setBatchLeadsSaved(userId: string, batchId: string, saved = true): Promise<string[] | null> {
+  if (!/^[a-zA-Z0-9]{15}$/.test(batchId)) return null;
+  const batches = await pocketBaseFetch<List<{ id: string }>>(listPath("lead_batches", { filter: `id = ${quote(batchId)} && user = ${quote(userId)}`, perPage: "1", skipTotal: "1", fields: "id" }));
+  if (!batches.items.length) return null;
+  const leads = await pocketBaseFetch<List<{ id: string; saved_at?: string }>>(listPath("leads", { filter: `batch = ${quote(batchId)}`, perPage: "150", skipTotal: "1", fields: "id,saved_at" }));
+  if (!saved) return setLeadsSaved(userId, leads.items.filter((lead) => Boolean(lead.saved_at)).map(({ id }) => id), false);
+  const alreadySaved = leads.items.filter((lead) => Boolean(lead.saved_at)).map(({ id }) => id);
+  const newlySaved = await setLeadsSaved(userId, leads.items.filter((lead) => !lead.saved_at).map(({ id }) => id), true);
+  return [...alreadySaved, ...newlySaved];
 }
 
 /**
@@ -453,12 +484,14 @@ export async function findDuplicateContact(userId: string, input: RecordContactI
   return result.items[0] ? toContact(result.items[0]) : null;
 }
 
+export type LeadPainEvidence = { tag: string; detail: string; sources: { label: string; quote: string; url: string }[] };
 export type LeadPainBrief = {
   lead: LeadMatch;
   email: string;
   tags: string[];
   report: string;
   proposals: { variant: string; service: string; message: string }[];
+  pains: LeadPainEvidence[];
   analyzed: boolean;
   focus: string;
 };
@@ -478,6 +511,15 @@ export async function getLeadPainBrief(userId: string, leadId: string): Promise<
     tags,
     report: (detail?.report || row.pain_points || "").slice(0, 1200),
     proposals: Array.isArray(detail?.proposals) ? detail.proposals.slice(0, 2).map((p) => ({ variant: p.variant, service: p.service, message: p.message.slice(0, 1200) })) : [],
+    pains: Array.isArray(detail?.findings) ? detail.findings.slice(0, 4).map((finding) => ({
+      tag: (finding.tag || finding.title || "").slice(0, 100),
+      detail: (finding.detail || "").slice(0, 280),
+      sources: Array.isArray(finding.sources) ? finding.sources.slice(0, 3).map((source) => ({
+        label: (source.label || "").slice(0, 120),
+        quote: (source.text || "").slice(0, 280),
+        url: /^https?:\/\//i.test(source.url || "") ? source.url.slice(0, 1000) : "",
+      })).filter((source) => source.label || source.quote || source.url) : [],
+    })).filter((pain) => pain.tag || pain.detail || pain.sources.length) : [],
     analyzed: detail?.status === "completed" || tags.length > 0,
     focus: detail?.focus ?? "",
   };

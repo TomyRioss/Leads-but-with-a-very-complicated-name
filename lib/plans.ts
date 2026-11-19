@@ -49,7 +49,6 @@ const growthLimits: PlanLimits = { whatsappMonthly: 500, emailMonthly: 500, sche
 export const subscriptionPlans: readonly Plan[] = [
   { id: "starter", name: "Starter", priceUsd: 10, priceArs: 15_000, credits: 350, limits: { whatsappMonthly: 150, emailMonthly: 150, scheduledMonthly: 20 }, featured: false, visibility: "public", period: PLAN_PERIOD },
   { id: "growth", name: "Growth", priceUsd: 50, priceArs: 75_000, credits: 750, limits: growthLimits, featured: true, visibility: "public", period: PLAN_PERIOD },
-  { id: "test", name: "TEST PLAN", priceUsd: 1, priceArs: 15, credits: 1_000, limits: growthLimits, featured: false, visibility: "private", period: PLAN_PERIOD },
 ];
 
 /** Accounts without an active plan (unchanged pre-plan behavior): 10 schedules count every channel; no monthly email cap. */

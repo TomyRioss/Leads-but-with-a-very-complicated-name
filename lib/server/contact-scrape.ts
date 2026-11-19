@@ -144,7 +144,7 @@ async function assertPublicUrl(url: URL) {
   if (!addresses.length || addresses.some((entry) => isPrivateAddress(entry.address))) throw new Error("Private address");
 }
 
-async function fetchPublicHtml(rawUrl: string): Promise<{ url: string; html: string } | null> {
+export async function fetchPublicHtml(rawUrl: string): Promise<{ url: string; html: string } | null> {
   let url = new URL(rawUrl);
   const signal = AbortSignal.timeout(pageTimeoutMs);
   for (let hop = 0; hop <= maxRedirects; hop += 1) {

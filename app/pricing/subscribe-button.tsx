@@ -35,7 +35,7 @@ export function SubscribeButton({ planId }: { planId: string }) {
 
   return (
     <div className="price-subscribe">
-      <button type="button" className="price-button price-button-dark" onClick={subscribe} disabled={busy} aria-busy={busy}>
+      <button type="button" className="price-button price-button-subscribe" onClick={subscribe} disabled={busy} aria-busy={busy}>
         {busy ? t("subscribing") : t("subscribe")}
         {busy ? <LoaderCircle size={16} className="price-spin" aria-hidden="true" /> : <ArrowRight size={16} aria-hidden="true" />}
       </button>

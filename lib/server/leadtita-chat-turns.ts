@@ -8,7 +8,7 @@ const MAX_REPLY_CHARS = 30_000;
 const MAX_ACTIONS = 20;
 const USER_ID = /^[A-Za-z0-9]{15}$/;
 const CLIENT_ID = /^[A-Za-z0-9_-]{1,64}$/;
-const ERROR_CODES = new Set(["chat_failed", "unavailable", "aborted", "context_full"]);
+const ERROR_CODES = new Set(["chat_failed", "unavailable", "aborted", "context_full", "result_too_large", "result_invalid"]);
 const ACTION_TYPES = new Set([
   "pending_change",
   "lead_candidates",
@@ -18,7 +18,24 @@ const ACTION_TYPES = new Set([
   "whatsapp_connect",
   "drive_file",
   "batch_updated",
+  "message_model_choice",
+  "message_model_delete_confirmation",
 ]);
+
+export type ChatTurnResultIssue = "invalid_shape" | "reply_too_long" | "too_many_actions" | "unknown_action" | "result_too_large" | "not_serializable";
+
+export class ChatTurnResultError extends TypeError {
+  constructor(
+    readonly issue: ChatTurnResultIssue,
+    readonly replyChars: number,
+    readonly actionCount: number,
+    readonly resultBytes: number | null,
+    readonly actionTypes: string[],
+  ) {
+    super("Chat turn result failed validation.");
+    this.name = "ChatTurnResultError";
+  }
+}
 
 export type ChatTurnRecord = {
   userId: string;
@@ -60,15 +77,24 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }
 
-function validateResult(value: unknown): LeadSuiteChatResult | null {
-  if (!isRecord(value) || typeof value.reply !== "string" || value.reply.length > MAX_REPLY_CHARS) return null;
-  if (!Array.isArray(value.actions) || value.actions.length > MAX_ACTIONS) return null;
-  if (!value.actions.every((action) => isRecord(action) && typeof action.type === "string" && ACTION_TYPES.has(action.type))) return null;
+function validateResult(value: unknown): LeadSuiteChatResult {
+  const reply = isRecord(value) && typeof value.reply === "string" ? value.reply : "";
+  const actions = isRecord(value) && Array.isArray(value.actions) ? value.actions : [];
+  const actionTypes = actions.slice(0, MAX_ACTIONS).map((action) => isRecord(action) && typeof action.type === "string" ? action.type.slice(0, 80) : "invalid");
+  const fail = (issue: ChatTurnResultIssue, bytes: number | null = null): never => {
+    throw new ChatTurnResultError(issue, reply.length, actions.length, bytes, actionTypes);
+  };
+  if (!isRecord(value) || typeof value.reply !== "string" || !Array.isArray(value.actions)) fail("invalid_shape");
+  if (reply.length > MAX_REPLY_CHARS) fail("reply_too_long");
+  if (actions.length > MAX_ACTIONS) fail("too_many_actions");
+  if (!actions.every((action) => isRecord(action) && typeof action.type === "string" && ACTION_TYPES.has(action.type))) fail("unknown_action");
+  let bytes: number;
   try {
-    if (Buffer.byteLength(JSON.stringify(value), "utf8") > MAX_RESULT_BYTES) return null;
+    bytes = Buffer.byteLength(JSON.stringify(value), "utf8");
   } catch {
-    return null;
+    return fail("not_serializable");
   }
+  if (bytes > MAX_RESULT_BYTES) fail("result_too_large", bytes);
   return value as unknown as LeadSuiteChatResult;
 }
 
@@ -90,8 +116,8 @@ async function findTurn(userId: string, conversationId: string, turnId: string):
 function duplicateResult(row: Row): ChatTurnClaim {
   if (row.status === "running") return { kind: "running" };
   if (row.status === "completed") {
-    const result = validateResult(row.result);
-    if (!result) throw new Error("Stored chat turn result is invalid.");
+    let result: LeadSuiteChatResult;
+    try { result = validateResult(row.result); } catch { throw new Error("Stored chat turn result is invalid."); }
     return { kind: "completed", result };
   }
   if (row.status === "failed" && typeof row.error_code === "string" && ERROR_CODES.has(row.error_code)) {
@@ -128,7 +154,6 @@ export async function finishChatTurn(
   let patch: Record<string, unknown>;
   if (outcome.status === "completed") {
     const result = validateResult(outcome.result);
-    if (!result) throw new TypeError("Invalid or oversized chat turn result.");
     patch = { status: "completed", result, error_code: "" };
   } else if (outcome.status === "failed" && ERROR_CODES.has(outcome.errorCode)) {
     patch = { status: "failed", result: null, error_code: outcome.errorCode };

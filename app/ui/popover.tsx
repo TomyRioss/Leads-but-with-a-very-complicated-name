@@ -59,6 +59,8 @@ type PopoverProps = {
   role?: "dialog" | "menu" | "listbox";
   /** Default: selected/first item for menus, first control for dialogs. "none" keeps focus where it is. */
   initialFocus?: "none" | RefObject<HTMLElement | null>;
+  /** Disable focus-loss dismissal while an embedded interaction is active. Outside clicks still close. */
+  dismissOnBlur?: boolean;
   className?: string;
   style?: CSSProperties;
   "aria-label"?: string;
@@ -80,6 +82,7 @@ function PopoverSurface({
   matchAnchorWidth = false,
   role = "dialog",
   initialFocus,
+  dismissOnBlur = true,
   className,
   style,
   children,
@@ -162,8 +165,12 @@ function PopoverSurface({
     let frame = 0;
     const schedule = () => { cancelAnimationFrame(frame); frame = requestAnimationFrame(() => placeRef.current()); };
     const onPointerDown = (event: PointerEvent) => {
+      // Native popovers enter the browser's top layer. Use the composed event path
+      // as well as DOM containment so clicks inside nested content never dismiss it.
+      const path = event.composedPath();
       const node = event.target as Node;
-      if (el.contains(node) || anchorRef.current?.contains(node)) return;
+      const anchor = anchorRef.current;
+      if (path.includes(el) || (anchor && path.includes(anchor)) || el.contains(node) || anchor?.contains(node)) return;
       onCloseRef.current();
     };
     const onKeyDown = (event: KeyboardEvent) => {
@@ -209,6 +216,7 @@ function PopoverSurface({
 
   // Focus left both popover and trigger (Tab away, click in another window region) → close.
   function onBlur(event: ReactFocusEvent<HTMLDivElement>) {
+    if (!dismissOnBlur) return;
     const next = event.relatedTarget as Node | null;
     if (next && (ref.current?.contains(next) || anchorRef.current?.contains(next))) return;
     requestAnimationFrame(() => {

@@ -22,9 +22,9 @@ const seller: SkillModule = Object.freeze({
   version: 2,
   text: [
     "Help the user sell with concise, relevant offers and objection handling. Use the user's language and explicit tone preference.",
-    "Before drafting for a specific lead, always call lead_brief and ground every claim in its verified pains, proposals and contact history; request pain analysis when evidence is missing. For a follow-up, read lead_history first and use a different angle than the last message sent.",
+    "Before drafting for a specific lead, use verified facts already in conversation. Call lead_brief only when needed for a requested detail or contact history missing from context. Pain analysis is only for explicit pain-analysis requests or drafts the user asks to ground in pain evidence, and only when evidence is missing. When revising drafts already shown, reuse the refs and evidence in context without calling lead_brief or analysis tools again. Initial Leadta sales proposals use five narrative beats in order: warm greeting, 'Soy Tomas, fundador de Leadta.', one or two verified details about the business and why Leadta can help, explain how Leadta finds and contacts potential customers automatically so the business can grow without needing a salesperson, then https://leadta.app with the free trial and an offer to answer questions or show the product. In Rioplatense Spanish, deliberately omit the opening inverted question mark in 'Hola, cómo están?'. Say the business came from social media only when verified. Keep the message minimal; no dramatic phrasing, invented pain, or unsolicited business advice. When the lead's contact status is already contacted, replied, meeting, won or lost, label the button as follow-up and draft a concise follow-up without repeating the cold introduction or pitch. Never invent what was said in prior contact.",
     "Objections (price, \"ya tengo web\", no time, \"mandame info\", \"lo voy a pensar\"): answer with one line acknowledging it, one reframe tied to the lead's verified pain or expected result, and one low-commitment next step. When a lead is known, deliver that answer as a suggest_messages draft.",
-    "Format by channel: WhatsApp = at most 4 short sentences, no subject; email = subject under 60 characters plus 4-6 short sentences. If the user wants to sell but names no lead, ask which one in one line.",
+    "Keep the five narrative beats concise in both WhatsApp and Gmail. Email has a separate subject under 60 characters. If the user wants to sell but names no lead, ask which one in one line.",
     "Deliver drafts through suggest_messages and distinguish a prepared message from a confirmed send.",
   ].join("\n"),
 });
@@ -44,7 +44,7 @@ const planner: SkillModule = Object.freeze({
   id: "planner",
   version: 2,
   text: [
-    "Help organize practical sales next steps and follow-ups. For any planning request (what to do today or this week, who to follow up, priorities), call followup_feedback first; call lead_history only for a lead that needs more detail.",
+    "Help organize practical sales next steps and follow-ups. For planning based on account-wide performance or contact metrics, call followup_feedback. If the needed leads, dates and statuses are already in context, plan directly without loading metrics. call lead_history only for a lead that needs more detail.",
     "Answer with up to three short bold sections in the user's language, skipping empty ones, each with at most 3 bullets of lead name + concrete action + channel:",
     "- Today: leads in replied or meeting status, and pending follow-ups last contacted 3+ days ago.",
     "- This week: other pending follow-ups and leads with analyzed pains not yet contacted.",

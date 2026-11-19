@@ -8,7 +8,7 @@ import { getSession } from "@/lib/client/session";
 
 /**
  * `?next=` return path: only same-origin relative paths ("/…", never "//…" or with backslashes or control chars).
- * Anything else is ignored and the user lands on /buscar.
+ * Anything else is ignored and the user lands on /leadtita.
  */
 function safeNextPath(value: string | null): string | null {
   if (!value || !value.startsWith("/") || value.startsWith("//") || value.includes("\\")) return null;
@@ -27,7 +27,7 @@ function safeNextPath(value: string | null): string | null {
 /** /login and /register: the same AuthForm /buscar shows as its gate, with a real URL per mode. */
 export function AuthPage({ mode }: { mode: "login" | "register" }) {
   const locale = useLocale();
-  const app = getPathname({ href: "/buscar", locale });
+  const app = getPathname({ href: "/leadtita", locale });
   const paths = { login: getPathname({ href: "/login", locale }), register: getPathname({ href: "/register", locale }) };
   // Read once on mount: switching login/register rewrites the URL and drops the query.
   const next = useRef<string | null>(null);

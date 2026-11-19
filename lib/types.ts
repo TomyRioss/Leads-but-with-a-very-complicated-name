@@ -47,6 +47,7 @@ export type LeadReview = {
 
 export type Lead = {
   id: string;
+  saved_at?: string;
   batch: string;
   name: string;
   maps_url: string;
