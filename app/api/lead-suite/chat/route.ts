@@ -8,7 +8,7 @@ import { DEFAULT_TIME_ZONE, isValidTimeZone, parseChatMessages, runLeadSuiteChat
 import { ChatTurnResultError, claimChatTurn, finishChatTurn, type ChatTurnOutcome } from "@/lib/server/leadtita-chat-turns";
 import { aiRequestLimit } from "@/lib/server/ai-daily-limit";
 
-export const maxDuration = 900;
+export const maxDuration = 300;
 // Attachment contexts (CSV rows up to 2,000 per file) travel with the conversation.
 const MAX_BODY_BYTES = 3_000_000;
 const CONTEXT_FULL = "context_full";
