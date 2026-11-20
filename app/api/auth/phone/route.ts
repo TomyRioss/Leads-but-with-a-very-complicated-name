@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { isValidPhoneNumber } from "libphonenumber-js/min";
 import { clearPendingPhoneCookie, getCurrentUser, getPendingPhoneUser, setSessionCookie } from "@/lib/server/auth";
+import { sendStaffAlert } from "@/lib/server/email";
 import { errorTranslator } from "@/lib/server/locale";
 import { PocketBaseRequestError, pocketBaseFetch } from "@/lib/server/pocketbase";
 
@@ -25,6 +26,12 @@ export async function POST(request: Request) {
       method: "PATCH",
       body: JSON.stringify({ phone }),
     });
+    // Registro con Google: recién acá hay teléfono (solo el paso pendiente lo guarda por primera vez).
+    if (pending) {
+      await sendStaffAlert({ kind: "signup", user: { id: session.user.id, email: session.user.email, name: session.user.name, phone } }).catch((alertError) => {
+        console.error("Leadta signup alert failed:", alertError instanceof Error ? alertError.message : "unknown error");
+      });
+    }
     const response = NextResponse.json({ user: session.user });
     setSessionCookie(response, session.token);
     clearPendingPhoneCookie(response);

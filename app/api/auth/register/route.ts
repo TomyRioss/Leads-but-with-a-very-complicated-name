@@ -5,7 +5,7 @@ import { isValidPhoneNumber } from "libphonenumber-js/min";
 import { clientIp, rateLimited } from "@/lib/server/rate-limit";
 import { verifyTurnstile } from "@/lib/server/turnstile";
 import { errorTranslator, localeFrom } from "@/lib/server/locale";
-import { sendVerificationEmail, updateEmailUser } from "@/lib/server/email";
+import { sendStaffAlert, sendVerificationEmail, updateEmailUser } from "@/lib/server/email";
 import { PocketBaseAuthError, PocketBaseRequestError, isPocketBaseConfigured, pocketBaseFetch } from "@/lib/server/pocketbase";
 
 const signupCredits = 50;
@@ -94,6 +94,9 @@ export async function POST(request: Request) {
     const user = await pocketBaseFetch<UserRecord>("/api/collections/users/records", {
       method: "POST",
       body: JSON.stringify({ email, phone, password, passwordConfirm, name, credits: signupCredits, emailVisibility: false, verified: false }),
+    });
+    await sendStaffAlert({ kind: "signup", user: { id: user.id, email, name, phone } }).catch((alertError) => {
+      console.error("Leadta signup alert failed:", alertError instanceof Error ? alertError.message : "unknown error");
     });
     let verificationSent = false;
     try {

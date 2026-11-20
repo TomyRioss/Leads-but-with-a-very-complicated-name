@@ -5,7 +5,9 @@ export const CREDITS_PER_LEAD = 2;
 export const CREDITS_PER_PAIN_ANALYSIS = 0;
 const staleLockMilliseconds = 15 * 60 * 1000;
 
-type CreditUserRecord = { id: string; credits?: number };
+const LOW_CREDITS_THRESHOLD = 15;
+
+type CreditUserRecord = { id: string; credits?: number; email?: string; name?: string; phone?: string };
 type CreditLockRecord = { id: string; created?: string };
 
 export class InsufficientCreditsError extends Error {
@@ -67,7 +69,17 @@ export async function adjustCredits(userId: string, delta: number, expected: num
     method: "PATCH",
     body: JSON.stringify(delta > 0 ? { "credits+": delta } : { "credits-": -delta }),
   });
-  return typeof record?.credits === "number" && Number.isFinite(record.credits) ? record.credits : expected;
+  const balance = typeof record?.credits === "number" && Number.isFinite(record.credits) ? record.credits : expected;
+  // Aviso al staff solo al cruzar el umbral hacia abajo; un fallo del mail nunca rompe el cobro.
+  if (delta < 0 && balance < LOW_CREDITS_THRESHOLD && balance - delta >= LOW_CREDITS_THRESHOLD && record?.email) {
+    try {
+      const { sendStaffAlert } = await import("@/lib/server/email");
+      await sendStaffAlert({ kind: "low-credits", user: { id: userId, email: record.email, name: record.name, phone: record.phone }, credits: balance });
+    } catch (error) {
+      console.error("Leadta low-credits alert failed:", error instanceof Error ? error.message : "unknown error");
+    }
+  }
+  return balance;
 }
 
 export async function reserveCreditAmount(userId: string, requestedCredits: number) {

@@ -1,38 +1,31 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { Geist } from "next/font/google";
-import { ArrowRight, Newspaper, Search, Sparkles } from "lucide-react";
 import { BrandLogo } from "./brand-logo";
-import { NotFoundGame } from "./not-found-game";
+import { NotFoundSearch } from "./not-found-search";
 import "./globals.css";
-import "./not-found.css";
 
 export const metadata: Metadata = { title: "404 | Leadta", robots: { index: false, follow: false } };
 
 const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 
 // ponytail: bilingüe y fuera de [locale] (sin layout ni locale conocido); carga globals.css y Geist acá para usar los tokens de marca.
-// El contenido y los links son Server Component (funcionan sin JS); el radar interactivo es el único Client Component.
+// Título y texto son Server Component; el buscador de destinos (con la URL rota como consulta) es el único Client Component y se renderiza con links aun sin JS.
 export default function NotFound() {
   return (
-    <main className={`nf-page ${geistSans.variable}`}>
-      <div className="nf-inner">
-        <div className="nf-copy">
-          <BrandLogo />
-          <p className="nf-badge">404</p>
-          <h1 className="nf-title">Este lead se nos escapó<span className="nf-dot" aria-hidden="true">.</span></h1>
-          <p className="nf-text">
+    <main className={`${geistSans.variable} grid min-h-dvh content-center bg-(--ash-100) px-4 py-8 text-(color:--ink) [font-family:var(--font-geist-sans),Arial,sans-serif]`}>
+      <div className="mx-auto grid w-full max-w-[760px] gap-7">
+        <div className="justify-self-start"><BrandLogo /></div>
+        <div className="grid gap-4">
+          <p className="m-0 w-fit rounded-full bg-(--ash-950) px-2.5 py-1 text-xs font-bold tracking-[0.06em] tabular-nums text-(color:--lime)">404</p>
+          <h1 className="m-0 text-[clamp(2.5rem,1.5rem+4.2vw,4.5rem)] font-[650] leading-[1] tracking-[-0.05em] text-balance">
+            Este lead se nos escapó<span className="text-(color:--lime-dark)" aria-hidden="true">.</span>
+          </h1>
+          <p className="m-0 max-w-[52ch] text-[17px] leading-[1.55] text-(color:--ash-700) text-pretty">
             Buscamos por todos lados y esta página no aparece: puede que el link esté mal escrito o que se haya movido.
-            <span className="nf-en" lang="en">This page slipped away. The link may be mistyped or the page moved.</span>
+            <span className="mt-1.5 block text-sm text-(color:--muted)" lang="en">This page slipped away. The link may be mistyped or the page moved.</span>
           </p>
-          <ul className="nf-links">
-            <li><Link className="nf-link nf-link-primary" href="/">Ir al inicio <ArrowRight size={18} aria-hidden="true" /></Link></li>
-            <li><Link className="nf-link" href="/buscar"><Search size={18} aria-hidden="true" />Buscar leads</Link></li>
-            <li><Link className="nf-link" href="/leadtita"><Sparkles size={18} aria-hidden="true" />Leadtita</Link></li>
-            <li><Link className="nf-link" href="/blog"><Newspaper size={18} aria-hidden="true" />Blog</Link></li>
-          </ul>
         </div>
-        <NotFoundGame />
+        <NotFoundSearch />
       </div>
     </main>
   );

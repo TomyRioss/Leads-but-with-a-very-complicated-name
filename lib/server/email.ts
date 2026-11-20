@@ -96,7 +96,7 @@ export function readPasswordResetToken(token: string): { id: string; email: stri
   return data && typeof data.v === "string" ? { id: data.id, email: data.email, v: data.v } : null;
 }
 
-async function sendEmail(input: { from: string; to: string; subject: string; text: string; html: string; idempotencyKey: string; replyTo?: string }) {
+async function sendEmail(input: { from: string; to: string | string[]; subject: string; text: string; html: string; idempotencyKey: string; replyTo?: string }) {
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) throw new Error("RESEND_API_KEY is not configured.");
 
@@ -109,7 +109,7 @@ async function sendEmail(input: { from: string; to: string; subject: string; tex
     },
     body: JSON.stringify({
       from: input.from,
-      to: [input.to],
+      to: Array.isArray(input.to) ? input.to : [input.to],
       subject: input.subject,
       text: input.text,
       html: input.html,
@@ -155,6 +155,29 @@ const feedbackInbox = "tomyrios2006@gmail.com";
 export async function sendFeedbackNotification(input: { subject: string; text: string; idempotencyKey: string; replyTo: string }) {
   const html = `<pre style="font:13px/1.5 ui-monospace,Menlo,monospace;white-space:pre-wrap">${renderFeedbackHtml(input.text)}</pre>`;
   await sendEmail({ from: supportSender, to: feedbackInbox, subject: input.subject, text: input.text, html, idempotencyKey: input.idempotencyKey, replyTo: input.replyTo });
+}
+
+// ponytail: remitente en leadta.app porque es el único dominio verificado en Resend (leadta.com daría 403).
+const staffSender = "Leadta Staff <staff@leadta.app>";
+const staffInboxes = ["tomyrios2006@gmail.com", "enzogalante7@gmail.com"];
+
+/** Aviso interno de registro nuevo o de saldo bajo, con link directo al WhatsApp del usuario. */
+export async function sendStaffAlert(input: { kind: "signup" | "low-credits"; user: { id: string; email: string; name?: string; phone?: string }; credits?: number }) {
+  const { user } = input;
+  const digits = user.phone?.replace(/\D/g, "") ?? "";
+  const whatsapp = digits ? `https://wa.me/${digits}` : "";
+  const subject = input.kind === "signup" ? `Nuevo registro: ${user.email}` : `Créditos bajos (${input.credits}): ${user.email}`;
+  const lines = [
+    input.kind === "signup" ? "Se registró un usuario nuevo." : `Un usuario quedó con menos de 15 créditos (le quedan ${input.credits}).`,
+    `Nombre: ${user.name || "-"}`,
+    `Email: ${user.email}`,
+    `Teléfono: ${user.phone || "sin teléfono"}`,
+    ...(whatsapp ? [`WhatsApp: ${whatsapp}`] : []),
+  ];
+  const html = lines.map((line) => renderFeedbackHtml(line).replace(/https:\/\/wa\.me\/\d+/, (url) => `<a href="${url}">${url}</a>`)).join("<br>");
+  // La Idempotency-Key de Resend (24 h) evita repetir el aviso: bajos créditos 1 por día y usuario, registro 1 por usuario.
+  const idempotencyKey = input.kind === "signup" ? `leadta-staff-signup-${user.id}` : `leadta-staff-low-credits-${user.id}-${new Date().toISOString().slice(0, 10)}`;
+  await sendEmail({ from: staffSender, to: staffInboxes, subject, text: lines.join("\n"), html, idempotencyKey });
 }
 
 export async function sendFeedbackThanksEmail(input: { to: string; locale: Locale; credits: number; issueId: string }) {

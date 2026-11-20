@@ -71,6 +71,7 @@ Fuente de los valores: OSPECTO, app/globals.css.
 
 - Para diseño y cambios visuales, aplicá las skills frontend-design e impeccable. Inspeccioná la interfaz existente y conservá su identidad cuando ya esté definida.
 - Priorizá jerarquía visual, legibilidad, accesibilidad, foco de teclado, estados vacíos y errores, y adaptación a móvil.
+- Estilos con Tailwind (clases utilitarias en el JSX, tokens vía `bg-(--ash-950)`, `text-(color:--ink)`). No crear archivos `.css` nuevos para componentes ni páginas.
 - No escribas SVG a mano ni dibujes iconos con texto, emojis o pseudo-elementos. Para iconografía, usá la librería de iconos React existente; si no hay una, agregá una alternativa mantenida como lucide-react o react-icons e importá solo los iconos necesarios.
 - No crees gráficos SVG para diseños salvo pedido explícito. Preferí CSS, componentes e imágenes rasterizadas cuando corresponda.
 - Para QA web solicitado o necesario en una entrega visual, usá dogfood: recorré flujos principales y casos límite, revisá estados vacíos y errores, inspeccioná la consola y registrá pasos reproducibles y evidencia.
