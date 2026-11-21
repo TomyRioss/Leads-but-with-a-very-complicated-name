@@ -77,6 +77,8 @@ export type Lead = {
   role?: string;
   location?: string;
   whatsapp?: string;
+  /** Número verificado en WhatsApp ("verified") o sin WhatsApp ("none"); vacío = sin analizar. */
+  whatsapp_status?: "" | "verified" | "none";
   source?: "" | "serper" | "github" | "instagram" | "facebook" | "web";
   source_url?: string;
   /** 0..4 (WhatsApp, email, redes, dolores). */

@@ -118,6 +118,52 @@ async function postMessages(userId, body) {
   return { queued, duplicates, invalid, etaSeconds };
 }
 
+// Phone -> registered on WhatsApp. Same business shows up in many users' searches, so a week of cache saves lookups.
+const CHECK_TTL_MS = 7 * 24 * 3600_000;
+const CHECK_CACHE_MAX = 20_000;
+const checkCache = new Map();
+// WhatsApp registers some mobiles with an extra digit (AR 549..., MX 521...): compare without it.
+const sameNumber = (phone) => phone.replace(/^549/, '54').replace(/^521/, '52');
+
+async function postCheck(userId, body) {
+  const phones = body?.phones;
+  if (!Array.isArray(phones) || phones.length < 1 || phones.length > 25 || !phones.every((p) => typeof p === 'string' && PHONE_RE.test(p))) {
+    throw new HttpError(400, 'invalid_phones');
+  }
+  const sock = getSocket(userId);
+  if (!sock) throw new HttpError(409, 'not_connected');
+
+  const now = Date.now();
+  const results = {};
+  const unknown = [];
+  for (const phone of new Set(phones)) {
+    const hit = checkCache.get(phone);
+    if (hit && now - hit.at < CHECK_TTL_MS) results[phone] = hit.exists;
+    else unknown.push(phone);
+  }
+  if (unknown.length) {
+    let found = null;
+    try {
+      found = (await sock.onWhatsApp(...unknown.map((p) => `${p}@s.whatsapp.net`))) ?? [];
+    } catch (err) {
+      logger.warn({ userId, err: err?.message }, 'onWhatsApp check failed');
+    }
+    const registered = new Set((found ?? []).filter((r) => r?.exists).map((r) => sameNumber(String(r.jid).split('@')[0])));
+    for (const phone of unknown) {
+      if (!found) {
+        results[phone] = null; // lookup failed: unknown, never cached
+        continue;
+      }
+      const exists = registered.has(sameNumber(phone));
+      results[phone] = exists;
+      checkCache.delete(phone);
+      checkCache.set(phone, { exists, at: now });
+      if (checkCache.size > CHECK_CACHE_MAX) checkCache.delete(checkCache.keys().next().value);
+    }
+  }
+  return { results };
+}
+
 async function route(req, res) {
   const url = new URL(req.url, 'http://localhost');
   const parts = url.pathname.split('/').filter(Boolean);
@@ -144,6 +190,10 @@ async function route(req, res) {
   if (!action && req.method === 'GET') return send(res, 200, getState(userId));
   if (!action && req.method === 'DELETE') return send(res, 200, await deleteSession(userId));
   if (action === 'start' && req.method === 'POST') return send(res, 200, await startSession(userId));
+  if (action === 'check' && req.method === 'POST') {
+    const body = await readJson(req);
+    return send(res, 200, await postCheck(userId, body));
+  }
   if (action === 'messages' && req.method === 'POST') {
     const body = await readJson(req);
     return send(res, 200, await postMessages(userId, body));

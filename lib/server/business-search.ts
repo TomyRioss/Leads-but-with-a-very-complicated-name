@@ -13,6 +13,7 @@ import { parseCardKey } from "@/lib/people";
 import { resolveLocation, type LocationResolution, type ResolvedLocation } from "@/lib/server/geography";
 import { isFreeTopUp, matchesLeadRules, parseLeadRules, TOPUP_MAX_MISSING } from "@/lib/lead-rules";
 import { verifyPendingChange } from "@/lib/server/lead-suite-agent";
+import { checkWhatsAppNumbers, whatsAppDigits } from "@/lib/server/whatsapp";
 
 const actorId = "tBH60CegtoC2QNtaR";
 const allowedCounts = new Set([5, 10, 25, 50, 75, 100, 125, 150]);
@@ -20,6 +21,9 @@ const randomConcurrency = 5;
 // Filter retry: ask for 4x the places (max 100) once when filters left the search short; only if time remains.
 const filterRetryLimit = (limit: number) => Math.min(100, Math.max(limit * 4, 10));
 const FILTER_RETRY_BEFORE_MS = 120_000;
+// WhatsApp replacement: rounds of search + verification, and the time after which no new round starts.
+const WA_MAX_ROUNDS = 3;
+const WA_ROUND_BEFORE_MS = 150_000;
 const allowSmallBatches = isDevOnlyEnabled("small_batches");
 const locationErrorKeys: Record<Extract<LocationResolution, { ok: false }>["field"], string> = {
   country: "geoInvalidCountry",
@@ -257,6 +261,9 @@ export async function runBusinessSearch(user: Pick<AppUser, "id">, rawBody: unkn
   const topUpBatchId = typeof extra.batchId === "string" ? extra.batchId : "";
   const topUpRound = Number(extra.round);
   const topUpFree = extra.free === 1;
+  // WhatsApp replacement: free top-up whose candidates must be registered on WhatsApp (the route that signs it removes the same number of leads without WhatsApp).
+  const waVerify = topUp !== null && extra.wa === 1;
+  if (waVerify && !topUpFree) return { status: 400, body: { error: t("invalidRequestBody") } };
   if (topUp && (!/^[a-zA-Z0-9]{1,30}$/.test(topUpBatchId) || !Number.isInteger(topUpRound) || topUpRound < 1)) {
     return { status: 400, body: { error: t("invalidRequestBody") } };
   }
@@ -419,9 +426,9 @@ export async function runBusinessSearch(user: Pick<AppUser, "id">, rawBody: unkn
       const empty = (missing: number): ApiResult => ({ status: 200, body: { batchId: existing.id, leads: [], creditsUsed: 0, replayed: true, requested, missing, round: topUpRound }, refreshSession: true });
       // A card whose round already ran (or the batch is already full) is a replay: nothing searched, nothing charged.
       if ((existing.topup_rounds ?? 0) !== topUpRound - 1) return empty(Math.max(0, requested - results));
-      count = Math.min(count, requested - results);
+      if (!waVerify) count = Math.min(count, requested - results);
       if (count <= 0) return empty(0);
-      if (topUpFree && !isFreeTopUp(topUpRound, count)) return { status: 400, body: { error: t("invalidRequestBody") } };
+      if (topUpFree && !waVerify && !isFreeTopUp(topUpRound, count)) return { status: 400, body: { error: t("invalidRequestBody") } };
       await pocketBaseFetch(`/api/collections/lead_batches/records/${existing.id}`, { method: "PATCH", body: JSON.stringify({ topup_rounds: topUpRound }) });
       const ownLeads = encodeURIComponent(`batch = "${existing.id}"`);
       const previous = await pocketBaseFetch<{ items: { maps_url?: string }[] }>(`/api/collections/leads/records?perPage=150&skipTotal=1&fields=maps_url&filter=${ownLeads}`);
@@ -449,6 +456,9 @@ export async function runBusinessSearch(user: Pick<AppUser, "id">, rawBody: unkn
 
     const leads = new Map<string, ReturnType<typeof mapPlace>>();
     let actorError = "";
+    // WhatsApp replacement: ask for several places per lead needed (most candidates have no WhatsApp), min 15.
+    let searchTarget = waVerify ? Math.min(150, Math.max(15, count * 5)) : count;
+    const tried = new Set<string>();
 
     const addPlaces = (places: ActorPlace[], countryCode: string) => {
       for (const actorPlace of places) {
@@ -459,70 +469,94 @@ export async function runBusinessSearch(user: Pick<AppUser, "id">, rawBody: unkn
         if (filters.email === "without" && mapped.email) continue;
         if (!matchesLeadRules(mapped, rules)) continue;
         if (mapped.maps_url && knownUrls.has(mapped.maps_url)) continue;
+        if (waVerify && (tried.has(mapped.source_key) || !whatsAppDigits(mapped.phone))) continue;
         leads.set(mapped.source_key, mapped);
-        if (leads.size >= count) break;
+        if (leads.size >= searchTarget) break;
       }
     };
 
-    if (searchCountries) {
-      const runSlots = (slots: RandomSearchSlot[]) => mapLimited(slots, randomConcurrency, async (slot) => {
-        // Deadline global: sin tiempo suficiente la búsqueda se omite y solo se cobra lo que se guarde.
-        const timeoutMs = remainingCallTimeoutMs(Date.now() - startedAt);
-        if (timeoutMs === 0) return { slot, places: [] as ActorPlace[], failed: true };
-        try {
-          const places = await actorSearch(token, slot.keyword, slot.country, slot.limit, monitorFor(slot.country), filters, timeoutMs);
-          return { slot, places, failed: false };
-        } catch (error) {
-          actorError ||= uiError(error instanceof Error ? error.message : t("searchApifyFailed"), t("generic"));
-          return { slot, places: [] as ActorPlace[], failed: true };
-        }
-      });
-      const plan = planRandomSearch(count, keywords, Math.floor(Math.random() * searchCountries.length), searchCountries);
-      const firstPass = await runSlots(plan);
-      for (const { slot, places } of firstPass) addPlaces(places, expectedCountryCode(slot.country));
-
-      // Si faltan resultados, se pide más solo a los países/keywords que devolvieron todo lo pedido (todavía tienen), sin pasar de `count`.
-      const missing = count - leads.size;
-      const saturated = firstPass.filter(({ slot, places, failed }) => !failed && places.length >= slot.limit);
-      if (missing > 0 && saturated.length > 0 && remainingCallTimeoutMs(Date.now() - startedAt) > 0) {
-        const extras = splitEvenly(Math.min(missing, saturated.length * 5), saturated.length);
-        const secondPass = await runSlots(saturated.flatMap(({ slot }, index) => extras[index] > 0 ? [{ ...slot, limit: slot.limit + extras[index] }] : []));
-        for (const { slot, places } of secondPass) addPlaces(places, expectedCountryCode(slot.country));
-      }
-
-      // Con filtros, una búsqueda chica puede volver vacía o corta porque se descartó casi todo: un reintento con más lugares.
-      const short = firstPass.filter(({ slot, places, failed }) => !failed && places.length < slot.limit);
-      if (filtered && leads.size < count && short.length > 0 && remainingCallTimeoutMs(Date.now() - startedAt) > 0) {
-        const retry = await runSlots(short.map(({ slot }) => ({ ...slot, limit: filterRetryLimit(slot.limit) })));
-        for (const { slot, places } of retry) addPlaces(places, expectedCountryCode(slot.country));
-      }
-    } else {
-      for (const keyword of keywords) {
-        const remaining = count - leads.size;
-        if (remaining <= 0) break;
-
-        try {
-          const places = await actorSearch(token, keyword, location, remaining, monitorName, filters);
-          addPlaces(places, expectedCountryCode(target.country));
-        } catch (error) {
-          actorError = uiError(error instanceof Error ? error.message : t("searchApifyFailed"), t("generic"));
-          break;
-        }
-      }
-
-      // Con filtros, si faltan resultados: un reintento por keyword pidiendo más lugares (los repetidos se deduplican).
-      if (filtered && !actorError && leads.size < count && Date.now() - startedAt < FILTER_RETRY_BEFORE_MS) {
-        for (const keyword of keywords) {
-          const remaining = count - leads.size;
-          if (remaining <= 0) break;
+    const fillLeads = async () => {
+      if (searchCountries) {
+        const runSlots = (slots: RandomSearchSlot[]) => mapLimited(slots, randomConcurrency, async (slot) => {
+          // Deadline global: sin tiempo suficiente la búsqueda se omite y solo se cobra lo que se guarde.
+          const timeoutMs = remainingCallTimeoutMs(Date.now() - startedAt);
+          if (timeoutMs === 0) return { slot, places: [] as ActorPlace[], failed: true };
           try {
-            addPlaces(await actorSearch(token, keyword, location, filterRetryLimit(remaining), monitorName, filters), expectedCountryCode(target.country));
+            const places = await actorSearch(token, slot.keyword, slot.country, slot.limit, monitorFor(slot.country), filters, timeoutMs);
+            return { slot, places, failed: false };
+          } catch (error) {
+            actorError ||= uiError(error instanceof Error ? error.message : t("searchApifyFailed"), t("generic"));
+            return { slot, places: [] as ActorPlace[], failed: true };
+          }
+        });
+        const plan = planRandomSearch(searchTarget, keywords, Math.floor(Math.random() * searchCountries.length), searchCountries);
+        const firstPass = await runSlots(plan);
+        for (const { slot, places } of firstPass) addPlaces(places, expectedCountryCode(slot.country));
+
+        // Si faltan resultados, se pide más solo a los países/keywords que devolvieron todo lo pedido (todavía tienen), sin pasar de `searchTarget`.
+        const missing = searchTarget - leads.size;
+        const saturated = firstPass.filter(({ slot, places, failed }) => !failed && places.length >= slot.limit);
+        if (missing > 0 && saturated.length > 0 && remainingCallTimeoutMs(Date.now() - startedAt) > 0) {
+          const extras = splitEvenly(Math.min(missing, saturated.length * 5), saturated.length);
+          const secondPass = await runSlots(saturated.flatMap(({ slot }, index) => extras[index] > 0 ? [{ ...slot, limit: slot.limit + extras[index] }] : []));
+          for (const { slot, places } of secondPass) addPlaces(places, expectedCountryCode(slot.country));
+        }
+
+        // Con filtros, una búsqueda chica puede volver vacía o corta porque se descartó casi todo: un reintento con más lugares.
+        const short = firstPass.filter(({ slot, places, failed }) => !failed && places.length < slot.limit);
+        if (filtered && leads.size < searchTarget && short.length > 0 && remainingCallTimeoutMs(Date.now() - startedAt) > 0) {
+          const retry = await runSlots(short.map(({ slot }) => ({ ...slot, limit: filterRetryLimit(slot.limit) })));
+          for (const { slot, places } of retry) addPlaces(places, expectedCountryCode(slot.country));
+        }
+      } else {
+        for (const keyword of keywords) {
+          const remaining = searchTarget - leads.size;
+          if (remaining <= 0) break;
+
+          try {
+            const places = await actorSearch(token, keyword, location, remaining, monitorName, filters);
+            addPlaces(places, expectedCountryCode(target.country));
           } catch (error) {
             actorError = uiError(error instanceof Error ? error.message : t("searchApifyFailed"), t("generic"));
             break;
           }
         }
+
+        // Con filtros, si faltan resultados: un reintento por keyword pidiendo más lugares (los repetidos se deduplican).
+        if (filtered && !actorError && leads.size < searchTarget && Date.now() - startedAt < FILTER_RETRY_BEFORE_MS) {
+          for (const keyword of keywords) {
+            const remaining = searchTarget - leads.size;
+            if (remaining <= 0) break;
+            try {
+              addPlaces(await actorSearch(token, keyword, location, filterRetryLimit(remaining), monitorName, filters), expectedCountryCode(target.country));
+            } catch (error) {
+              actorError = uiError(error instanceof Error ? error.message : t("searchApifyFailed"), t("generic"));
+              break;
+            }
+          }
+        }
       }
+    };
+
+    if (!waVerify) await fillLeads();
+    else {
+      // Many candidates have no WhatsApp (landlines): search more places, verify them, and repeat with fresh ones until enough pass.
+      const verified = new Map<string, ReturnType<typeof mapPlace>>();
+      for (let round = 0; round < WA_MAX_ROUNDS; round++) {
+        leads.clear();
+        await fillLeads();
+        const entries = [...leads.entries()];
+        if (!entries.length) break;
+        const checked = await checkWhatsAppNumbers(entries.map(([, lead]) => whatsAppDigits(lead.phone)));
+        for (const [key, lead] of entries) {
+          tried.add(key);
+          if (verified.size < count && checked.get(whatsAppDigits(lead.phone)) === true) verified.set(key, lead);
+        }
+        if (verified.size >= count || actorError || Date.now() - startedAt > WA_ROUND_BEFORE_MS) break;
+        searchTarget = Math.min(150, Math.max(15, (count - verified.size) * 5));
+      }
+      leads.clear();
+      for (const [key, lead] of verified) leads.set(key, lead);
     }
 
     // PocketBase date format; this run's leads are the batch's leads created from here on.
@@ -546,6 +580,7 @@ export async function runBusinessSearch(user: Pick<AppUser, "id">, rawBody: unkn
       pain_points_detail: lead.pain_points_detail,
       enrichment_detail: lead.enrichment_detail,
       credit_cost: leadCost,
+      ...(waVerify ? { whatsapp_status: "verified" } : {}),
       created_at: new Date().toISOString(),
     }));
     let persistenceError = "";

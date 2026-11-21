@@ -34,7 +34,7 @@
   line-height: 1.2;
   text-transform: uppercase;
 }
-.staff-chat__new { margin-left: auto; }
+.staff-chat__actions { position: relative; display: flex; align-items: center; gap: 4px; margin-left: auto; }
 
 .ls-chat--staff .ls-chat__log { padding: 8px var(--staff-gutter) 32px; }
 .ls-chat--staff .ls-chat__log--empty { justify-content: safe center; }

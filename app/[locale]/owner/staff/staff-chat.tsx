@@ -2,8 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { FormEvent, KeyboardEvent } from "react";
-import { useTranslations } from "next-intl";
-import { ArrowRight, ArrowUp, ArrowUpRight, Ban, ChartLine, CircleAlert, CircleCheck, Coins, CreditCard, LoaderCircle, MessageSquare, Newspaper, PencilLine, RotateCcw, Check, SquarePen, Trash2, Users, type LucideIcon } from "lucide-react";
+import { useLocale, useTranslations } from "next-intl";
+import { ArrowRight, ArrowUp, ArrowUpRight, Ban, ChartLine, CircleAlert, CircleCheck, Coins, CreditCard, History, LoaderCircle, MessageSquare, Newspaper, PencilLine, RotateCcw, Check, Square, SquarePen, Trash2, Users, X, type LucideIcon } from "lucide-react";
 import { BrandMark } from "@/app/brand-logo";
 import { renderMarkdown } from "@/lib/markdown";
 import { runsWithoutAsking, StaffPermissionControl, useStaffPermission, type StaffPermission } from "./staff-permissions";
@@ -20,6 +20,14 @@ type SendFailure = "error" | "session" | "rate" | "service" | "offline" | "conte
 
 const MAX_CHARS = 4000;
 const MAX_HISTORY = 20;
+const MAX_STORED = 200;
+// Owner chats live in the same server collection as Leadtita's, told apart by this client id prefix.
+const newStaffId = () => `staff-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
+type SavedChat = { id: string; title: string; updatedAt: number };
+const isMessage = (value: unknown): value is Message => {
+  const item = value as Partial<Message> | null;
+  return Boolean(item) && typeof item!.id === "number" && (item!.role === "user" || item!.role === "assistant") && typeof item!.content === "string";
+};
 const KIND_ICON: Record<ChangeKind, LucideIcon> = {
   adjust_credits: Coins,
   update_user: PencilLine,
@@ -40,6 +48,7 @@ const isOffline = (error: unknown) => error instanceof TypeError || (typeof navi
  *  keeps it mounted and passes `hidden` while another section is open. */
 export default function StaffChat({ hidden = false }: { hidden?: boolean }) {
   const t = useTranslations("ownerAssistant");
+  const locale = useLocale();
   const permission = useStaffPermission();
   const [messages, setMessages] = useState<Message[]>([]);
   const [draft, setDraft] = useState("");
@@ -48,6 +57,10 @@ export default function StaffChat({ hidden = false }: { hidden?: boolean }) {
   const [failed, setFailed] = useState<{ history: Message[]; reason: SendFailure } | null>(null);
   const [cards, setCards] = useState<Record<string, CardState>>({});
   const [cardErrors, setCardErrors] = useState<Record<string, string>>({});
+  const [saved, setSaved] = useState<SavedChat[]>([]);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [historyError, setHistoryError] = useState(false);
+  const conversationId = useRef(newStaffId());
   const nextId = useRef(1);
   const progressRef = useRef<ProgressItem[]>([]);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -55,6 +68,37 @@ export default function StaffChat({ hidden = false }: { hidden?: boolean }) {
   const abortRef = useRef<AbortController | null>(null);
 
   useEffect(() => () => abortRef.current?.abort(), []);
+
+  const refreshSaved = useCallback(async () => {
+    try {
+      const response = await fetch("/api/leadtita/conversations?scope=staff", { cache: "no-store" });
+      if (!response.ok) return;
+      const payload = (await response.json()) as { conversations?: SavedChat[] };
+      setSaved(Array.isArray(payload.conversations) ? payload.conversations : []);
+    } catch {
+      // The list is a convenience: the chat works without it.
+    }
+  }, []);
+  useEffect(() => { void refreshSaved(); }, [refreshSaved]);
+
+  // Saves the conversation (server side) once a turn settles; resolved cards travel with it so they restore as they were.
+  useEffect(() => {
+    if (sending || !messages.length) return;
+    const timer = window.setTimeout(() => {
+      const settled = Object.fromEntries(Object.entries(cards).filter(([, state]) => state === "done" || state === "cancelled" || state === "stale" || state === "expired"));
+      const conversation = {
+        id: conversationId.current,
+        title: messages.find((message) => message.role === "user")?.content.slice(0, 80) ?? "",
+        updatedAt: Date.now(),
+        messages: messages.slice(-MAX_STORED).map(({ id, role, content, actions }) => ({ id, role, content, ...(actions?.length ? { actions } : {}) })),
+        extra: { cards: settled },
+      };
+      void fetch("/api/leadtita/conversations", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ conversation }) })
+        .then((response) => { if (response.ok) void refreshSaved(); })
+        .catch(() => undefined);
+    }, 800);
+    return () => window.clearTimeout(timer);
+  }, [messages, cards, sending, refreshSaved]);
 
   // Keep the newest message in view inside the log (never scrolls the page itself).
   useEffect(() => {
@@ -188,7 +232,11 @@ export default function StaffChat({ hidden = false }: { hidden?: boolean }) {
       // Sequential: each auto-run appends its own result line; the server re-checks every one.
       if (autoActions.length) void (async () => { for (const action of autoActions) await confirm(action, permission); })();
     } catch (error) {
-      if (controller.signal.aborted) return;
+      if (controller.signal.aborted) {
+        progressRef.current = [];
+        setProgress([]);
+        return;
+      }
       const code = error instanceof Error ? error.message : "error";
       const reason: SendFailure = isOffline(error) ? "offline" : (["session", "rate", "service", "context"] as const).find((item) => item === code) ?? "error";
       progressRef.current = progressRef.current.map((item) => (item.status === "running" ? { ...item, status: "failed" } : item));
@@ -211,8 +259,51 @@ export default function StaffChat({ hidden = false }: { hidden?: boolean }) {
     void request(history);
   }
 
+  function stop() {
+    abortRef.current?.abort();
+    focusComposer();
+  }
+
+  async function openChat(id: string) {
+    abortRef.current?.abort();
+    setHistoryOpen(false);
+    setHistoryError(false);
+    try {
+      const response = await fetch(`/api/leadtita/conversations/${encodeURIComponent(id)}`, { cache: "no-store" });
+      if (!response.ok) throw new Error("read");
+      const { conversation } = (await response.json()) as { conversation?: { id: string; messages?: unknown[]; extra?: { cards?: Record<string, CardState> } } };
+      const list = (conversation?.messages ?? []).filter(isMessage);
+      if (!conversation || !list.length) throw new Error("empty");
+      conversationId.current = conversation.id;
+      nextId.current = Math.max(...list.map((message) => message.id)) + 1;
+      setMessages(list);
+      setCards(conversation.extra?.cards ?? {});
+      setCardErrors({});
+      setFailed(null);
+      setProgress([]);
+      setDraft("");
+      focusComposer();
+    } catch {
+      setHistoryError(true);
+      setHistoryOpen(true);
+    }
+  }
+
+  async function deleteChat(id: string) {
+    try {
+      await fetch(`/api/leadtita/conversations/${encodeURIComponent(id)}`, { method: "DELETE" });
+    } catch {
+      setHistoryError(true);
+      return;
+    }
+    setSaved((current) => current.filter((item) => item.id !== id));
+    if (id === conversationId.current) startNewChat();
+  }
+
   function startNewChat() {
     abortRef.current?.abort();
+    conversationId.current = newStaffId();
+    setHistoryOpen(false);
     setMessages([]);
     setCards({});
     setCardErrors({});
@@ -248,9 +339,34 @@ export default function StaffChat({ hidden = false }: { hidden?: boolean }) {
       <header className="staff-chat__head">
         <h1 id="staff-chat-title" className="staff-chat__title">{t("title")}</h1>
         <span className="staff-chat__badge">{t("badge")}</span>
-        <button type="button" className="ls-chat__new staff-chat__new" onClick={startNewChat} disabled={!messages.length && !sending} aria-label={t("newChat")}>
-          <SquarePen size={16} aria-hidden="true" /><span>{t("newChat")}</span>
-        </button>
+        <div className="staff-chat__actions" onKeyDown={(event) => { if (event.key === "Escape") setHistoryOpen(false); }}>
+          <button type="button" className="ls-chat__new staff-chat__new" onClick={() => { setHistoryOpen((open) => !open); setHistoryError(false); void refreshSaved(); }} aria-expanded={historyOpen} aria-controls="staff-chat-history" aria-label={t("history")}>
+            <History size={16} aria-hidden="true" /><span>{t("history")}</span>
+          </button>
+          <button type="button" className="ls-chat__new staff-chat__new" onClick={startNewChat} disabled={!messages.length && !sending} aria-label={t("newChat")}>
+            <SquarePen size={16} aria-hidden="true" /><span>{t("newChat")}</span>
+          </button>
+          {historyOpen ? (
+            <div id="staff-chat-history" role="region" aria-label={t("historyLabel")} className="absolute right-0 top-full z-10 mt-1 w-[min(340px,calc(100vw-24px))] rounded-xl border border-(--line) bg-(--paper) p-1 shadow-lg">
+              {historyError ? <p role="alert" className="px-3 py-2 text-[13px] text-(--muted)">{t("historyError")}</p> : null}
+              {saved.length ? (
+                <ul className="m-0 flex max-h-[min(360px,60dvh)] list-none flex-col overflow-y-auto p-0">
+                  {saved.map((item) => (
+                    <li key={item.id} className="flex items-center gap-1">
+                      <button type="button" onClick={() => void openChat(item.id)} className={`flex min-w-0 flex-1 flex-col rounded-lg px-3 py-2 text-left hover:bg-(--ash-100) focus-visible:outline-2 focus-visible:outline-(--lime-dark) ${item.id === conversationId.current ? "bg-(--ash-100)" : ""}`}>
+                        <span className="truncate text-[13px] font-semibold text-(--ink)">{item.title || t("untitled")}</span>
+                        <span className="text-[11.5px] text-(--muted)">{new Date(item.updatedAt).toLocaleString(locale, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}</span>
+                      </button>
+                      <button type="button" onClick={() => void deleteChat(item.id)} className="grid size-8 flex-none place-items-center rounded-lg text-(--muted) hover:bg-(--ash-100) hover:text-(--ink) focus-visible:outline-2 focus-visible:outline-(--lime-dark)" aria-label={t("deleteChat", { title: item.title || t("untitled") })}>
+                        <X size={14} aria-hidden="true" />
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              ) : historyError ? null : <p className="px-3 py-2 text-[13px] text-(--muted)">{t("historyEmpty")}</p>}
+            </div>
+          ) : null}
+        </div>
       </header>
 
       <ol className={`ls-chat__log${messages.length === 0 && !sending ? " ls-chat__log--empty" : ""}`} ref={listRef} aria-live="polite" aria-relevant="additions" aria-busy={sending} tabIndex={0} aria-label={t("logLabel")}>
@@ -389,9 +505,15 @@ export default function StaffChat({ hidden = false }: { hidden?: boolean }) {
           </div>
           <div className="ls-chat__toolbar">
             <StaffPermissionControl onResumeTyping={() => inputRef.current?.focus({ preventScroll: true })} />
-            <button type="submit" className="ls-chat__send" disabled={sending || !draft.trim()} aria-label={sending ? t("sending") : t("send")}>
-              {sending ? <LoaderCircle className="ls-chat__spin" aria-hidden="true" size={18} /> : <ArrowUp aria-hidden="true" size={18} strokeWidth={2.4} />}
-            </button>
+            {sending ? (
+              <button type="button" className="ls-chat__send" onClick={stop} aria-label={t("stop")} title={t("stop")}>
+                <Square aria-hidden="true" size={14} fill="currentColor" />
+              </button>
+            ) : (
+              <button type="submit" className="ls-chat__send" disabled={!draft.trim()} aria-label={t("send")}>
+                <ArrowUp aria-hidden="true" size={18} strokeWidth={2.4} />
+              </button>
+            )}
           </div>
         </div>
         <p className="ls-chat__sr" id="staff-chat-hint">{t("hint")}</p>

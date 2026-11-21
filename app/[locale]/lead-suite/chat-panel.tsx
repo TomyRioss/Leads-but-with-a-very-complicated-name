@@ -226,7 +226,7 @@ type ChatAction =
 /** Summary chip; `hint` = longer explanation shown on hover, keyboard focus or tap. */
 type Chip = { label: string; hint?: string };
 type LeadPreview = { id: string; name: string; phone: string; whatsapp: string; email: string; socialProfiles: string };
-type ResultState = { download?: "xlsx" | "csv"; downloadError?: boolean; analyze?: "busy" | "done" | "error"; analyzed?: { analyzed: number; total: number; findings: number; skipped: number; limited: number; failed: number }; enrich?: "busy" | "done" | "error"; enriched?: number; enrichError?: string; save?: "busy" | "error"; saved?: number };
+type ResultState = { download?: "xlsx" | "csv"; downloadError?: boolean; analyze?: "busy" | "done" | "error"; analyzed?: { analyzed: number; total: number; findings: number; skipped: number; limited: number; failed: number }; enrich?: "busy" | "done" | "error"; enriched?: number; enrichError?: string; save?: "busy" | "error"; saved?: number; wa?: "busy" | "done" | "error"; waCounts?: { verified: number; none: number; unknown: number }; waReplace?: "busy" | "done" | "error"; waReplaced?: { replaced: number; remaining: number }; waError?: "unavailable" | "generic" };
 /** A detected pain with its evidence (review quote or website note) when the analysis cites one. */
 type PainSource = { label: string; quote: string; url: string };
 type Pain = { tag: string; detail: string; sources: PainSource[] };
@@ -246,8 +246,8 @@ function cleanWebsite(raw: string): { href: string; label: string } | null {
 
 /** One lead row in the result card and the batch modal (from the confirm preview or the full /api/leads list). */
 /** enriched: the email/social enrichment already ran on this lead (same rule as /buscar). analyzed: the pain analysis ran, even if it found nothing. */
-type RowLead = { id: string; name: string; phone: string; whatsapp: string; email: string; socialProfiles: string; category: string; address: string; website: string; websiteKnown: boolean; pains: Pain[]; proposals: Proposal[]; enriched: boolean; analyzed: boolean; saved: boolean };
-const rowFromPreview = (lead: LeadPreview): RowLead => ({ ...lead, category: "", address: "", website: "", websiteKnown: false, pains: [], proposals: [], enriched: false, analyzed: false, saved: false });
+type RowLead = { id: string; name: string; phone: string; whatsapp: string; email: string; socialProfiles: string; category: string; address: string; website: string; websiteKnown: boolean; pains: Pain[]; proposals: Proposal[]; enriched: boolean; analyzed: boolean; saved: boolean; whatsappStatus: "" | "verified" | "none" };
+const rowFromPreview = (lead: LeadPreview): RowLead => ({ ...lead, category: "", address: "", website: "", websiteKnown: false, pains: [], proposals: [], enriched: false, analyzed: false, saved: false, whatsappStatus: "" });
 
 /** Old analyses stored the internal website-audit instruction as the WEB source text: never show it as a quote. */
 const LEGACY_WEB_TEXT = new Set([
@@ -294,6 +294,7 @@ const rowFromLead = (lead: Lead): RowLead => ({
   // Completed analyses with no findings are still final and should display "Sin datos".
   analyzed: lead.pain_points_detail?.status === "completed" || lead.pain_points_detail?.status === "no_data" || Boolean(lead.pain_points?.trim()),
   saved: Boolean(lead.saved_at),
+  whatsappStatus: lead.whatsapp_status ?? "",
 });
 
 type AnalysisProgressEvent = { leadId: string; leadName: string; state: "started" | "finished"; completed: number; total: number };
@@ -1279,6 +1280,38 @@ export function LeadSuiteChat({ onActivity, variant = "panel" }: { onActivity?: 
     }
   }
 
+  /** Verifies the batch's numbers on WhatsApp (leadta's own linked session; no cost, no need to connect yours). */
+  async function checkWhatsApp(batchId: string) {
+    patchResult(batchId, { wa: "busy", waError: undefined, waReplaced: undefined });
+    try {
+      const response = await fetch("/api/lead-suite/leads/whatsapp", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ batchId, action: "check" }) });
+      if (!response.ok) throw new Error(response.status === 503 ? "unavailable" : "generic");
+      const payload = await response.json() as { statuses: Record<string, "" | "verified" | "none">; verified: number; none: number; unknown: number };
+      setBatchLeads((current) => ({ ...current, [batchId]: (current[batchId] ?? []).map((item) => ({ ...item, whatsappStatus: payload.statuses[item.id] ?? item.whatsappStatus })) }));
+      patchResult(batchId, { wa: "done", waCounts: { verified: payload.verified, none: payload.none, unknown: payload.unknown } });
+    } catch (error) {
+      patchResult(batchId, { wa: "error", waError: error instanceof Error && error.message === "unavailable" ? "unavailable" : "generic" });
+    }
+  }
+
+  /** Free replacement of the leads without WhatsApp by new ones that have it. Reloads the batch afterwards. */
+  async function replaceNoWhatsApp(batchId: string) {
+    patchResult(batchId, { waReplace: "busy", waError: undefined, waReplaced: undefined });
+    try {
+      const response = await fetch("/api/lead-suite/leads/whatsapp", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ batchId, action: "replace" }) });
+      if (!response.ok) throw new Error(response.status === 503 ? "unavailable" : "generic");
+      const payload = await response.json() as { replaced: number; remaining: number };
+      const list = await fetch(`/api/leads?batchId=${encodeURIComponent(batchId)}`, { cache: "no-store" });
+      if (list.ok) {
+        const { leads } = await list.json() as { leads?: Lead[] };
+        if (Array.isArray(leads)) setBatchLeads((current) => ({ ...current, [batchId]: leads.map(rowFromLead) }));
+      }
+      patchResult(batchId, { waReplace: "done", waReplaced: { replaced: payload.replaced, remaining: payload.remaining }, waCounts: undefined });
+      onActivity?.();
+    } catch (error) {
+      patchResult(batchId, { waReplace: "error", waError: error instanceof Error && error.message === "unavailable" ? "unavailable" : "generic" });
+    }
+  }
 
   /** Display extra of a pending card (to rebuild its keyword list on confirm). */
   const pendingExtra = (token: string): ChangeExtra => {
@@ -2125,7 +2158,8 @@ export function LeadSuiteChat({ onActivity, variant = "panel" }: { onActivity?: 
           </button> : null}
         </div>
         <div className="ls-chat__result-contact">
-          {phone ? <span className="compact-phone"><FaWhatsapp aria-hidden="true" /><WhatsAppContact phone={phone} /></span> : null}
+          {phone ? <span className="compact-phone"><FaWhatsapp aria-hidden="true" /><WhatsAppContact phone={phone} />{lead.whatsappStatus === "verified" ? <span role="img" aria-label={t("result.waVerified")} title={t("result.waVerified")} className="inline-flex size-4 flex-none items-center justify-center rounded-full bg-[linear-gradient(135deg,#8b5cf6,#38bdf8,#34d399)] text-white"><Check aria-hidden="true" size={10} strokeWidth={3.5} /></span> : null}</span> : null}
+          {lead.whatsappStatus === "none" ? <span className="ls-chat__result-analysis-status is-empty" role="status">{t("result.waNone")}</span> : null}
           {lead.email ? <a className="ls-chat__result-email" href={`mailto:${lead.email}`}><Mail aria-hidden="true" size={13} />{lead.email}</a> : null}
           {website ? (
             <a className="ls-chat__result-email" href={website.href} target="_blank" rel="noreferrer" aria-label={t("result.openWebsite", { lead: lead.name })}><Globe aria-hidden="true" size={13} />{website.label}</a>
@@ -2649,6 +2683,18 @@ export function LeadSuiteChat({ onActivity, variant = "panel" }: { onActivity?: 
                             {state.enrich === "busy" ? t("result.enriching") : t("result.enrichBatch")}
                           </button>
                         ) : null}
+                        {action.kind !== "search_people" ? (
+                          <button type="button" onClick={() => void checkWhatsApp(action.batchId)} disabled={state.wa === "busy" || state.waReplace === "busy" || (rows.length > 0 && rows.every((lead) => lead.whatsappStatus !== ""))}>
+                            {state.wa === "busy" ? <LoaderCircle className="ls-chat__spin" aria-hidden="true" size={15} /> : <FaWhatsapp aria-hidden="true" size={15} />}
+                            {state.wa === "busy" ? t("result.waChecking") : t("result.waCheck")}
+                          </button>
+                        ) : null}
+                        {action.kind !== "search_people" && rows.some((lead) => lead.whatsappStatus === "none") ? (
+                          <button type="button" onClick={() => void replaceNoWhatsApp(action.batchId)} disabled={state.wa === "busy" || state.waReplace === "busy"}>
+                            {state.waReplace === "busy" ? <LoaderCircle className="ls-chat__spin" aria-hidden="true" size={15} /> : <PackagePlus aria-hidden="true" size={15} />}
+                            {state.waReplace === "busy" ? t("result.waReplacing") : t("result.waReplace", { count: rows.filter((lead) => lead.whatsappStatus === "none").length })}
+                          </button>
+                        ) : null}
                       </div>
                       <p className="ls-chat__result-status" role="status">
                         {state.downloadError ? t("result.downloadError")
@@ -2664,6 +2710,9 @@ export function LeadSuiteChat({ onActivity, variant = "panel" }: { onActivity?: 
                           : state.analyze === "error" ? t("result.analyzeError")
                           : state.enrich === "done" ? t("result.enrichDone", { count: state.enriched ?? 0 })
                           : state.enrich === "error" ? state.enrichError || t("result.enrichError")
+                          : state.wa === "error" || state.waReplace === "error" ? t(state.waError === "unavailable" ? "result.waUnavailable" : "result.waError")
+                          : state.waReplace === "done" && state.waReplaced ? t("result.waReplaced", { count: state.waReplaced.replaced, remaining: state.waReplaced.remaining })
+                          : state.wa === "done" && state.waCounts ? t("result.waDone", { verified: state.waCounts.verified, none: state.waCounts.none, unknown: state.waCounts.unknown })
                           : ""}
                       </p>
                     </article>

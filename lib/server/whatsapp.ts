@@ -111,3 +111,47 @@ export async function getLeadWhatsApp(userId: string, leadId: string) {
   const row = await pocketBaseFetch<{ whatsapp?: string }>(`/api/collections/leads/records/${encodeURIComponent(lead.id)}?fields=whatsapp`).catch(() => ({ whatsapp: "" }));
   return whatsAppDigits(row.whatsapp ?? "") || whatsAppDigits(lead.phone);
 }
+
+// ---------- Number check ----------
+// Numbers are checked with leadta's own linked WhatsApp (the staff account), so users don't need to connect theirs.
+
+const CHECK_ACCOUNT_EMAIL = "staff@leadta.com";
+const CHECK_CHUNK = 25;
+// Pause between worker calls: bursts of lookups are what gets a number flagged.
+const CHECK_PAUSE_MS = 1_500;
+let checkAccountId: string | null = null;
+
+async function getCheckAccountId() {
+  if (checkAccountId) return checkAccountId;
+  const query = new URLSearchParams({ filter: `email = ${JSON.stringify(CHECK_ACCOUNT_EMAIL)}`, perPage: "1", fields: "id" });
+  const found = await pocketBaseFetch<{ items: { id: string }[] }>(`/api/collections/users/records?${query}`);
+  checkAccountId = found.items[0]?.id ?? null;
+  if (!checkAccountId) throw new WhatsAppNotConnectedError();
+  return checkAccountId;
+}
+
+/** phone digits (see whatsAppDigits) -> registered on WhatsApp; null when the lookup failed. Throws when the staff session is down. */
+export async function checkWhatsAppNumbers(phones: string[]): Promise<Map<string, boolean | null>> {
+  const unique = [...new Set(phones)];
+  const out = new Map<string, boolean | null>();
+  if (!unique.length) return out;
+  const account = await getCheckAccountId();
+  const path = `${sessionPath(account)}/check`;
+  for (let offset = 0; offset < unique.length; offset += CHECK_CHUNK) {
+    if (offset) await new Promise((resolve) => setTimeout(resolve, CHECK_PAUSE_MS));
+    const chunk = unique.slice(offset, offset + CHECK_CHUNK);
+    const { results } = await worker<{ results: Record<string, boolean | null> }>(path, { method: "POST", body: JSON.stringify({ phones: chunk }) }, ENQUEUE_TIMEOUT_MS);
+    for (const phone of chunk) out.set(phone, typeof results[phone] === "boolean" ? results[phone] : null);
+  }
+  return out;
+}
+
+/** The checking session is linked and the worker answers. */
+export async function isWhatsAppCheckAvailable() {
+  if (!isWhatsAppConfigured()) return false;
+  try {
+    return (await getWhatsAppSession(await getCheckAccountId())).status === "connected";
+  } catch {
+    return false;
+  }
+}

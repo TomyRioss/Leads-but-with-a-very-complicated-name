@@ -2,9 +2,9 @@ import { createElement, Fragment } from "react";
 import type { ReactNode } from "react";
 import Image from "next/image";
 
-// ponytail: renderer Markdown propio y acotado (headings, párrafos, listas, citas, código, hr, imágenes, links, énfasis).
-// Seguro por construcción: produce elementos React (todo texto se escapa), nunca HTML crudo. Si hacen falta tablas o
-// footnotes, pasar a react-markdown (pedir instalación).
+// ponytail: renderer Markdown propio y acotado (headings, párrafos, listas, tablas, citas, código, hr, imágenes, links, énfasis).
+// Seguro por construcción: produce elementos React (todo texto se escapa), nunca HTML crudo. Si hacen falta footnotes
+// o tablas con celdas complejas, pasar a react-markdown (pedir instalación).
 
 export type MarkdownHeading = { id: string; text: string; level: 2 | 3 };
 
@@ -26,7 +26,7 @@ function safeSrc(url: string) {
   return /^https:\/\//i.test(value) || /^http:\/\/localhost/i.test(value) || /^\/(?!\/)/.test(value) ? value : null;
 }
 
-const inlinePattern = /(`[^`]+`)|!\[([^\]]*)\]\(([^)\s]+)\)|\[([^\]]+)\]\(([^)\s]+)\)|\*\*([^*]+)\*\*|__([^_]+)__|\*([^*]+)\*|_([^_]+)_/g;
+const inlinePattern = /(`[^`]+`)|!\[([^\]]*)\]\(([^)\s]+)\)|\[([^\]]+)\]\(([^)\s]+)\)|\*\*([^*]+)\*\*|(?<![\p{L}\p{N}_])__([^_]+)__(?![\p{L}\p{N}_])|\*([^*]+)\*|(?<![\p{L}\p{N}_])_([^_]+)_(?![\p{L}\p{N}_])/gu;
 
 function inline(text: string, keyPrefix: string): ReactNode[] {
   const nodes: ReactNode[] = [];
@@ -60,7 +60,11 @@ type Block =
   | { type: "quote"; text: string }
   | { type: "code"; lang: string; text: string }
   | { type: "hr" }
+  | { type: "table"; head: string[]; rows: string[][] }
   | { type: "image"; alt: string; src: string };
+
+const TABLE_SEPARATOR = /^\s*\|?\s*:?-+:?\s*(\|\s*:?-+:?\s*)*\|?\s*$/;
+const tableCells = (line: string) => line.trim().replace(/^\|/, "").replace(/\|$/, "").split(/(?<!\\)\|/).map((cell) => cell.replace(/\\\|/g, "|").trim());
 
 function parse(markdown: string): Block[] {
   const lines = markdown.replace(/\r\n?/g, "\n").split("\n");
@@ -81,6 +85,14 @@ function parse(markdown: string): Block[] {
     const heading = line.match(/^(#{1,4})\s+(.+?)\s*#*$/);
     if (heading) { blocks.push({ type: "heading", level: heading[1].length, text: heading[2] }); i++; continue; }
     if (/^\s*([-*_])(\s*\1){2,}\s*$/.test(line)) { blocks.push({ type: "hr" }); i++; continue; }
+    if (line.includes("|") && i + 1 < lines.length && TABLE_SEPARATOR.test(lines[i + 1]) && lines[i + 1].includes("|")) {
+      const head = tableCells(line);
+      const rows: string[][] = [];
+      i += 2;
+      while (i < lines.length && lines[i].trim() && lines[i].includes("|")) rows.push(tableCells(lines[i++]));
+      blocks.push({ type: "table", head, rows: rows.map((row) => head.map((_, column) => row[column] ?? "")) });
+      continue;
+    }
     const image = line.match(/^!\[([^\]]*)\]\(([^)\s]+)\)\s*$/);
     if (image) { blocks.push({ type: "image", alt: image[1], src: image[2] }); i++; continue; }
     if (/^>\s?/.test(line)) {
@@ -103,7 +115,7 @@ function parse(markdown: string): Block[] {
       continue;
     }
     const body: string[] = [lines[i++].trim()];
-    while (i < lines.length && lines[i].trim() && !/^(#{1,4}\s|```|>|\s*([-*+]|\d+[.)])\s)/.test(lines[i])) body.push(lines[i++].trim());
+    while (i < lines.length && lines[i].trim() && !/^(#{1,4}\s|```|>|\||\s*([-*+]|\d+[.)])\s)/.test(lines[i])) body.push(lines[i++].trim());
     blocks.push({ type: "paragraph", text: body.join(" ") });
   }
   return blocks;
@@ -141,6 +153,10 @@ export function renderMarkdown(markdown: string): ReactNode {
       case "quote": return h("blockquote", { key }, h("p", null, inline(block.text, key)));
       case "code": return h("pre", { key }, h("code", { "data-lang": block.lang || undefined }, block.text));
       case "hr": return h("hr", { key });
+      case "table": return h("div", { key, className: "max-w-full overflow-x-auto rounded-lg border border-(--line)" },
+        h("table", { className: "w-full border-collapse text-[13px] leading-snug tabular-nums [&_tbody_tr:last-child_td]:border-b-0" },
+          h("thead", null, h("tr", null, block.head.map((cell, column) => h("th", { key: column, scope: "col", className: "whitespace-nowrap border-b border-(--line) bg-(--ash-50) px-3 py-2 text-left font-semibold text-(--ink)" }, inline(cell, `${key}-h${column}`))))),
+          h("tbody", null, block.rows.map((row, rowIndex) => h("tr", { key: rowIndex }, row.map((cell, column) => h("td", { key: column, className: "border-b border-(--line) px-3 py-2 align-top" }, inline(cell, `${key}-${rowIndex}-${column}`))))))));
       case "image": {
         const src = safeSrc(block.src);
         return src ? h("figure", { key }, h(Image, { src, alt: block.alt, width: 1200, height: 675, unoptimized: true, style: { width: "100%", height: "auto" } }), block.alt ? h("figcaption", null, block.alt) : null) : null;

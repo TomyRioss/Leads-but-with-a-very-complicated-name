@@ -64,10 +64,13 @@ async function findRow(userId: string, clientId: string, fields: string): Promis
 
 const updatedAtOf = (row: Row) => parseDate(row.last_message_at) || parseDate(row.updated);
 
-/** Newest first, at most 30, without messages. */
-export async function listConversations(userId: string): Promise<ConversationSummary[]> {
+/** Owner assistant (Leadtita Staff) chats share this collection; their client ids start with this prefix. */
+export const STAFF_CLIENT_PREFIX = "staff-";
+
+/** Newest first, at most 30, without messages. `staff` lists the owner assistant's chats; the default excludes them. */
+export async function listConversations(userId: string, scope: "user" | "staff" = "user"): Promise<ConversationSummary[]> {
   const result = await pocketBaseFetch<{ items: Row[] }>(`${records}?${new URLSearchParams({
-    filter: `user = ${quote(userId)} && is_active = true`,
+    filter: `user = ${quote(userId)} && is_active = true && client_id ${scope === "staff" ? "~" : "!~"} ${quote(`${STAFF_CLIENT_PREFIX}%`)}`,
     sort: "-last_message_at",
     perPage: String(MAX_LISTED_CONVERSATIONS),
     skipTotal: "1",

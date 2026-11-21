@@ -50,17 +50,15 @@
 .leads-sidebar__tab svg { flex: none; }
 .leads-sidebar__tab:hover { background: var(--lime-dark); }
 .leads-sidebar__tab:focus-visible { outline: 2px solid var(--ash-950); outline-offset: 2px; }
-/* Open: the tab slides out to the right while the panel slides in. */
-.leads-sidebar__tab.is-hidden { opacity: 0; transform: translate(100%, -50%); pointer-events: none; }
-/* Desktop pushes the chat, so the column width has to animate (one element, intentional layout transition);
-   the content inside keeps a fixed width and only slides/fades, so it never reflows mid-animation. */
-/* Clip the off-screen tab/panel of the slide animation and let the chat shrink: no page scroll in either axis. */
-.leadtita-main { --leads-ease: cubic-bezier(0.22, 1, 0.36, 1); position: relative; overflow: clip; }
+/* Open: la pestaña no desaparece; queda pegada al borde izquierdo del cajón y se mueve con él (sirve de asa para cerrar). */
+.leads-sidebar__tab.is-open { transform: translate(calc(var(--leads-w) * -1), -50%); }
+/* Cajón superpuesto (no empuja el chat) en todos los anchos: solo transform, sin animar layout.
+   Se recorta lo que queda fuera de pantalla durante el deslizamiento: sin scroll de página. */
+.leadtita-main { --leads-ease: cubic-bezier(0.22, 1, 0.36, 1); --leads-w: 320px; position: relative; overflow: clip; }
 .leadtita-main > .ls-chat { min-width: 0; }
-.leads-sidebar { flex: none; width: 0; height: calc(100dvh - var(--campaign-banner-h, 0px)); overflow: hidden; background: var(--paper); transition: width 280ms var(--leads-ease); }
-.leads-sidebar.is-open { width: 320px; }
-.leads-sidebar__panel { display: flex; flex-direction: column; width: 320px; height: 100%; border-left: 1px solid var(--line); opacity: 0; transform: translateX(32px); transition: transform 280ms var(--leads-ease), opacity 200ms ease; }
-.leads-sidebar.is-open .leads-sidebar__panel { opacity: 1; transform: none; }
+.leads-sidebar { position: absolute; z-index: 4; top: 0; right: 0; bottom: 0; width: var(--leads-w); overflow: hidden; background: var(--paper); box-shadow: -12px 0 32px rgb(23 25 24 / 0.12); transform: translateX(100%); visibility: hidden; transition: transform 280ms var(--leads-ease), visibility 0s linear 280ms; }
+.leads-sidebar.is-open { transform: none; visibility: visible; transition: transform 280ms var(--leads-ease); }
+.leads-sidebar__panel { display: flex; flex-direction: column; width: 100%; height: 100%; border-left: 1px solid var(--line); }
 .leads-sidebar__head { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 14px 12px 10px 16px; }
 .leads-sidebar__head h2 { margin: 0; color: var(--ink); font-size: 15px; font-weight: 680; letter-spacing: -0.02em; }
 .leads-sidebar__section-tabs { display: flex; gap: 4px; margin: 0 12px 8px; padding: 3px; border-radius: 10px; background: var(--ash-100); }
@@ -123,10 +121,9 @@
 .leads-sidebar__all { display: flex; align-items: center; justify-content: space-between; margin: 0 12px 12px; padding: 10px 12px; border-top: 1px solid var(--line); color: var(--ash-800); font-size: 13px; font-weight: 600; text-decoration: none; }
 .leads-sidebar__all:hover { color: var(--ink); }
 @media (max-width: 900px) {
-  /* Drawer over the chat: transform-only slide. */
-  .leads-sidebar, .leads-sidebar.is-open { position: fixed; z-index: 40; top: 0; right: 0; bottom: 0; width: min(340px, calc(100vw - 32px)); height: auto; box-shadow: -12px 0 32px rgb(23 25 24 / 0.16); transform: translateX(100%); visibility: hidden; transition: transform 280ms var(--leads-ease), visibility 0s linear 280ms; }
-  .leads-sidebar.is-open { transform: none; visibility: visible; transition: transform 280ms var(--leads-ease); }
-  .leads-sidebar__panel { width: 100%; opacity: 1; transform: none; }
+  /* Angosto: el cajón cubre toda la altura de la pantalla (incluida la barra superior). */
+  .leadtita-main { --leads-w: min(340px, calc(100vw - 32px)); }
+  .leads-sidebar { position: fixed; z-index: 40; }
 }
 @media (hover: none) { .leads-sidebar__at { opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { .leads-sidebar, .leads-sidebar.is-open, .leads-sidebar__panel, .leads-sidebar__tab, .leads-sidebar__at { transition: none; } }

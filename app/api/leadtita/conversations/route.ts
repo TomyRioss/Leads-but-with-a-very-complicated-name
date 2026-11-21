@@ -3,12 +3,13 @@ import { ConversationTooLargeError, cleanConversation, conversationJson as json,
 // Room for 2 MB of messages + 500 KB of card state + JSON envelope.
 const MAX_BODY_BYTES = 2_600_000;
 
-/** Conversations of the session user, newest first, without messages. */
+/** Conversations of the session user, newest first, without messages. `?scope=staff` = the owner assistant's chats. */
 export async function GET(request: Request) {
   const userId = await sessionUserId(request);
   if (typeof userId !== "string") return userId;
   try {
-    return json({ conversations: await listConversations(userId) });
+    const scope = new URL(request.url).searchParams.get("scope") === "staff" ? "staff" : "user";
+    return json({ conversations: await listConversations(userId, scope) });
   } catch (error) {
     console.error("Leadtita conversations list failed", error instanceof Error ? error.name : "unknown");
     return json({ error: "list_failed" }, 503);

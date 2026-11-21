@@ -399,6 +399,7 @@ a.ls-chat__error-primary:focus-visible { outline: 2px solid var(--ink); outline-
 
 .ls-chat__msg--assistant { display: grid; grid-template-columns: 28px minmax(0, 1fr); column-gap: 12px; }
 .ls-chat__msg--assistant .ls-chat__msg-body { max-width: 68ch; padding-top: 3px; }
+.ls-chat__msg--assistant .ls-chat__msg-body:has(.ls-chat__result) { max-width: 760px; }
 .ls-chat__avatar { display: grid; width: 28px; height: 28px; place-items: center; border-radius: 9px; }
 .ls-chat__avatar:not(:empty) { background: var(--ink); }
 .ls-chat__avatar .brand-mark { min-height: 0; gap: 0.06em; color: var(--paper); font-size: 13px; }
@@ -707,7 +708,7 @@ a.ls-chat__error-primary:focus-visible { outline: 2px solid var(--ink); outline-
 }
 
 /* ───────── Resultado de una búsqueda o importación ───────── */
-.ls-chat__result { display: flex; flex-direction: column; gap: 14px; max-width: 560px; padding: 16px; border: 1px solid var(--line); border-radius: 16px; background: var(--paper); box-shadow: 0 1px 2px rgb(23 25 24 / 0.04), 0 8px 24px -12px rgb(23 25 24 / 0.14); }
+.ls-chat__result { display: flex; flex-direction: column; gap: 14px; max-width: 760px; padding: 16px; border: 1px solid var(--line); border-radius: 16px; background: var(--paper); box-shadow: 0 1px 2px rgb(23 25 24 / 0.04), 0 8px 24px -12px rgb(23 25 24 / 0.14); }
 .ls-chat__result .ls-chat__action-head { align-items: flex-start; justify-content: space-between; gap: 8px; }
 .ls-chat__result-heading { display: flex; min-width: 0; align-items: flex-start; gap: 12px; }
 .ls-chat__result .ls-chat__action-head h3 { margin: 0; font-size: 16px; font-weight: 700; letter-spacing: -0.02em; line-height: 1.3; }
@@ -985,7 +986,7 @@ a.ls-chat__error-primary:focus-visible { outline: 2px solid var(--ink); outline-
 .ls-chat__keyword-remove:hover { background: var(--ash-150); color: var(--ink); }
 
 /* Lista completa del lote dentro de la tarjeta: ~5 filas visibles, scroll interno con fade al final. */
-.ls-chat__result-rows.is-scroll { max-height: 360px; overflow-y: auto; overscroll-behavior: contain; padding-bottom: 12px; mask-image: linear-gradient(to bottom, #000 calc(100% - 28px), transparent); scrollbar-width: thin; scrollbar-color: var(--ash-300) transparent; }
+.ls-chat__result-rows.is-scroll { max-height: 480px; overflow-y: auto; overscroll-behavior: contain; padding-bottom: 12px; mask-image: linear-gradient(to bottom, #000 calc(100% - 28px), transparent); scrollbar-width: thin; scrollbar-color: var(--ash-300) transparent; }
 .ls-chat__result-rows.is-scroll:focus-visible { outline: 3px solid var(--ash-950); outline-offset: 2px; }
 .ls-chat__result-name { display: flex; min-width: 0; flex-direction: column; gap: 1px; }
 .ls-chat__result-name small { overflow: hidden; color: var(--muted); font-size: 12.5px; text-overflow: ellipsis; white-space: nowrap; }

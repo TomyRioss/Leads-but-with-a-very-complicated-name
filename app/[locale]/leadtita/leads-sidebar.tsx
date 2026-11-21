@@ -140,7 +140,7 @@ export function LeadsSidebar() {
   // Both stay mounted so open/close can animate; the closed side is inert (no focus, no screen reader).
   return (
     <>
-    <button ref={toggleRef} type="button" className={`leads-sidebar__tab${open ? " is-hidden" : ""}`} inert={open} onClick={() => { writeOpen(true); window.setTimeout(() => searchRef.current?.focus({ preventScroll: true }), 50); }} aria-expanded={open} aria-controls="leads-sidebar">
+    <button ref={toggleRef} type="button" className={`leads-sidebar__tab${open ? " is-open" : ""}`} onClick={() => { if (open) { close(); return; } writeOpen(true); window.setTimeout(() => searchRef.current?.focus({ preventScroll: true }), 50); }} aria-expanded={open} aria-controls="leads-sidebar">
       <LayoutDashboard aria-hidden="true" size={22} strokeWidth={1.9} /><span>{t("title")}</span>
     </button>
     <aside id="leads-sidebar" className={`leads-sidebar${open ? " is-open" : ""}`} inert={!open} aria-labelledby="leads-sidebar-title" onKeyDown={(event) => { if (event.key === "Escape") close(); }}>
