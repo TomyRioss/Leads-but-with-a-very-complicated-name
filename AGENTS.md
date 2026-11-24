@@ -1,5 +1,42 @@
 # AGENTS.md
 
+## Validación empírica obligatoria
+
+- VALIDACIÓN EMPÍRICA OBLIGATORIA: Confirmar visual e interactivamente que lo agregado funciona o se aplicó; de lo contrario, SIEMPRE asumir que no funciona.
+
+## Formato de explicación
+
+- Siempre explicar lo que se hizo en formato ASD-STE100.
+
+## Flujo de trabajo obligatorio
+
+### FEATURE-MAP
+
+- Todo proyecto debe tener `docs/FEATURE-MAP.md`. Si falta, crealo antes de cualquier tarea.
+- Registrá cada funcionalidad en una fila con formato `FEATURE | ROUTE`. Ejemplo: `REGISTRAR USUARIO | "/" > Botón "Registrar"`.
+- Consultá FEATURE-MAP.md antes de tocar una funcionalidad. Al agregar, mover o eliminar una funcionalidad, actualizá el documento en el mismo cambio. Una tarea con FEATURE-MAP.md desactualizado no está terminada.
+
+### Worktree dev
+
+- Todo el trabajo se hace en el worktree `dev` (rama `dev`), ubicado como carpeta hermana del proyecto: `../<proyecto>-dev`.
+- Antes de cada tarea, cada terminal verifica con `git worktree list` que exista. Si no existe, lo crea con `git worktree add ../<proyecto>-dev -b dev` (o sin `-b` si la rama ya existe) y lo deja creado.
+- Todas las terminales y agentes trabajan bajo ese mismo worktree. No edites desde el worktree principal.
+
+### Testing e2e con Playwright
+
+- Todo proyecto debe tener Playwright e2e instalado y configurado. Si falta, inicializalo (`npm init playwright@latest` o equivalente del gestor del proyecto).
+- Agregá a `.gitignore`: `test-results/`, `playwright-report/`, `blob-report/`, `playwright/.cache/` y `playwright/.auth/`.
+- Escribí los tests necesarios para cubrir todas las funcionalidades listadas en `docs/FEATURE-MAP.md`: al menos un test e2e por fila.
+
+### Verificación de cada funcionalidad nueva
+
+Corroborá cada funcionalidad nueva de dos formas:
+
+1. Tests escritos y pasando, incluido el e2e con Playwright.
+2. Validación empírica obligatoria cuando la funcionalidad se relaciona directamente con la interfaz (ver sección "Validación empírica obligatoria").
+
+Si algo falla, corregilo y volvé a verificar hasta un máximo de 5 intentos. Si persiste el problema, dejá de intentar y reportá el error con lo que se probó.
+
 ## Alcance
 
 Estas reglas aplican al trabajo realizado desde el Escritorio y a proyectos que las hereden. Respetá las instrucciones específicas del repositorio si agregan detalle compatible con la petición del usuario.
@@ -329,3 +366,31 @@ Retain qualifying friction even if it is later fixed or worked around; record th
 Before the final response, run one reporting pass. If candidates remain, from this file's directory run `npx --no-install next internal agent-feedback-instructions` once without piping or truncating its output. Follow its output or error guidance. If a network sandbox blocks it, retry with network access; if it still returns no output, continue normally.
 
 <!-- END:nextjs-agent-feedback -->
+
+## Proyecto
+
+Leadta: buscador de leads de Google Maps (Apify) con asistente IA (Leadtita), Lead Suite (CRM liviano), búsqueda de personas, integraciones Google/WhatsApp, servidor MCP y suscripciones Rebill.
+
+### Comandos
+
+- `npm run dev`: abre túnel SSH `hermes-vps` a PocketBase (prod) y luego `next dev`. Los datos son de producción.
+- `npm run build` / `npm run start` / `npm run lint`.
+- `npm run test:e2e`: Playwright (`e2e/`). Levanta el bridge de `npm run dev` con `PORT=3100`: Next en 3100 conectado al PocketBase REAL (producción) por túnel SSH. Un test que escriba datos los escribe en prod. Las rutas privadas se prueban por su bloqueo sin sesión (401 / redirect).
+- Selfchecks: `node lib/**/*.selfcheck.mjs` y `node scripts/*-selfcheck.mjs` (asserts sin framework).
+
+### Estructura
+
+- `app/[locale]/`: páginas (next-intl; `es` default sin prefijo, `en`). Rutas: `/`, `pricing`, `blog`, `login`, `register`, `verificar`, `restablecer`, `leadtita`, `lead-suite`, `buscar`, `personas`, `historial`, `integraciones`, `oauth/authorize`, `owner`, `terminos`, `privacidad`.
+- `app/api/`: route handlers delgados (auth, search, export, lead-suite, leadtita, people, owner, integrations, oauth, mcp, rebill, subscriptions, scheduled).
+- `lib/`: dominio compartido; `lib/server/`: casos de uso y adaptadores (PocketBase, Apify, Google, WhatsApp, Rebill, email).
+- `messages/`: traducciones por área (`<area>/es.json`, `en.json`).
+- `pb_migrations/`: migraciones PocketBase (se aplican al reiniciar en el VPS). `deploy/`: docker compose del VPS. `services/whatsapp-worker`: worker Baileys.
+- `proxy.ts`: middleware de next-intl (Next 16 usa `proxy.ts`).
+
+### Convenciones
+
+- Límites y constantes en código, no en `.env`.
+- Shells estáticos (lead-suite, personas) resuelven la sesión en cliente vía `/api/auth/me`.
+- Rate limit en memoria por instancia (`lib/server/rate-limit.ts`).
+- Deploy: app por Vercel CLI; PocketBase y worker en `hermes-vps`.
+- Mapa de funcionalidades: `docs/FEATURE-MAP.md` (gitignoreado con `/docs/`).

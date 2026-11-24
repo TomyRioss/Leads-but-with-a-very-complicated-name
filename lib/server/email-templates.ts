@@ -74,6 +74,24 @@ const weeklyReportCopy = {
   en: { subject: "Your Lead Suite weekly report", greeting: "Hi", greetingNamed: "Hi {name}", intro: "Here's how the week of {week} went:", contacts: "Contacts", leads: "Leads contacted", replyRate: "Reply rate", pending: "Pending follow-ups", suggestions: "Suggestions", cta: "Open Lead Suite" },
 } as const;
 
+export const receiptCopy = {
+  es: { subject: "Tu suscripción a Leadta está activa", greeting: "Hola", greetingNamed: "Hola {name}", thanks: "¡Gracias por suscribirte a Leadta! Tu pago fue aprobado y tus créditos ya están disponibles.", receipt: "Recibo", customer: "Cliente", attached: "Adjuntamos tu recibo en PDF.", plan: "Plan", credits: "Créditos acreditados", amount: "Monto", date: "Fecha", reference: "Referencia", renewal: "La suscripción se renueva automáticamente cada mes. Podés cancelarla cuando quieras desde tu cuenta.", cta: "Ir a Leadtita", help: "Cualquier duda, respondé a este correo o escribinos a support@leadta.app.", signoff: "Un abrazo,", signature: "El equipo de Leadta" },
+  en: { subject: "Your Leadta subscription is active", greeting: "Hi", greetingNamed: "Hi {name}", thanks: "Thank you for subscribing to Leadta! Your payment was approved and your credits are ready.", receipt: "Receipt", customer: "Customer", attached: "Your receipt is attached as a PDF.", plan: "Plan", credits: "Credits added", amount: "Amount", date: "Date", reference: "Reference", renewal: "Your subscription renews automatically every month. You can cancel any time from your account.", cta: "Go to Leadtita", help: "Any questions, reply to this email or write to support@leadta.app.", signoff: "Best,", signature: "The Leadta team" },
+} as const;
+
+/** Confirmation + receipt + thanks for an approved subscription charge. */
+export function renderSubscriptionReceiptEmail(input: { locale: Locale; origin: string; name?: string; planName: string; credits: number; amount: string; date: string; reference: string }) {
+  const c = receiptCopy[input.locale === "en" ? "en" : "es"];
+  const url = new URL(localizedPath(input.locale, "/leadtita"), input.origin).toString();
+  const greeting = input.name ? c.greetingNamed.replace("{name}", input.name) : c.greeting;
+  const rows: [string, string][] = [[c.plan, input.planName], [c.credits, String(input.credits)], [c.amount, input.amount], [c.date, input.date], [c.reference, input.reference]];
+  return {
+    subject: c.subject,
+    text: [`${greeting},`, "", c.thanks, "", `${c.receipt}:`, ...rows.map(([k, v]) => `${k}: ${v}`), "", c.attached, c.renewal, "", `${c.cta}: ${url}`, "", c.help, "", c.signoff, c.signature].join("\n"),
+    html: `<div style="font-family:Arial,sans-serif;max-width:560px;margin:32px auto;color:#202320;line-height:1.6"><p>${escapeHtml(greeting)},</p><p>${escapeHtml(c.thanks)}</p><p style="font-weight:700;margin-bottom:4px">${escapeHtml(c.receipt)}</p><table style="border-collapse:collapse;margin:0 0 16px">${rows.map(([k, v]) => `<tr><td style="padding:4px 16px 4px 0;color:#676e67">${escapeHtml(k)}</td><td style="padding:4px 0;font-weight:700">${escapeHtml(v)}</td></tr>`).join("")}</table><p style="color:#676e67;font-size:14px">${escapeHtml(c.attached)} ${escapeHtml(c.renewal)}</p><p>${button(url, escapeHtml(c.cta))}</p><p style="color:#676e67;font-size:14px">${escapeHtml(c.help)}</p><p>${escapeHtml(c.signoff)}<br>${escapeHtml(c.signature)}</p></div>`,
+  };
+}
+
 export function renderLeadSuiteWeeklyReportEmail(input: { locale: Locale; origin: string; name?: string; weekStart: string; summary: string; suggestions: string[]; contacts: number; leads: number; replyRate: number; pendingFollowUps: number }) {
   const c = weeklyReportCopy[input.locale === "en" ? "en" : "es"];
   const url = new URL(localizedPath(input.locale, "/lead-suite"), input.origin).toString();

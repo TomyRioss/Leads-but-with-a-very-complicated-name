@@ -230,7 +230,7 @@ export function VerifyEmailPanel({ token, locale, initialResult }: { token: stri
         <h1 id="verify-email-title">{t("verifiedTitle")}<span className="brand-dot" aria-hidden="true">.</span></h1>
         <p className="auth-intro">{t("verifiedDescription")}</p>
         <div className="auth-verify-actions">
-          <Link className="primary-button auth-submit" href="/buscar">{t("continue")}</Link>
+          <Link className="primary-button auth-submit" href="/leadtita">{t("continue")}</Link>
         </div>
       </div>
     );
@@ -244,7 +244,7 @@ export function VerifyEmailPanel({ token, locale, initialResult }: { token: stri
         <p className="auth-intro" role="alert">{t("failed")}</p>
         <div className="auth-verify-actions">
           {token && <button className="primary-button auth-submit" type="button" onClick={() => setState("ready")}>{t("retry")}</button>}
-          <Link className="auth-secondary-button" href="/buscar">{t("backToLeadta")}</Link>
+          <Link className="auth-secondary-button" href="/leadtita">{t("backToLeadta")}</Link>
         </div>
         <p className="field-help verification-footnote">{t("privacy")}</p>
       </>
@@ -459,11 +459,11 @@ export function AuthForm({ onAuthenticated, initialMode = "login", paths }: Auth
     const messages: Record<string, string> = {
       "No se pudo conectar con el servicio de cuentas.": t("serviceUnavailable"),
       "Email o contraseña incorrectos.": t("invalidCredentials"),
-      "Ingresá un email y una contraseña válidos.": t("validEmailPassword"),
-      "Ingresá un email válido.": t("validEmail"),
-      "Ingresá los datos requeridos para crear la cuenta.": t("validRequired"),
-      "No se pudo crear la cuenta. Revisá si el email ya está registrado.": t("accountExists"),
-      "Ingresá un número de teléfono válido.": t("validPhone"),
+      "Ingresa un email y una contraseña válidos.": t("validEmailPassword"),
+      "Ingresa un email válido.": t("validEmail"),
+      "Ingresa los datos requeridos para crear la cuenta.": t("validRequired"),
+      "No se pudo crear la cuenta. Revisa si el email ya está registrado.": t("accountExists"),
+      "Ingresa un número de teléfono válido.": t("validPhone"),
       "La contraseña debe tener al menos 6 caracteres.": t("passwordLength"),
       "Las contraseñas no coinciden.": t("passwordMismatch"),
       "Ese teléfono ya está registrado.": t("phoneTaken"),

@@ -1,5 +1,6 @@
 import { createHash, createHmac, timingSafeEqual } from "node:crypto";
-import { renderFeedbackHtml, renderFeedbackThanksEmail, renderLeadSuiteWeeklyReportEmail, renderPasswordResetEmail, renderVerificationEmail, renderWelcomeEmail } from "@/lib/server/email-templates";
+import { renderFeedbackHtml, renderFeedbackThanksEmail, renderLeadSuiteWeeklyReportEmail, renderPasswordResetEmail, renderSubscriptionReceiptEmail, renderVerificationEmail, renderWelcomeEmail } from "@/lib/server/email-templates";
+import { renderReceiptPdf } from "@/lib/server/receipt-pdf";
 import type { WeeklyReport } from "@/lib/lead-suite";
 import type { Locale } from "@/lib/server/locale";
 import { pocketBaseFetch } from "@/lib/server/pocketbase";
@@ -96,7 +97,7 @@ export function readPasswordResetToken(token: string): { id: string; email: stri
   return data && typeof data.v === "string" ? { id: data.id, email: data.email, v: data.v } : null;
 }
 
-async function sendEmail(input: { from: string; to: string | string[]; subject: string; text: string; html: string; idempotencyKey: string; replyTo?: string }) {
+async function sendEmail(input: { from: string; to: string | string[]; subject: string; text: string; html: string; idempotencyKey: string; replyTo?: string; attachments?: { filename: string; content: string }[] }) {
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) throw new Error("RESEND_API_KEY is not configured.");
 
@@ -114,6 +115,7 @@ async function sendEmail(input: { from: string; to: string | string[]; subject: 
       text: input.text,
       html: input.html,
       ...(input.replyTo ? { reply_to: input.replyTo } : {}),
+      ...(input.attachments ? { attachments: input.attachments } : {}),
     }),
     cache: "no-store",
     signal: AbortSignal.timeout(10000),
@@ -203,6 +205,14 @@ export async function findEmailUser(email: string) {
   });
   const response = await pocketBaseFetch<{ items: UserEmailRecord[] }>(`/api/collections/users/records?${filter.toString()}`);
   return response.items[0] || null;
+}
+
+/** Confirmation + receipt for one approved charge; the payment id is the idempotency key, so retried webhooks never resend it. */
+export async function sendSubscriptionReceiptEmail(input: { to: string; name?: string; locale: Locale; planName: string; credits: number; amount: string; date: string; paymentId: string }) {
+  const receipt = { locale: input.locale, name: input.name, planName: input.planName, credits: input.credits, amount: input.amount, date: input.date, reference: input.paymentId };
+  const email = renderSubscriptionReceiptEmail({ ...receipt, origin: appOrigin() });
+  const pdf = await renderReceiptPdf({ ...receipt, email: input.to });
+  await sendEmail({ from: verificationSender, to: input.to, ...email, idempotencyKey: `leadta-subscription-receipt-${input.paymentId}`, attachments: [{ filename: `leadta-${input.locale === "en" ? "receipt" : "recibo"}-${input.paymentId}.pdf`, content: Buffer.from(pdf).toString("base64") }] });
 }
 
 const reportSender = "Leadta <noreply@leadta.app>";

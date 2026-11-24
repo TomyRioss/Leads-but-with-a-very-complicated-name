@@ -1,4 +1,4 @@
-// Ubicación aleatoria: reparto de un lote entre los 10 países de mayor PIB nominal. Editá la lista para cambiar el conjunto.
+// Ubicación aleatoria: reparto de un lote entre los 10 países de mayor PIB nominal. Edita la lista para cambiar el conjunto.
 export const RANDOM_LOCATION_COUNTRIES = [
   "United States",
   "China",

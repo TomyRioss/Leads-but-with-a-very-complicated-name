@@ -2,7 +2,7 @@
   "oauth": {
     "metaTitle": "Autorizar app | Leadta",
     "loading": "Revisando la solicitud…",
-    "redirectingLogin": "Iniciá sesión para continuar. Te estamos llevando…",
+    "redirectingLogin": "Inicia sesión para continuar. Te estamos llevando…",
     "title": "{client} quiere acceder a tu cuenta de leadta",
     "redirectHost": "Al terminar vas a volver a <strong>{host}</strong>.",
     "permissionsTitle": "Va a poder",
@@ -13,18 +13,18 @@
       "credits": { "title": "Buscar y analizar", "description": "Buscar leads y analizar dolores. Gasta créditos de tu cuenta." },
       "send": { "title": "Enviar mensajes", "description": "Enviar emails y WhatsApp a tus leads desde tus cuentas conectadas." }
     },
-    "trustHint": "Permití solo apps en las que confiás. Podés desconectarla cuando quieras desde Integraciones.",
+    "trustHint": "Permite solo apps en las que confías. Puedes desconectarla cuando quieras desde Integraciones.",
     "allow": "Permitir",
     "allowing": "Autorizando…",
     "cancel": "Cancelar",
     "canceling": "Cancelando…",
-    "submitError": "No pudimos completar la autorización. Probá de nuevo.",
+    "submitError": "No pudimos completar la autorización. Prueba de nuevo.",
     "planTitle": "El conector es para planes pagos",
-    "planBody": "Para usar leadta desde Claude o ChatGPT necesitás un plan activo.",
+    "planBody": "Para usar leadta desde Claude o ChatGPT necesitas un plan activo.",
     "planCta": "Ver planes",
     "invalidTitle": "No pudimos procesar la solicitud",
-    "invalidBody": "El enlace de autorización no es válido o venció. Volvé a la app e intentá conectar de nuevo.",
-    "loadError": "No pudimos cargar la solicitud. Revisá tu conexión.",
+    "invalidBody": "El enlace de autorización no es válido o venció. Vuelve a la app e intenta conectar de nuevo.",
+    "loadError": "No pudimos cargar la solicitud. Revisa tu conexión.",
     "retry": "Reintentar"
   }
 }

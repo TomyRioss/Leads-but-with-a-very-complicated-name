@@ -10,18 +10,18 @@
     "steps": {
       "lead": {
         "title": "Qué es un lead",
-        "body": "Un negocio con sus datos de contacto. Buscá tu primero en 5 pasos.",
-        "bodyRepeat": "Repasá la búsqueda en 5 pasos, con un lote de 5 leads."
+        "body": "Un negocio con sus datos de contacto. Busca tu primero en 5 pasos.",
+        "bodyRepeat": "Repasa la búsqueda en 5 pasos, con un lote de 5 leads."
       },
       "keywords": {
-        "title": "Elegí qué buscar",
-        "body": "Escribí el rubro, por ejemplo «estudios contables».",
-        "hint": "Escribí al menos una keyword."
+        "title": "Elige qué buscar",
+        "body": "Escribe el rubro, por ejemplo «estudios contables».",
+        "hint": "Escribe al menos una keyword."
       },
       "location": {
-        "title": "Elegí dónde buscar",
-        "body": "Elegí el país. Provincia y ciudad son opcionales.",
-        "hint": "Elegí un país."
+        "title": "Elige dónde buscar",
+        "body": "Elige el país. Provincia y ciudad son opcionales.",
+        "hint": "Elige un país."
       },
       "count": {
         "title": "Cantidad: 1",
@@ -30,10 +30,10 @@
         "bodyRepeat": "Lote mínimo de 5 leads: {credits} créditos."
       },
       "launch": {
-        "title": "Lanzá la búsqueda",
-        "body": "Tocá «Buscar leads».",
+        "title": "Lanza la búsqueda",
+        "body": "Toca «Buscar leads».",
         "searching": "Buscando tu lead…",
-        "failed": "Sin resultados. Cambiá la keyword o la zona."
+        "failed": "Sin resultados. Cambia la keyword o la zona."
       },
       "results": {
         "title": "Tu resultado",
@@ -43,24 +43,24 @@
     },
     "leadtita": {
       "intro": {
-        "title": "Conocé a Leadtita",
+        "title": "Conoce a Leadtita",
         "body": "Tu asistente comercial: busca leads, registra contactos y redacta mensajes."
       },
       "ask": {
         "title": "Pedile leads",
         "body": "Ej.: «Buscame 5 inmobiliarias en Córdoba, Argentina».",
-        "hint": "Si te pregunta algo, respondé en el chat.",
+        "hint": "Si te pregunta algo, responde en el chat.",
         "retry": "No se confirmó. Pedila de nuevo."
       },
       "confirm": {
-        "title": "Confirmá la búsqueda",
-        "body": "Revisá qué busca y cuánto cuesta.",
-        "hint": "Confirmá la tarjeta.",
+        "title": "Confirma la búsqueda",
+        "body": "Revisa qué busca y cuánto cuesta.",
+        "hint": "Confirma la tarjeta.",
         "searching": "Buscando tus leads…"
       },
       "results": {
         "title": "Leads listos",
-        "body": "Están en tu historial. Seguí en el chat."
+        "body": "Están en tu historial. Sigue en el chat."
       }
     }
   }

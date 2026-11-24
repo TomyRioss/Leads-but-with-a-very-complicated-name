@@ -1255,7 +1255,7 @@ export function LeadSuiteChat({ onActivity, variant = "panel" }: { onActivity?: 
     const label = tags.map((tag) => typeof tag === "string" ? tag : tag.label).filter(Boolean).join(", ");
     const names = rows.slice(0, 25).map((lead) => lead.name.slice(0, 100)).join("; ");
     const content = locale === "es"
-      ? `Armá una propuesta individual por ${channel === "email" ? "Gmail" : "WhatsApp"} para cada lead con evidencia de dolores ya analizados en el lote ${label ? `"${label}"` : "recién generado"} de ${rows.length} leads. Identificá el lote por estos negocios: ${names}. Reutilizá los análisis guardados, no envíes mensajes y mostrame los borradores para revisarlos.`
+      ? `Arma una propuesta individual por ${channel === "email" ? "Gmail" : "WhatsApp"} para cada lead con evidencia de dolores ya analizados en el lote ${label ? `"${label}"` : "recién generado"} de ${rows.length} leads. Identifica el lote por estos negocios: ${names}. Reutiliza los análisis guardados, no envíes mensajes y mostrame los borradores para revisarlos.`
       : `Draft one ${channel === "email" ? "Gmail" : "WhatsApp"} message for each lead with analyzed pain evidence in the ${label ? `"${label}"` : "just generated"} batch of ${rows.length} leads. Identify the batch by these businesses: ${names}. Reuse saved analyses, do not send anything, and show me the drafts to review.`;
     setDraftBatchPickerOpen((current) => ({ ...current, [batchId]: false }));
     send(content, { mode: "seller", salesChannel: channel === "email" ? "gmail" : "whatsapp" });
@@ -1621,7 +1621,7 @@ export function LeadSuiteChat({ onActivity, variant = "panel" }: { onActivity?: 
     if (sending || !action.leadId) return;
     const guide = (draftRegeneration[key]?.guide ?? "").trim().slice(0, 300);
     const content = locale === "es"
-      ? `Regenerá una sola propuesta nueva para ${action.leadName}, para ${channel === "email" ? "Gmail" : "WhatsApp"}. Usá sus dolores y evidencia ya analizados. Reemplazá la propuesta anterior, no la envíes. Cambiá el enfoque y la redacción.${guide ? ` Guía opcional del usuario: ${guide}` : ""}`
+      ? `Regenera una sola propuesta nueva para ${action.leadName}, para ${channel === "email" ? "Gmail" : "WhatsApp"}. Usa sus dolores y evidencia ya analizados. Reemplaza la propuesta anterior, no la envíes. Cambia el enfoque y la redacción.${guide ? ` Guía opcional del usuario: ${guide}` : ""}`
       : `Regenerate exactly one new ${channel === "email" ? "Gmail" : "WhatsApp"} draft for ${action.leadName}, using its analyzed pains and evidence. Replace the previous draft; do not send it. Change the angle and wording.${guide ? ` Optional user guidance: ${guide}` : ""}`;
     const history = [...messages, { id: nextId.current++, role: "user" as const, content, at: timestamp() }].slice(-MAX_STORED_MESSAGES);
     setDraftRegeneration((current) => ({ ...current, [key]: { ...current[key], busy: true, error: false } }));

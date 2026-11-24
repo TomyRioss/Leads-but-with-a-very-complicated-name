@@ -65,3 +65,10 @@ next-env.d.ts
 
 # Local design docs
 /docs/
+
+# Playwright
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/
+playwright/.auth/

@@ -4,7 +4,7 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: "Leadta",
     short_name: "Leadta",
-    description: "Encontrá negocios locales para contactar, con datos de contacto y dolores detectados.",
+    description: "Encuentra negocios locales para contactar, con datos de contacto y dolores detectados.",
     start_url: "/",
     display: "standalone",
     background_color: "#eaede8",

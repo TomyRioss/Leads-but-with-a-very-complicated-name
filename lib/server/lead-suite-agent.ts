@@ -422,7 +422,7 @@ async function runMessageModelTool(ctx: ToolContext, name: string, args: Record<
   if (name === "create_message_model" && args.text === undefined) return invalid();
   if (name !== "create_message_model" && name !== "list_message_models" && args.modelName === undefined) return invalid();
   if (name === "update_message_model" && args.name === undefined && args.text === undefined && args.isDefault === undefined) {
-    return { error: en ? "Pass at least one of name, text or isDefault to update." : "Indicá al menos name, text o isDefault para actualizar." };
+    return { error: en ? "Pass at least one of name, text or isDefault to update." : "Indica al menos name, text o isDefault para actualizar." };
   }
   try {
     // MCP preloads fresh scoped data for its one call; chat may have mutated earlier this turn.
@@ -439,7 +439,7 @@ async function runMessageModelTool(ctx: ToolContext, name: string, args: Record<
     if (matches.length !== 1) {
       return {
         error: matches.length > 1 ? "ambiguous_message_model" : "message_model_not_found",
-        note: en ? "Ask for the exact saved model name and, if names repeat, its exact current text as textMatch. Nothing was changed." : "Pedí el nombre exacto y, si está repetido, el texto guardado actual exacto como textMatch. No se cambió nada.",
+        note: en ? "Ask for the exact saved model name and, if names repeat, its exact current text as textMatch. Nothing was changed." : "Pide el nombre exacto y, si está repetido, el texto guardado actual exacto como textMatch. No se cambió nada.",
         candidates: matches.map(({ name: modelName, text, isDefault }) => ({ name: modelName, preview: text.slice(0, 180), isDefault })),
       };
     }
@@ -456,19 +456,19 @@ async function runMessageModelTool(ctx: ToolContext, name: string, args: Record<
       const existingIndex = ctx.actions.findIndex((item) => item.type === "message_model_delete_confirmation" && item.id === model.id);
       if (existingIndex < 0) ctx.actions.push(action);
       else ctx.actions[existingIndex] = action;
-      return { confirmationRequired: true, name: model.name, note: en ? "Ask the person to confirm this specific deletion card. The model has not been deleted." : "Pedí que la persona confirme esta tarjeta de borrado. El modelo todavía no se eliminó." };
+      return { confirmationRequired: true, name: model.name, note: en ? "Ask the person to confirm this specific deletion card. The model has not been deleted." : "Pide que la persona confirme esta tarjeta de borrado. El modelo todavía no se eliminó." };
     }
     const token = signPendingChange({
       uid: ctx.userId, kind: "delete_message_model", leadId: "", leadName: model.name, data: {},
       extra: { modelId: model.id, modelName: model.name, modelStateHash: messageModelStateHash(model) },
     });
     ctx.actions.push({ type: "pending_change", token, change: { kind: "delete_message_model", leadName: model.name, data: {}, extra: { preview: model.text.slice(0, 180) } } });
-    return { confirmationRequired: true, name: model.name, note: en ? "Show the preview and call confirm_change with its signed token only after explicit user approval." : "Mostrá la vista previa y llamá a confirm_change con su token firmado solo después de la aprobación explícita." };
+    return { confirmationRequired: true, name: model.name, note: en ? "Show the preview and call confirm_change with its signed token only after explicit user approval." : "Muestra la vista previa y llama a confirm_change con su token firmado solo después de la aprobación explícita." };
   } catch (error) {
     const code = error instanceof Error ? error.message : "";
     if (code === "invalid_message_model") return invalid();
-    if (code === "message_model_limit") return { error: code, note: en ? "You can save up to 20 message models. Delete one before creating another." : "Podés guardar hasta 20 modelos. Eliminá uno antes de crear otro." };
-    if (code === "message_model_default_conflict") return { error: code, note: en ? "Another request changed the default. Refresh the models and try again." : "Otra solicitud cambió el predeterminado. Consultá los modelos y volvé a intentar." };
+    if (code === "message_model_limit") return { error: code, note: en ? "You can save up to 20 message models. Delete one before creating another." : "Puedes guardar hasta 20 modelos. Elimina uno antes de crear otro." };
+    if (code === "message_model_default_conflict") return { error: code, note: en ? "Another request changed the default. Refresh the models and try again." : "Otra solicitud cambió el predeterminado. Consulta los modelos y vuelve a intentar." };
     throw error;
   }
 }

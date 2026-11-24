@@ -490,8 +490,6 @@
       "planId": "Plan",
       "priceArs": "Price",
       "monthlyCredits": "Monthly credits",
-      "mercadoPago": "In Mercado Pago",
-      "mercadoPagoCancelled": "Canceled in Mercado Pago",
       "grantCredits": "Plan credits granted",
       "userId": "User ID",
       "ownerEmail": "User",

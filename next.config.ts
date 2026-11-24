@@ -2,8 +2,8 @@ import type { NextConfig } from "next";
 import { withBotId } from "botid/next/config";
 import createNextIntlPlugin from "next-intl/plugin";
 
-// CSP is limited to framing/base/object on purpose: a script-src/default-src would break Google Picker,
-// Mercado Pago and Vercel Analytics. withBotId appends its own (SAMEORIGIN) headers for its proxy path,
+// CSP is limited to framing/base/object on purpose: a script-src/default-src would break Google Picker
+// and Vercel Analytics. withBotId appends its own (SAMEORIGIN) headers for its proxy path,
 // which override these because later matches win.
 const securityHeaders = [
   { key: "Content-Security-Policy", value: "frame-ancestors 'none'; base-uri 'self'; object-src 'none'" },

@@ -1,16 +1,16 @@
 import { ArrowRight } from "lucide-react";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { headers } from "next/headers";
-import { isArgentinaMarket } from "@/lib/market";
+import { isArgentinaMarket, marketCurrency } from "@/lib/market";
+import { getSubscriptionPlan } from "@/lib/plans";
+import { displayPrice, getPlanPrices } from "@/lib/server/rebill";
 
-export async function PricingHero({ variant, id, locale, argentina }: { variant: "landing" | "page"; id?: string; locale: string; argentina: boolean }) {
+export async function PricingHero({ variant, id, locale, argentina, currency }: { variant: "landing" | "page"; id?: string; locale: string; argentina: boolean; currency: string }) {
   setRequestLocale(locale);
   const t = await getTranslations("Pricing");
   const Title = variant === "page" ? "h1" : "h2";
-  const format = new Intl.NumberFormat(locale);
-  const price = argentina
-    ? t("planPriceArs", { price: format.format(15_000) })
-    : t("planPriceUsd", { price: format.format(10) });
+  const { amount, currency: code } = displayPrice(await getPlanPrices(), getSubscriptionPlan("starter")!, currency);
+  const price = t("planPrice", { price: new Intl.NumberFormat(locale).format(amount), currency: code });
   const callHref = `https://wa.me/5491134083140?text=${encodeURIComponent(argentina ? t("callMessage") : t("customMessage"))}`;
   return (
     <section className={`pricing-hero pricing-hero-${variant}`} id={id} aria-labelledby="pricing-title">
@@ -32,6 +32,6 @@ export async function PricingHero({ variant, id, locale, argentina }: { variant:
 }
 
 export async function MarketPricingHero({ variant, id, locale }: { variant: "landing" | "page"; id?: string; locale: string }) {
-  const argentina = isArgentinaMarket(await headers());
-  return <PricingHero variant={variant} id={id} locale={locale} argentina={argentina} />;
+  const requestHeaders = await headers();
+  return <PricingHero variant={variant} id={id} locale={locale} argentina={isArgentinaMarket(requestHeaders)} currency={marketCurrency(requestHeaders)} />;
 }

@@ -13,7 +13,7 @@ export type Plan = {
   id: string;
   name: string;
   priceUsd: number;
-  /** What Mercado Pago (Argentina, ARS only) charges each month. Spanish pricing shows this; English shows priceUsd. */
+  /** Monthly price in ARS. Argentina pricing shows this; other markets show priceUsd. */
   priceArs: number;
   /** Credits granted on each monthly renewal. */
   credits: number;

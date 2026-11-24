@@ -28,18 +28,11 @@
 .price-plan-amount span { color: var(--muted); font-size: 15px; }
 .price-plan-features { display: grid; gap: 12px; margin: 0; padding: 0; list-style: none; }
 .price-plan-features li { display: flex; align-items: flex-start; gap: 10px; color: var(--ink); font-size: 15px; line-height: 1.4; }
-.price-plan-features svg { flex: none; margin-top: 1px; padding: 2px; border-radius: 999px; background: var(--ash-950); color: var(--lime); box-sizing: content-box; }
+.price-plan-features svg { flex: none; margin-top: 1px; padding: 2px; color: var(--lime-dark); box-sizing: content-box; }
 .price-plan-text { margin: 0; color: var(--muted); font-size: 15px; line-height: 1.6; }
-.price-plan .price-button { margin-top: auto; align-self: flex-start; }
+.price-plan .price-button { margin-top: auto; align-self: stretch; justify-content: center; text-align: center; }
 .price-plan-unavailable { margin: auto 0 0; padding-top: 16px; border-top: 1px solid var(--line); color: var(--muted); font-size: 14px; line-height: 1.5; }
 .price-plans-note { margin-top: 12px; color: var(--muted); font-size: 14px; }
-.price-subscribe { display: grid; justify-items: start; gap: 10px; margin-top: auto; }
-.price-subscribe .price-button { margin-top: 0; }
-.price-button:disabled { cursor: progress; opacity: .75; }
-.price-subscribe-error { margin: 0; color: var(--ink); font-size: 14px; line-height: 1.5; }
-.price-spin { animation: spin 1s linear infinite; }
-@media (prefers-reduced-motion: reduce) { .price-spin { animation: none; } }
-.price-return { position: fixed; inset: auto 16px 16px; z-index: 30; max-width: 560px; margin: 0 auto; padding: 14px 18px; border-radius: 12px; background: var(--lime); color: var(--ash-950); font-size: 15px; font-weight: 560; line-height: 1.45; box-shadow: 0 12px 32px color-mix(in srgb, var(--ash-950) 28%, transparent); }
 .price-plan-featured .price-button-dark { background: var(--lime); color: var(--ash-950); }
 .price-plan-featured .price-button-dark:hover { background: var(--lime-dark); }
 @media (max-width: 860px) {

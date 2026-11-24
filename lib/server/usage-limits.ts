@@ -14,7 +14,7 @@ export const freeLimit = (kind: FreeUsageKind) => kind === "pain_points" ? FREE_
 
 const count = (value: unknown) => typeof value === "number" && Number.isFinite(value) && value > 0 ? value : 0;
 
-/** "Has a plan" = a subscription in status "authorized" (Mercado Pago's paid, active state). */
+/** "Has a plan" = a subscription in status "authorized" (the paid, active state). */
 export async function hasActivePlan(userId: string) {
   const filter = encodeURIComponent(`user = "${userId}" && status = "authorized"`);
   const response = await pocketBaseFetch<{ totalItems: number }>(`/api/collections/subscriptions/records?perPage=1&fields=id&filter=${filter}`);

@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { getTranslations, setRequestLocale } from "next-intl/server";
-import { MarketPricingHero } from "@/app/pricing-hero";
 import { ExportHistory } from "@/app/landing/export-history";
 import { Faq } from "@/app/landing/faq";
 import { FinalCta } from "@/app/landing/final-cta";
@@ -12,7 +11,6 @@ import { LeadRecord } from "@/app/landing/lead-record";
 import { PainsEnrichment } from "@/app/landing/pains-enrichment";
 import { WhatsappFloat } from "@/app/landing/whatsapp-float";
 import { SignupPopup } from "@/app/landing/signup-popup";
-import { Suspense } from "react";
 import "@/app/landing/landing.css";
 
 export const instant = false;
@@ -77,7 +75,6 @@ export default async function LandingPage({ params }: { params: Promise<{ locale
         <LeadRecord />
         <PainsEnrichment />
         <ExportHistory />
-        <Suspense fallback={null}><MarketPricingHero variant="landing" id="plans" locale={locale} /></Suspense>
         <Faq />
         <FinalCta />
       </main>

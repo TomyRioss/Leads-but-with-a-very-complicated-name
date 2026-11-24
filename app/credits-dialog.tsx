@@ -9,9 +9,9 @@ import { Link } from "@/i18n/navigation";
 import "./modal-dialog.css";
 import "./credits-dialog.css";
 
-type Subscription = { planName: string; status: string; priceArs: number; checkoutUrl: string };
+type Subscription = { planName: string; status: string; priceArs: number };
 
-/** The user's Mercado Pago plan: status, pending checkout link and a two-step cancel. Hidden without a plan. */
+/** The user's plan: status and a two-step cancel. Hidden without a plan. */
 function CurrentPlan() {
   const t = useTranslations("CreditsPlans");
   const [subscription, setSubscription] = useState<Subscription | null>(null);
@@ -40,7 +40,6 @@ function CurrentPlan() {
   return (
     <section className="credits-plan-current" aria-labelledby="credits-plan-current-title">
       <p id="credits-plan-current-title"><strong>{t("currentPlan", { plan: subscription.planName })}</strong> · {t(`status.${status}`)}</p>
-      {subscription.checkoutUrl ? <a className="credits-plan-link" href={subscription.checkoutUrl}>{t("completePayment")}</a> : null}
       {confirming ? (
         <div className="credits-plan-confirm">
           <p>{t("cancelConfirm")}</p>

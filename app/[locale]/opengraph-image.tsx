@@ -5,7 +5,7 @@ export const contentType = "image/png";
 export const alt = "Leadta";
 
 const copy = {
-  es: { title: "Encontrá negocios para contactar", sub: "Leads locales por rubro y zona, con contacto, redes y dolores detectados. Exportá a CSV o XLSX." },
+  es: { title: "Encuentra negocios para contactar", sub: "Leads locales por rubro y zona, con contacto, redes y dolores detectados. Exporta a CSV o XLSX." },
   en: { title: "Find businesses to contact", sub: "Local leads by industry and area, with contact data, socials and detected pain points. Export to CSV or XLSX." },
 };
 

@@ -47,11 +47,11 @@ function fallbackReport(current: LeadSuiteMetrics, previous: LeadSuiteMetrics, l
     ? `Esta semana registraste ${current.contactsInRange} contactos a ${current.leadsContactedInRange} leads (${delta >= 0 ? "+" : ""}${delta} vs. la semana previa). Tasa de respuesta: ${Math.round(current.replyRate * 100)}%.`
     : `This week you logged ${current.contactsInRange} contacts with ${current.leadsContactedInRange} leads (${delta >= 0 ? "+" : ""}${delta} vs. the previous week). Reply rate: ${Math.round(current.replyRate * 100)}%.`;
   const suggestions: string[] = [];
-  if (current.pendingFollowUps.length) suggestions.push(es ? `Hacé seguimiento a ${current.pendingFollowUps.length} leads que no respondieron en más de 3 días.` : `Follow up with ${current.pendingFollowUps.length} leads who haven't replied in over 3 days.`);
-  if (bestChannel && bestChannel.n > 0) suggestions.push(es ? `Tu canal más usado fue ${bestChannel.c}; compará su respuesta con otros canales.` : `Your most used channel was ${bestChannel.c}; compare its replies with other channels.`);
+  if (current.pendingFollowUps.length) suggestions.push(es ? `Haz seguimiento a ${current.pendingFollowUps.length} leads que no respondieron en más de 3 días.` : `Follow up with ${current.pendingFollowUps.length} leads who haven't replied in over 3 days.`);
+  if (bestChannel && bestChannel.n > 0) suggestions.push(es ? `Tu canal más usado fue ${bestChannel.c}; compara su respuesta con otros canales.` : `Your most used channel was ${bestChannel.c}; compare its replies with other channels.`);
   if (current.byCategory[0]) suggestions.push(es ? `El rubro con más contactos fue ${current.byCategory[0].category}.` : `The category with the most contacts was ${current.byCategory[0].category}.`);
-  if (delta < 0) suggestions.push(es ? "Contactaste menos que la semana previa: reservá un bloque fijo de prospección." : "You contacted fewer leads than last week: block a fixed prospecting slot.");
-  if (!suggestions.length) suggestions.push(es ? "Registrá cada contacto para obtener sugerencias más precisas." : "Log every contact to get more precise suggestions.");
+  if (delta < 0) suggestions.push(es ? "Contactaste menos que la semana previa: reserva un bloque fijo de prospección." : "You contacted fewer leads than last week: block a fixed prospecting slot.");
+  if (!suggestions.length) suggestions.push(es ? "Registra cada contacto para obtener sugerencias más precisas." : "Log every contact to get more precise suggestions.");
   return { summary, suggestions };
 }
 
@@ -90,7 +90,7 @@ async function modelReport(digest: ReturnType<typeof metricsDigest>, locale: Loc
         messages: [
           {
             role: "system",
-            content: `You write a weekly sales prospecting report in ${locale === "es" ? "Spanish (Rioplatense, voseo)" : "English"}. Use ONLY the JSON metrics given. Return a brief summary (max 3 sentences) comparing with the previous week, and 3-5 concrete, actionable suggestions about channels with better replies, best hours (local time, ${LEAD_SUITE_TIMEZONE}), pending follow-ups and categories. Never invent numbers.`,
+            content: `You write a weekly sales prospecting report in ${locale === "es" ? "neutral Spanish (tuteo)" : "English"}. Use ONLY the JSON metrics given. Return a brief summary (max 3 sentences) comparing with the previous week, and 3-5 concrete, actionable suggestions about channels with better replies, best hours (local time, ${LEAD_SUITE_TIMEZONE}), pending follow-ups and categories. Never invent numbers.`,
           },
           { role: "user", content: JSON.stringify(digest) },
         ],

@@ -6,7 +6,6 @@ import { ChevronDown, Headset, History, LayoutDashboard, LogOut, Menu, MessageSq
 import { BrandLogo, BrandMark } from "@/app/brand-logo";
 import { LanguageSwitcher } from "@/app/language-switcher";
 import { FeedbackDialog } from "@/app/feedback-dialog";
-import { CreditsDialog } from "@/app/credits-dialog";
 import { IntegrationsDialog, OPEN_INTEGRATIONS_EVENT } from "@/app/integrations-dialog";
 import { OPEN_FEEDBACK_EVENT, type FeedbackPrefill } from "@/app/error-report";
 import { WhatsNewDialog } from "@/app/whats-new-dialog";
@@ -78,7 +77,6 @@ export function AppSidebar({ active, user, onSignOut, announce = true }: AppSide
     void getSession().then((result) => { if (current) setIsOwner(result.user?.role === "owner"); }, () => undefined);
     return () => { current = false; };
   }, []);
-  const [creditsOpen, setCreditsOpen] = useState(false);
   const [integrationsOpen, setIntegrationsOpen] = useState(false);
   // The chat's "+" menu opens the same modal through this event.
   useEffect(() => {
@@ -88,6 +86,18 @@ export function AppSidebar({ active, user, onSignOut, announce = true }: AppSide
   }, []);
   const [feedbackPrefill, setFeedbackPrefill] = useState<FeedbackPrefill | null>(null);
   const [envFlags, setEnvFlags] = useState<EnvFlags>(PROD_FLAGS);
+  // Active paid plan shown in the credits pill; stays empty without one.
+  const [planName, setPlanName] = useState("");
+  const signedIn = Boolean(user);
+  useEffect(() => {
+    if (!signedIn) return;
+    const controller = new AbortController();
+    fetch("/api/subscriptions", { signal: controller.signal })
+      .then((response) => (response.ok ? response.json() : null))
+      .then((payload: { subscription?: { planName: string; status: string } | null } | null) => setPlanName(payload?.subscription?.status === "authorized" ? payload.subscription.planName : ""))
+      .catch(() => undefined);
+    return () => controller.abort();
+  }, [signedIn]);
 
   useEffect(() => {
     let current = true;
@@ -206,11 +216,12 @@ export function AppSidebar({ active, user, onSignOut, announce = true }: AppSide
           <ul className="side-nav-list">
             <li>
               {user ? (
-              <button type="button" className="side-nav-item side-nav-credits" aria-haspopup="dialog" aria-label={s("creditsAria", { credits: user.credits })} title={s("creditsTitle")} onClick={() => { close(); setCreditsOpen(true); }}>
+              <Link className="side-nav-item side-nav-credits" href="/pricing" aria-label={s("creditsAria", { credits: user.credits })} title={s("creditsTitle")} onClick={close}>
                 <Stars className="menu-icon" size={18} strokeWidth={1.8} aria-hidden="true" />
                 <span className="side-nav-credits-value"><strong>{user.credits.toLocaleString(locale === "es" ? "es-AR" : "en-US")}</strong> {t("t_bcc0da40b3")}</span>
+                {planName ? <span className="shrink-0 rounded-full bg-(--ash-950) px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-(--lime)">{planName}</span> : null}
                 <span className="credits-add-sign" aria-hidden="true">+</span>
-              </button>
+              </Link>
               ) : <span className="side-nav-item side-nav-credits side-nav-skeleton" aria-hidden="true" />}
             </li>
             <li>
@@ -262,7 +273,6 @@ export function AppSidebar({ active, user, onSignOut, announce = true }: AppSide
         </div>
       </nav>
       <FeedbackDialog open={feedbackOpen} prefill={feedbackPrefill} onClose={() => setFeedbackOpen(false)} />
-      <CreditsDialog open={creditsOpen} onClose={() => setCreditsOpen(false)} />
       <IntegrationsDialog open={integrationsOpen} onClose={() => setIntegrationsOpen(false)} returnTo={active === "leadtita" ? "/leadtita" : "/integraciones"} />
       {/* Not on /leadtita: the CTA points there and new users get the Leadtita tour on that page. */}
       <WhatsNewDialog email={!announce || active === "leadtita" ? null : user?.email ?? null} />

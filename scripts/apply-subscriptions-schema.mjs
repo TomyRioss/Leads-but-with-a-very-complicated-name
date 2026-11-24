@@ -86,7 +86,7 @@ const subscriptionsId = await ensureCollection("subscriptions", () => ({
     relation("user", users.id),
     text("plan_id", 24, true),
     text("external_reference", 100, true),
-    text("mp_subscription_id", 100),
+    text("rebill_subscription_id", 100),
     text("checkout_url", 2000),
     text("status", 24, true),
     number("price_ars", { min: 0, onlyInt: true }),
@@ -95,7 +95,7 @@ const subscriptionsId = await ensureCollection("subscriptions", () => ({
   ],
   indexes: [
     "CREATE UNIQUE INDEX idx_subscriptions_external_reference ON subscriptions (external_reference)",
-    "CREATE UNIQUE INDEX idx_subscriptions_mp_subscription_id ON subscriptions (mp_subscription_id) WHERE mp_subscription_id != ''",
+    "CREATE UNIQUE INDEX idx_subscriptions_rebill_subscription_id ON subscriptions (rebill_subscription_id) WHERE rebill_subscription_id != ''",
     "CREATE INDEX idx_subscriptions_user_status ON subscriptions (user, status)",
   ],
 }));

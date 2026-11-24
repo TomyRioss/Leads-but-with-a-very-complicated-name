@@ -269,10 +269,10 @@ export function fallbackAnalysis(metrics: InsightMetrics, locale: InsightLocale,
       ? `Con ${metrics.totalContacts} contacto${metrics.totalContacts === 1 ? "" : "s"} registrado${metrics.totalContacts === 1 ? "" : "s"} en los últimos 30 días todavía no hay patrones confiables.`
       : `With ${metrics.totalContacts} logged contact${metrics.totalContacts === 1 ? "" : "s"} in the last 30 days there are no reliable patterns yet.`);
     out.push(es
-      ? "Registrá cada contacto con canal y hora, y marcá cuando un lead responde, agenda reunión o se gana: con eso mido tasa de respuesta y tiempos."
+      ? "Registra cada contacto con canal y hora, y marca cuando un lead responde, agenda reunión o se gana: con eso mido tasa de respuesta y tiempos."
       : "Log every contact with its channel and time, and mark when a lead replies, books a meeting or is won: that is what I use to measure reply rate and timing.");
     out.push(es
-      ? `Para mañana: sumá al menos ${MIN_CONTACTS_FOR_ANALYSIS - metrics.totalContacts + 3} contactos más, probando dos canales distintos, así puedo empezar a comparar.`
+      ? `Para mañana: suma al menos ${MIN_CONTACTS_FOR_ANALYSIS - metrics.totalContacts + 3} contactos más, probando dos canales distintos, así puedo empezar a comparar.`
       : `For tomorrow: log at least ${MIN_CONTACTS_FOR_ANALYSIS - metrics.totalContacts + 3} more contacts across two different channels so I can start comparing.`);
   }
   const { kpis } = metrics;
@@ -288,17 +288,17 @@ export function fallbackAnalysis(metrics: InsightMetrics, locale: InsightLocale,
   }
   if (kpis.bestHour) {
     out.push(es
-      ? `Los contactos cerca de las ${kpis.bestHour.hour} h responden más (${pct(kpis.bestHour.replyRate)}): probá concentrar envíos en esa franja.`
+      ? `Los contactos cerca de las ${kpis.bestHour.hour} h responden más (${pct(kpis.bestHour.replyRate)}): prueba concentrar envíos en esa franja.`
       : `Contacts around ${kpis.bestHour.hour}:00 reply more (${pct(kpis.bestHour.replyRate)}): try batching outreach in that window.`);
   }
   if (kpis.overdue > 0) {
     const oldest = metrics.overdue[0];
     out.push(es
-      ? `Tenés ${kpis.overdue} seguimiento${kpis.overdue === 1 ? "" : "s"} vencido${kpis.overdue === 1 ? "" : "s"}${oldest ? `; empezá por ${oldest.name} (${oldest.days} días sin respuesta)` : ""}.`
+      ? `Tienes ${kpis.overdue} seguimiento${kpis.overdue === 1 ? "" : "s"} vencido${kpis.overdue === 1 ? "" : "s"}${oldest ? `; empieza por ${oldest.name} (${oldest.days} días sin respuesta)` : ""}.`
       : `You have ${kpis.overdue} overdue follow-up${kpis.overdue === 1 ? "" : "s"}${oldest ? `; start with ${oldest.name} (${oldest.days} days without a reply)` : ""}.`);
   }
   if (out.length < 3 && !insufficient) {
-    out.push(es ? "Registrá también las respuestas para que pueda comparar canales y horarios." : "Also log replies so I can compare channels and times.");
+    out.push(es ? "Registra también las respuestas para que pueda comparar canales y horarios." : "Also log replies so I can compare channels and times.");
   }
   return { observations: out.slice(0, 5), source: "fallback", insufficient, generatedAt: now.toISOString() };
 }
@@ -348,7 +348,7 @@ export function parseObservations(content: string): string[] | null {
 export async function requestDailyAnalysis(apiKey: string, metrics: InsightMetrics, locale: InsightLocale, now = new Date(), userId?: string): Promise<DailyAnalysis> {
   const system = [
     "You are Leadtita, the Lead Suite assistant in leadta. You review a salesperson's outreach log once a day.",
-    `Write 3 to 5 short, actionable observations in ${locale === "es" ? "Rioplatense Spanish (voseo)" : "English"}, one sentence each.`,
+    `Write 3 to 5 short, actionable observations in ${locale === "es" ? "neutral Spanish (tuteo)" : "English"}, one sentence each.`,
     "Use ONLY the numbers in the JSON. Never invent data, leads or percentages. Mention channel/time/category patterns, overdue follow-ups and one concrete thing to try tomorrow.",
     "Hours are local hours (0-23). Fields ending in Pct are whole percentages: write them as \"50%\", never as decimals. Translate weekday names. If a sample is small (fewer than 3 leads), say it is a weak signal.",
     'Reply only with JSON: {"observations": ["..."]}.',

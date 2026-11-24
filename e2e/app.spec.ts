@@ -1,0 +1,66 @@
+import { expect, test } from "@playwright/test";
+
+// Sin sesión (PocketBase inaccesible en e2e): cada funcionalidad privada debe bloquear el acceso.
+const privateApis: [string, "GET" | "POST", string][] = [
+  ["CHAT LEADTITA", "POST", "/api/lead-suite/chat"],
+  ["CONVERSACIONES DE LEADTITA", "GET", "/api/leadtita/conversations"],
+  ["LEAD SUITE DASHBOARD", "GET", "/api/lead-suite/dashboard"],
+  ["CONTACTOS DE LEAD SUITE", "GET", "/api/lead-suite/contacts"],
+  ["PROGRAMAR MENSAJES", "GET", "/api/scheduled"],
+  ["BUSCAR NEGOCIOS", "POST", "/api/search"],
+  ["BUSCAR PERSONAS", "POST", "/api/people/search"],
+  ["VER HISTORIAL DE LOTES", "GET", "/api/history"],
+  ["PANEL OWNER", "GET", "/api/owner/me"],
+  ["ENVIAR FEEDBACK", "POST", "/api/feedback"],
+  ["CONFIRMAR SUSCRIPCIÓN", "POST", "/api/subscriptions/confirm"],
+  ["SERVIDOR MCP", "POST", "/api/mcp"],
+];
+
+for (const [feature, method, path] of privateApis) {
+  test(`${feature} exige sesión`, async ({ request }) => {
+    const response = await request.fetch(path, { method, data: method === "POST" ? {} : undefined });
+    expect(response.status()).toBe(401);
+  });
+}
+
+test("EXPORTAR LEADS CSV/XLSX exige sesión", async ({ request }) => {
+  expect((await request.get("/api/export/csv")).status()).toBe(401);
+  expect((await request.get("/api/export/xlsx")).status()).toBe(401);
+});
+
+test("CONECTAR INTEGRACIONES (GOOGLE / WHATSAPP) exige sesión", async ({ page, request }) => {
+  expect((await request.get("/api/integrations/google/status")).status()).toBe(401);
+  expect((await request.get("/api/integrations/whatsapp/status")).status()).toBe(401);
+  await page.goto("/integraciones");
+  await expect(page).not.toHaveURL(/\/integraciones/);
+});
+
+test("BUSCAR NEGOCIOS redirige a login sin sesión", async ({ page }) => {
+  await page.goto("/buscar");
+  await expect(page).toHaveURL(/\/login/);
+});
+
+test("CHAT LEADTITA redirige sin sesión", async ({ page }) => {
+  await page.goto("/leadtita");
+  await expect(page).not.toHaveURL(/\/leadtita/);
+});
+
+test("AUTORIZAR CLIENTE OAUTH (MCP) pide login", async ({ page }) => {
+  await page.goto("/oauth/authorize");
+  await expect(page).toHaveURL(/\/login\?next=%2Foauth%2Fauthorize/);
+});
+
+test("SERVIDOR MCP publica metadata OAuth", async ({ request }) => {
+  const response = await request.get("/.well-known/oauth-authorization-server");
+  expect(response.ok()).toBe(true);
+  expect(await response.json()).toHaveProperty("authorization_endpoint");
+});
+
+test("WEBHOOK DE PAGOS REBILL rechaza eventos sin firma", async ({ request }) => {
+  const response = await request.post("/api/rebill/webhook", { data: {} });
+  expect([401, 503]).toContain(response.status());
+});
+
+test("ESTADO DEL SERVICIO", async ({ request }) => {
+  expect((await request.get("/api/status")).ok()).toBe(true);
+});

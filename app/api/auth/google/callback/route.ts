@@ -145,7 +145,7 @@ export async function GET(request: NextRequest) {
       return response;
     }
     const isOwner = toUserRole(auth.record.role) === "owner";
-    const destination = locale === "en" ? (isOwner ? "/en/owner" : "/en/buscar") : (isOwner ? "/owner" : "/buscar");
+    const destination = locale === "en" ? (isOwner ? "/en/owner" : "/en/leadtita") : (isOwner ? "/owner" : "/leadtita");
     // Return path set by /api/auth/google (already validated there); re-checked to stay on this origin.
     const next = request.cookies.get(nextCookie)?.value ?? "";
     const back = next.startsWith("/") && !next.startsWith("//") ? new URL(next, origin) : null;
