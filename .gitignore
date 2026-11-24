@@ -1,4 +1,4 @@
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+﻿# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
 # dependencies
 node_modules/
@@ -64,7 +64,8 @@ next-env.d.ts
 .swarm/
 
 # Local design docs
-/docs/
+/docs/*
+!/docs/FEATURE-MAP.md
 
 # Playwright
 test-results/
