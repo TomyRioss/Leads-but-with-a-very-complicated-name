@@ -94,12 +94,6 @@
         { "q": "¿Mis búsquedas son privadas?", "a": "Sí. Cada cuenta tiene su propio historial y nadie más ve tus lotes ni tus leads." }
       ]
     },
-    "cta": {
-      "title": "Tu primera lista está a una búsqueda de distancia.",
-      "text": "Crea tu cuenta y empieza con 50 créditos de bienvenida.",
-      "primary": "Crear cuenta gratis",
-      "secondary": "Ya tengo cuenta"
-    },
     "footer": {
       "aria": "Enlaces de Leadta",
       "tagline": "Encuentra. Organiza. Avanza.",

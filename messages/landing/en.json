@@ -94,12 +94,6 @@
         { "q": "Are my searches private?", "a": "Yes. Every account has its own history, and nobody else sees your batches or leads." }
       ]
     },
-    "cta": {
-      "title": "Your first list is one search away.",
-      "text": "Create your account and start with 50 welcome credits.",
-      "primary": "Create a free account",
-      "secondary": "I already have an account"
-    },
     "footer": {
       "aria": "Leadta links",
       "tagline": "Find. Organize. Move forward.",

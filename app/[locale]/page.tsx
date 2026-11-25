@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { Faq } from "@/app/landing/faq";
-import { FinalCta } from "@/app/landing/final-cta";
 import { LandingFooter } from "@/app/landing/footer";
 import { LandingHeader } from "@/app/landing/header";
 import { Hero } from "@/app/landing/hero";
@@ -72,7 +71,6 @@ export default async function LandingPage({ params }: { params: Promise<{ locale
         <HowItWorks />
         <ThreeThings />
         <Faq />
-        <FinalCta />
       </main>
       <LandingFooter />
       <SignupPopup />
