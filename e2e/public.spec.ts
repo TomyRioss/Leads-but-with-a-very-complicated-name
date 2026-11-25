@@ -94,10 +94,11 @@ test("PÁGINA 404", async ({ page }) => {
 // Explorar: no se corre IA ni Apify (el entorno e2e usa producción). Se prueba la UI y el rechazo sin Turnstile.
 test("DESCRIBIR PRODUCTO EN LANDING", async ({ page }) => {
   await page.goto("/");
-  await expect(page.getByPlaceholder("Cuéntanos sobre tu producto...")).toBeVisible();
-  await page.getByRole("button", { name: "Web", exact: true }).click();
+  // Web es el modo por defecto; Texto sigue disponible.
   await page.getByPlaceholder("Pega tu web, ej. loruppa.com").fill("loruppa.com");
   await expect(page.getByText("Investigar con IA")).toBeVisible();
+  await page.getByRole("button", { name: "Texto", exact: true }).click();
+  await expect(page.getByPlaceholder("Cuéntanos sobre tu producto...")).toBeVisible();
 });
 
 test("VENDO SERVICIOS", async ({ page }) => {

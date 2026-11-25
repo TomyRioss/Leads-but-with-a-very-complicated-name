@@ -61,7 +61,7 @@ export function ExploreInput() {
   const router = useRouter();
   const rootRef = useRef<HTMLDivElement>(null);
   const captchaRef = useRef<TurnstileFieldHandle>(null);
-  const [mode, setMode] = useState<"text" | "web">("text");
+  const [mode, setMode] = useState<"text" | "web">("web");
   const [text, setText] = useState("");
   const [url, setUrl] = useState("");
   const [focused, setFocused] = useState(false);
