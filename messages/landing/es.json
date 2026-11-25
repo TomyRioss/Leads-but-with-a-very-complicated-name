@@ -83,28 +83,6 @@
         }
       ]
     },
-    "export": {
-      "title": "Exporta y vuelve cuando quieras.",
-      "text": "Cada búsqueda queda guardada como un lote en tu historial privado. Reabrilo y descargalo de nuevo cuando lo necesites.",
-      "points": [
-        "Descarga en CSV o XLSX con todas las columnas, también las vacías.",
-        "Historial privado: solo tú ves tus lotes y tus leads.",
-        "Análisis y redes se pueden sumar después sobre cualquier lote."
-      ],
-      "historyLabel": "Historial de ejemplo",
-      "batches": [
-        { "date": "11 nov", "query": "Veterinarias · Palermo", "count": "25 leads" },
-        { "date": "08 nov", "query": "Estudios contables · Rosario", "count": "50 leads" },
-        { "date": "03 nov", "query": "Inmobiliarias · Córdoba", "count": "100 leads" }
-      ],
-      "download": "Descargar",
-      "creditsTitle": "Pagas por lo que buscas.",
-      "credits": [
-        { "value": "50", "label": "créditos de bienvenida al crear tu cuenta" },
-        { "value": "2", "label": "créditos por cada lead de tu búsqueda" },
-        { "value": "0", "label": "créditos por analizar dolores: es gratis" }
-      ]
-    },
     "faq": {
       "title": "Preguntas frecuentes",
       "items": [

@@ -111,46 +111,7 @@
 .lp-split-copy { display: grid; gap: 18px; }
 @media (min-width: 900px) {
   .lp-split { grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); }
-  .lp-split-wide { grid-template-columns: minmax(0, 6fr) minmax(0, 6fr); }
-  .lp-split-reverse { grid-template-columns: minmax(0, 6fr) minmax(0, 6fr); }
-  .lp-split-reverse .lp-split-copy { order: 2; }
   .lp-split-copy { position: sticky; top: calc(96px + var(--campaign-banner-h, 0px)); }
-  .lp-split-reverse .lp-split-copy, .lp-split-wide .lp-split-copy { position: static; }
-}
-
-
-/* Sección oscura: dolores y redes */
-.lp-dark { background: var(--ash-950); color: var(--ash-200); }
-.lp-dark :focus-visible { outline-color: var(--lime); }
-.lp-dark h2, .lp-dark h3 { color: var(--paper); }
-.lp-dark .lp-lead { color: var(--ash-300); }
-
-/* Exportación e historial */
-.lp-points { display: grid; gap: 12px; margin: 6px 0 0; padding: 0; list-style: none; }
-.lp-points li { display: flex; align-items: flex-start; gap: 10px; color: var(--ash-800); font-size: 16px; line-height: 1.5; }
-.lp-points svg { flex: none; margin-top: 2px; color: var(--ash-950); }
-.lp-history { overflow: hidden; border: 1px solid var(--line); border-radius: 14px; background: var(--paper); box-shadow: 0 1px 0 rgb(23 25 24 / 4%), 0 28px 56px -36px rgb(23 25 24 / 26%); }
-.lp-history-head { display: flex; align-items: center; gap: 8px; padding: 14px 18px; border-bottom: 1px solid var(--line); background: var(--ash-50); color: var(--ash-700); font-size: 13px; font-weight: 600; }
-.lp-history ul { margin: 0; padding: 0; list-style: none; }
-.lp-history li { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 14px; padding: 16px 18px; border-bottom: 1px solid var(--ash-150); }
-.lp-history li:last-child { border-bottom: 0; }
-.lp-history li:first-child { background: var(--ash-50); }
-.lp-history-date { min-width: 48px; color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; }
-.lp-history-query { display: grid; min-width: 0; gap: 2px; }
-.lp-history-query strong { overflow: hidden; font-size: 15px; font-weight: 650; text-overflow: ellipsis; white-space: nowrap; }
-.lp-history-query small { color: var(--muted); font-size: 13px; }
-.lp-history-dl { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border: 1px solid var(--ash-300); border-radius: 8px; color: var(--ash-800); font-size: 13px; font-weight: 600; }
-@media (max-width: 479px) { .lp-history-dl { display: none; } .lp-history li { grid-template-columns: auto minmax(0, 1fr); } }
-
-.lp-credits { display: grid; gap: 14px; margin-top: clamp(40px, 6vw, 72px); padding: 20px; border: 1px solid var(--ash-300); border-radius: 14px; }
-.lp-credits h3 { display: flex; align-items: center; gap: 8px; }
-.lp-credits ul { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; }
-.lp-credits li { color: var(--ash-800); font-size: 15px; line-height: 1.45; }
-.lp-credits strong { color: var(--ink); font-size: 1.125rem; font-weight: 700; }
-@media (min-width: 900px) {
-  .lp-credits { grid-template-columns: auto 1fr; align-items: center; gap: 32px; padding: 20px 28px; }
-  .lp-credits ul { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; }
-  .lp-credits li + li { padding-left: 24px; border-left: 1px solid var(--ash-300); }
 }
 
 /* PricingHero (componente existente): ritmo propio dentro de la landing */
@@ -184,7 +145,7 @@
 .lp-footer-links a:hover { color: var(--ink); text-decoration: underline; }
 
 /* Anclas con header fijo */
-#how, #data, #edge, #plans, #faq { scroll-margin-top: 88px; }
+#how, #edge, #plans, #faq { scroll-margin-top: 88px; }
 
 /* Movimiento: una entrada al cargar (copy + filas de la hoja). El contenido es visible por defecto. */
 @media (prefers-reduced-motion: no-preference) {

@@ -83,28 +83,6 @@
         }
       ]
     },
-    "export": {
-      "title": "Export it, and come back whenever you want.",
-      "text": "Every search is saved as a batch in your private history. Reopen it and download it again whenever you need.",
-      "points": [
-        "CSV or XLSX downloads with every column, empty ones included.",
-        "Private history: only you see your batches and leads.",
-        "Add analysis and socials later on any batch."
-      ],
-      "historyLabel": "Sample history",
-      "batches": [
-        { "date": "Nov 11", "query": "Veterinary clinics · Palermo", "count": "25 leads" },
-        { "date": "Nov 08", "query": "Accounting firms · Rosario", "count": "50 leads" },
-        { "date": "Nov 03", "query": "Real estate agencies · Córdoba", "count": "100 leads" }
-      ],
-      "download": "Download",
-      "creditsTitle": "Pay for what you search.",
-      "credits": [
-        { "value": "50", "label": "welcome credits when you create your account" },
-        { "value": "2", "label": "credits for every lead in your search" },
-        { "value": "0", "label": "credits to analyze pain points: it is free" }
-      ]
-    },
     "faq": {
       "title": "Frequently asked questions",
       "items": [
