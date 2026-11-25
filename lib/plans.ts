@@ -21,6 +21,8 @@ export type Plan = {
   featured?: boolean;
   /** "private" plans never show on the public pricing page. */
   visibility: PlanVisibility;
+  /** Plan that only grants credits: pricing lists the credits line and nothing else. */
+  creditsOnly?: boolean;
   /** Only for private plans: the user the plan was created for. */
   userId?: string;
   period: typeof PLAN_PERIOD;
@@ -49,6 +51,8 @@ const growthLimits: PlanLimits = { whatsappMonthly: 750, emailMonthly: 750, sche
 export const subscriptionPlans: readonly Plan[] = [
   { id: "starter", name: "Starter", priceUsd: 15, priceArs: 25_000, credits: 350, limits: { whatsappMonthly: 150, emailMonthly: 150, scheduledMonthly: 20 }, featured: false, visibility: "public", period: PLAN_PERIOD },
   { id: "growth", name: "Growth", priceUsd: 50, priceArs: 75_000, credits: 1_750, limits: growthLimits, featured: true, visibility: "public", period: PLAN_PERIOD },
+  // ponytail: temporary public plan to test real Mercado Pago payments in production (MP minimum is ARS 15). Remove after the test.
+  { id: "prueba", name: "Prueba", priceUsd: 0.01, priceArs: 15, credits: 100, limits: { whatsappMonthly: 0, emailMonthly: 0, scheduledMonthly: 0 }, creditsOnly: true, featured: false, visibility: "public", period: PLAN_PERIOD },
 ];
 
 /** Accounts without an active plan (unchanged pre-plan behavior): 10 schedules count every channel; no monthly email cap. */

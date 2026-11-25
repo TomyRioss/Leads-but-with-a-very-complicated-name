@@ -112,9 +112,13 @@ export function CreditsDialog({ open, onClose }: { open: boolean; onClose: () =>
               </p>
               <ul>
                 <li><Check size={14} aria-hidden="true" />{pricing("planCredits", { credits: number.format(plan.credits) })}</li>
-                <li><Check size={14} aria-hidden="true" />{pricing("planWhatsapp", { count: number.format(plan.limits.whatsappMonthly) })}</li>
-                <li><Check size={14} aria-hidden="true" />{pricing("planEmail", { count: number.format(plan.limits.emailMonthly) })}</li>
-                <li><Check size={14} aria-hidden="true" />{pricing("agentUsage", { plan: plan.id })}</li>
+                {plan.creditsOnly ? null : (
+                  <>
+                    <li><Check size={14} aria-hidden="true" />{pricing("planWhatsapp", { count: number.format(plan.limits.whatsappMonthly) })}</li>
+                    <li><Check size={14} aria-hidden="true" />{pricing("planEmail", { count: number.format(plan.limits.emailMonthly) })}</li>
+                    <li><Check size={14} aria-hidden="true" />{pricing("agentUsage", { plan: plan.id })}</li>
+                  </>
+                )}
               </ul>
               <Link className="price-button price-button-subscribe" href="/pricing">
                 {pricing("subscribe")}<ArrowRight size={16} aria-hidden="true" />
