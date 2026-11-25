@@ -1,3 +1,4 @@
+import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { checkBotId } from "botid/server";
 import { disposableEmailBlocklistSet } from "disposable-email-domains-js";
@@ -7,6 +8,8 @@ import { verifyTurnstile } from "@/lib/server/turnstile";
 import { errorTranslator, localeFrom } from "@/lib/server/locale";
 import { sendStaffAlert, sendVerificationEmail, updateEmailUser } from "@/lib/server/email";
 import { PocketBaseAuthError, PocketBaseRequestError, isPocketBaseConfigured, pocketBaseFetch } from "@/lib/server/pocketbase";
+import { EXPLORE_TOKEN_COOKIE } from "@/lib/explore/types";
+import { claimRun } from "@/lib/server/explore/store";
 
 const signupCredits = 50;
 const REGISTER_RATE = { max: 5, windowMs: 10 * 60_000 } as const;
@@ -106,7 +109,16 @@ export async function POST(request: Request) {
     } catch (emailError) {
       console.error("Leadta verification email failed:", emailError instanceof Error ? emailError.message : "unknown error");
     }
-    return NextResponse.json({ verificationRequired: true, verificationSent }, { status: 201 });
+    // Corrida anónima de /explorar: sus leads pasan al usuario nuevo. Nunca rompe el registro.
+    const exploreToken = (await cookies()).get(EXPLORE_TOKEN_COOKIE)?.value;
+    if (exploreToken) {
+      await claimRun(exploreToken, user.id).catch((claimError) => {
+        console.error("Leadta explore claim failed:", claimError instanceof Error ? claimError.message : "unknown error");
+      });
+    }
+    const response = NextResponse.json({ verificationRequired: true, verificationSent }, { status: 201 });
+    if (exploreToken) response.cookies.set(EXPLORE_TOKEN_COOKIE, "", { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "lax", path: "/", maxAge: 0 });
+    return response;
   } catch (error) {
     console.error(
       "Leadta register failed:",

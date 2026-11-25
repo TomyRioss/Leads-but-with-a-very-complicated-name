@@ -31,8 +31,8 @@ const locationErrorKeys: Record<Extract<LocationResolution, { ok: false }>["fiel
   district: "searchCountryRequired",
 };
 
-type ActorPlace = Record<string, unknown>;
-type SearchFilters = {
+export type ActorPlace = Record<string, unknown>;
+export type SearchFilters = {
   minReviews?: number;
   maxReviews?: number;
   minRating?: number;
@@ -140,7 +140,7 @@ function socialProfilesText(value: unknown): string {
     .join("\n");
 }
 
-function mapPlace(place: ActorPlace) {
+export function mapPlace(place: ActorPlace) {
   const placeId = asText(place.placeId);
   const mapsUrl = asText(place.mapsUrl) || asText(place.url) ||
     (placeId ? `https://www.google.com/maps/search/?api=1&query_place_id=${encodeURIComponent(placeId)}` : "");
@@ -176,7 +176,7 @@ function mapPlace(place: ActorPlace) {
   };
 }
 
-async function actorSearch(
+export async function actorSearch(
   token: string,
   keyword: string,
   location: string,

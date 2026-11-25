@@ -21,7 +21,33 @@
       "signup": "Create account"
     },
     "hero": {
-      "title": "Start Vibeselling. <green>45 potential clients</green> in 24 hours, FREE."
+      "title": "Start Vibeselling. <green>45 potential clients</green> in 24 hours, FREE.",
+      "explore": {
+        "modeLabel": "Input type",
+        "modeText": "Text",
+        "modeWeb": "Website",
+        "textLabel": "Describe your product",
+        "textPlaceholder": "Tell us about your product...",
+        "webLabel": "Your website",
+        "webPlaceholder": "Paste your website, e.g. loruppa.com",
+        "submit": "Start",
+        "research": "Run AI research",
+        "services": "I sell services",
+        "quota": "You reached today's trial limit. <link>Create an account</link> to continue.",
+        "failed": "We couldn't start. Please try again.",
+        "dialog": {
+          "title": "Tell us about your business",
+          "subtitle": "We build your campaigns from your answers",
+          "close": "Close",
+          "offerLabel": "What do you sell or want to build?",
+          "offerPlaceholder": "e.g. An agency that builds websites for restaurants",
+          "customerLabel": "Who is your ideal customer?",
+          "customerPlaceholder": "e.g. Restaurant owners with little online presence",
+          "marketsLabel": "Which markets or region?",
+          "marketsPlaceholder": "e.g. Argentina and Uruguay",
+          "submit": "Generate my campaigns →"
+        }
+      }
     },
     "how": {
       "title": "The first step from intent to action.",

@@ -90,3 +90,30 @@ test("PÁGINA 404", async ({ page }) => {
   expect((await page.goto("/no-existe-e2e"))?.status()).toBe(404);
   await expect(page.getByRole("heading", { name: "Este lead se nos escapó" })).toBeVisible();
 });
+
+// Explorar: no se corre IA ni Apify (el entorno e2e usa producción). Se prueba la UI y el rechazo sin Turnstile.
+test("DESCRIBIR PRODUCTO EN LANDING", async ({ page }) => {
+  await page.goto("/");
+  await expect(page.getByPlaceholder("Cuéntanos sobre tu producto...")).toBeVisible();
+  await page.getByRole("button", { name: "Web", exact: true }).click();
+  await page.getByPlaceholder("Pega tu web, ej. loruppa.com").fill("loruppa.com");
+  await expect(page.getByText("Investigar con IA")).toBeVisible();
+});
+
+test("VENDO SERVICIOS", async ({ page }) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: "Vendo servicios" }).click();
+  const dialog = page.getByRole("dialog", { name: "Cuéntanos sobre tu negocio" });
+  await expect(dialog).toBeVisible();
+  await expect(dialog.getByRole("button", { name: /Generar mis campañas/ })).toBeDisabled();
+});
+
+test("EXPLORAR SIN CORRIDA", async ({ page }) => {
+  await page.goto("/explorar");
+  await expect(page.getByText("Todavía no empezaste una exploración")).toBeVisible();
+});
+
+test("API EXPLORAR RECHAZA SIN TURNSTILE", async ({ request }) => {
+  const res = await request.post("/api/explore/start", { data: { input: { mode: "text", description: "Una app de turnos" }, turnstileToken: "" } });
+  expect([400, 403]).toContain(res.status());
+});

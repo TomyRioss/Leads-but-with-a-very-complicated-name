@@ -1,4 +1,5 @@
 import { getTranslations } from "next-intl/server";
+import { ExploreInput } from "./explore-input";
 
 export async function Hero() {
   const t = await getTranslations("Landing.hero");
@@ -10,6 +11,7 @@ export async function Hero() {
             green: (chunks) => <span className="block text-(color:--lime-dark)">{chunks}</span>,
           })}
         </h1>
+        <ExploreInput />
       </div>
     </section>
   );

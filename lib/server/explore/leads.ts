@@ -1,0 +1,93 @@
+import "server-only";
+import { createHash } from "node:crypto";
+import { parsePhoneNumberFromString } from "libphonenumber-js/mobile";
+import { EXPLORE_LEAD_COUNT, type ExploreCampaign, type ExploreLead, type ExploreProduct } from "@/lib/explore/types";
+import { actorSearch, mapPlace, type ActorPlace, type SearchFilters } from "@/lib/server/business-search";
+import { resolveLocation } from "@/lib/server/geography";
+import { splitEvenly } from "@/lib/search-random-location";
+
+const FALLBACK_COUNTRY = "Argentina";
+const FILTERS: SearchFilters = { website: "any", phone: "any", email: "any", skipClosed: true };
+// The step route allows 300 s; Apify calls must finish (or be abandoned) before that.
+const BUDGET_MS = 240_000;
+const MIN_CALL_MS = 30_000;
+
+/**
+ * Cheap WhatsApp signal, no worker or paid lookup: an explicit wa.me link in the profile, else a phone that is a
+ * valid mobile number in international format. Digits (E.164 without +) or "".
+ */
+export function probableWhatsApp(phone: string, links: string) {
+  const fromLink = links.match(/(?:wa\.me\/|api\.whatsapp\.com\/send\?phone=)\+?(\d{8,15})/i)?.[1];
+  if (fromLink) return fromLink;
+  const value = phone.trim();
+  const candidate = value.startsWith("00") ? `+${value.slice(2)}` : value;
+  if (!candidate.startsWith("+")) return "";
+  const parsed = parsePhoneNumberFromString(candidate);
+  return parsed?.isValid() ? parsed.number.slice(1) : "";
+}
+
+/** Step 4: up to EXPLORE_LEAD_COUNT businesses for the chosen campaign, from the Apify Maps actor. No credits, nothing persisted here. */
+export async function runLeads(product: ExploreProduct, campaign: ExploreCampaign): Promise<ExploreLead[]> {
+  const token = process.env.APIFY_TOKEN;
+  if (!token) throw new Error("APIFY_TOKEN is not configured");
+  const startedAt = Date.now();
+  let country = FALLBACK_COUNTRY;
+  let countryCode = "";
+  try {
+    const resolution = await resolveLocation(product.country || FALLBACK_COUNTRY, "", "");
+    const resolved = resolution.ok ? resolution : await resolveLocation(FALLBACK_COUNTRY, "", "");
+    if (resolved.ok) ({ country, countryCode } = resolved.location);
+  } catch {
+    // Dataset unavailable: search by the fallback name without the country filter.
+  }
+  const monitorName = `leadta-explore-${createHash("sha256").update(country.toLowerCase()).digest("hex").slice(0, 24)}`;
+  const keywords = campaign.keywords.slice(0, 3);
+  const leads = new Map<string, ExploreLead>();
+
+  const add = (places: ActorPlace[]) => {
+    for (const place of places) {
+      if (leads.size >= EXPLORE_LEAD_COUNT) break;
+      const placeCountry = typeof place.countryCode === "string" ? place.countryCode.toUpperCase() : "";
+      if (countryCode && placeCountry && placeCountry !== countryCode) continue;
+      const mapped = mapPlace(place);
+      if (!mapped.name || leads.has(mapped.source_key)) continue;
+      leads.set(mapped.source_key, {
+        id: createHash("sha256").update(mapped.source_key).digest("hex").slice(0, 16),
+        name: mapped.name,
+        category: mapped.category,
+        address: mapped.address,
+        phone: mapped.phone,
+        whatsapp: probableWhatsApp(mapped.phone, `${mapped.social_profiles}\n${mapped.website}`),
+        email: mapped.email,
+        website: mapped.website,
+        maps_url: mapped.maps_url,
+        average_rating: mapped.average_rating,
+        review_count: mapped.review_count,
+      });
+    }
+  };
+  const search = async (keyword: string, limit: number) => {
+    const timeoutMs = BUDGET_MS - (Date.now() - startedAt);
+    if (timeoutMs < MIN_CALL_MS || limit <= 0) return { limit, places: [] as ActorPlace[] };
+    try {
+      return { limit, places: await actorSearch(token, keyword, country, limit, monitorName, FILTERS, timeoutMs) };
+    } catch (error) {
+      console.error("Explore leads search failed:", error instanceof Error ? error.message : "unknown");
+      return { limit, places: [] as ActorPlace[] };
+    }
+  };
+
+  // Keywords in parallel, the count split between them; then one pass more on the keywords that still had results.
+  const shares = splitEvenly(EXPLORE_LEAD_COUNT, keywords.length);
+  const first = await Promise.all(keywords.map((keyword, index) => search(keyword, shares[index])));
+  for (const { places } of first) add(places);
+  const missing = EXPLORE_LEAD_COUNT - leads.size;
+  const saturated = keywords.filter((_, index) => first[index].places.length >= first[index].limit);
+  if (missing > 0 && saturated.length > 0) {
+    const extra = splitEvenly(missing, saturated.length);
+    const second = await Promise.all(saturated.map((keyword, index) => search(keyword, shares[keywords.indexOf(keyword)] + extra[index])));
+    for (const { places } of second) add(places);
+  }
+  if (leads.size === 0) throw new Error("leads: no results");
+  return [...leads.values()];
+}

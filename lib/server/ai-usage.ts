@@ -12,6 +12,7 @@ export const AI_FEATURES = [
   "lead_analysis",
   "contact_ai_fill",
   "owner_assistant",
+  "explore",
   "other",
 ] as const;
 export type AiFeature = typeof AI_FEATURES[number];

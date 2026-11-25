@@ -21,7 +21,33 @@
       "signup": "Crear cuenta"
     },
     "hero": {
-      "title": "Comienza el Vibeselling. <green>45 clientes potenciales</green> en 24 horas, GRATIS."
+      "title": "Comienza el Vibeselling. <green>45 clientes potenciales</green> en 24 horas, GRATIS.",
+      "explore": {
+        "modeLabel": "Tipo de entrada",
+        "modeText": "Texto",
+        "modeWeb": "Web",
+        "textLabel": "Describe tu producto",
+        "textPlaceholder": "Cuéntanos sobre tu producto...",
+        "webLabel": "Tu sitio web",
+        "webPlaceholder": "Pega tu web, ej. loruppa.com",
+        "submit": "Empezar",
+        "research": "Investigar con IA",
+        "services": "Vendo servicios",
+        "quota": "Llegaste al límite de pruebas de hoy. <link>Crea una cuenta</link> para seguir.",
+        "failed": "No pudimos empezar. Intenta de nuevo.",
+        "dialog": {
+          "title": "Cuéntanos sobre tu negocio",
+          "subtitle": "Armamos tus campañas con tus respuestas",
+          "close": "Cerrar",
+          "offerLabel": "¿Qué vendes o qué quieres construir?",
+          "offerPlaceholder": "ej. Una agencia que hace webs para restaurantes",
+          "customerLabel": "¿Quién es tu cliente ideal?",
+          "customerPlaceholder": "ej. Dueños de restaurantes con poca presencia online",
+          "marketsLabel": "¿En qué mercados o zona?",
+          "marketsPlaceholder": "ej. Argentina y Uruguay",
+          "submit": "Generar mis campañas →"
+        }
+      }
     },
     "how": {
       "title": "El primer paso de la intención a la acción.",

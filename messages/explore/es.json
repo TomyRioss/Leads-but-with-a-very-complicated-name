@@ -1,0 +1,88 @@
+{
+  "Explore": {
+    "meta": { "title": "Explora tu mercado | Leadta" },
+    "loading": "Cargando tu exploración…",
+    "empty": {
+      "title": "Todavía no empezaste una exploración",
+      "text": "Cuéntanos qué vendes en la página de inicio y armamos tus campañas, clientes y propuestas.",
+      "cta": "Empezar desde el inicio"
+    },
+    "loadError": "No pudimos cargar tu exploración.",
+    "retry": "Reintentar",
+    "stepsAria": "Pasos de la exploración",
+    "steps": {
+      "research": "Investigar tu empresa",
+      "competitors": "Explorar competidores",
+      "campaigns": "Definir campañas",
+      "leads": "Buscar clientes potenciales",
+      "proposals": "Armar propuestas"
+    },
+    "titles": {
+      "research": "Esto encontramos sobre tu empresa",
+      "competitors": "Tu producto y tus competidores",
+      "campaigns": "Campañas recomendadas",
+      "leads": "Tus clientes potenciales",
+      "proposals": "Propuestas listas para enviar"
+    },
+    "status": {
+      "done": "Listo",
+      "running": "En curso",
+      "pending": "Pendiente",
+      "error": "Error"
+    },
+    "live": {
+      "running": "Paso {index} de 5 en curso: {step}",
+      "done": "Paso {index} de 5 listo: {step}",
+      "error": "Error en el paso {index}: {step}"
+    },
+    "working": {
+      "research": "Investigando tu empresa…",
+      "competitors": "Analizando a tus competidores…",
+      "campaigns": "Definiendo las mejores campañas…",
+      "leads": "Buscando en Google Maps… puede tardar 1–3 minutos",
+      "proposals": "Escribiendo propuestas personalizadas…"
+    },
+    "stepError": "No pudimos completar este paso.",
+    "location": "Ubicación",
+    "noLocation": "Sin ubicación",
+    "found": "Encontrado",
+    "product": "Tu producto",
+    "buyerSearches": "Cómo buscan los compradores",
+    "competitorsLabel": "Competidores",
+    "competitorsFound": "{count, plural, one {# encontrado} other {# encontrados}}",
+    "fitLabel": "afinidad con tu mercado",
+    "pain": "Dolor",
+    "criteria": "Criterios",
+    "examples": "Ejemplos",
+    "selected": "Seleccionada",
+    "searchLeads": "Buscar {count} clientes en {campaign}",
+    "leadsHeader": "{count} clientes potenciales · {campaign}",
+    "columns": {
+      "business": "Negocio",
+      "phone": "Teléfono",
+      "whatsapp": "WhatsApp",
+      "email": "Email",
+      "web": "Web",
+      "location": "Ubicación",
+      "rating": "Rating"
+    },
+    "noData": "Sin datos",
+    "leadsTableAria": "Tabla de clientes potenciales",
+    "noLeads": "No encontramos clientes para esta campaña.",
+    "proposalsSummary": "{whatsapp} por WhatsApp · {gmail} por Gmail",
+    "proposalsListAria": "Lista de propuestas",
+    "to": "Para",
+    "subject": "Asunto",
+    "body": "Mensaje",
+    "send": "Enviar",
+    "channel": { "whatsapp": "WhatsApp", "gmail": "Gmail" },
+    "noProposals": "No hay propuestas para mostrar.",
+    "signup": {
+      "title": "Crea tu cuenta para enviar",
+      "text": "Tus 50 clientes y 10 propuestas se guardan en tu cuenta.",
+      "create": "Crear cuenta",
+      "google": "Continuar con Google",
+      "close": "Cerrar"
+    }
+  }
+}

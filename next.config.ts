@@ -21,6 +21,7 @@ const nextConfig: NextConfig = {
   outputFileTracingIncludes: {
     "/api/geography": ["./node_modules/@countrystatecity/countries/dist/data/**/*"],
     "/api/search": ["./node_modules/@countrystatecity/countries/dist/data/**/*"],
+    "/api/explore/[step]": ["./node_modules/@countrystatecity/countries/dist/data/**/*"],
   },
   experimental: {
     agentFeedback: true,

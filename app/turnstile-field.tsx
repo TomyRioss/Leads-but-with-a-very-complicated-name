@@ -36,7 +36,7 @@ export type TurnstileFieldHandle = { reset: () => void };
  * Cloudflare Turnstile widget. It adds a hidden `cf-turnstile-response` input to the enclosing form; the server
  * verifies it on signup/login. The script loads only when the auth form mounts.
  */
-export const TurnstileField = forwardRef<TurnstileFieldHandle, { locale: string }>(function TurnstileField({ locale }, ref) {
+export const TurnstileField = forwardRef<TurnstileFieldHandle, { locale: string; appearance?: "always" | "interaction-only" }>(function TurnstileField({ locale, appearance = "always" }, ref) {
   const container = useRef<HTMLDivElement>(null);
   const widgetId = useRef<string | null>(null);
   useImperativeHandle(ref, () => ({ reset: () => { if (widgetId.current) window.turnstile?.reset(widgetId.current); } }), []);
@@ -51,6 +51,7 @@ export const TurnstileField = forwardRef<TurnstileFieldHandle, { locale: string 
         language: locale === "en" ? "en" : "es",
         theme: "light",
         size: "flexible",
+        appearance,
         "response-field-name": "cf-turnstile-response",
       });
     }).catch(() => undefined);
@@ -59,7 +60,7 @@ export const TurnstileField = forwardRef<TurnstileFieldHandle, { locale: string 
       if (widgetId.current) window.turnstile?.remove(widgetId.current);
       widgetId.current = null;
     };
-  }, [locale]);
+  }, [locale, appearance]);
 
   return <div ref={container} className="turnstile-field" />;
 });

@@ -3,6 +3,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { clearSessionCookie, setPendingPhoneCookie, setSessionCookie, toUserRole } from "@/lib/server/auth";
 import { sendWelcomeEmail, updateEmailUser } from "@/lib/server/email";
 import { pocketBaseFetch } from "@/lib/server/pocketbase";
+import { EXPLORE_TOKEN_COOKIE } from "@/lib/explore/types";
+import { claimRun } from "@/lib/server/explore/store";
 
 const stateCookie = "leadta_google_state";
 const verifierCookie = "leadta_google_verifier";
@@ -39,6 +41,10 @@ function clearOauthCookies(response: NextResponse) {
       maxAge: 0,
     });
   }
+}
+
+function clearExploreCookie(response: NextResponse) {
+  response.cookies.set(EXPLORE_TOKEN_COOKIE, "", { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "lax", path: "/", maxAge: 0 });
 }
 
 function errorRedirect(locale: string) {
@@ -131,6 +137,14 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    // Corrida anónima de /explorar: sus leads pasan al usuario. Nunca rompe el login; la cookie se borra al responder.
+    const exploreToken = request.cookies.get(EXPLORE_TOKEN_COOKIE)?.value;
+    if (exploreToken) {
+      await claimRun(exploreToken, user.id).catch((error) => {
+        console.error("Leadta explore claim failed:", error instanceof Error ? error.message : "unknown error");
+      });
+    }
+
     const auth = await pocketBaseFetch<PocketBaseAuth>(`/api/collections/users/impersonate/${encodeURIComponent(user.id)}`, {
       method: "POST",
       body: JSON.stringify({ duration: sessionDurationSeconds }),
@@ -141,6 +155,7 @@ export async function GET(request: NextRequest) {
       setPendingPhoneCookie(response, auth.token);
       clearSessionCookie(response);
       clearOauthCookies(response);
+      if (exploreToken) clearExploreCookie(response);
       response.headers.set("Cache-Control", "no-store");
       return response;
     }
@@ -152,6 +167,7 @@ export async function GET(request: NextRequest) {
     const response = NextResponse.redirect(back && back.origin === origin ? back : new URL(destination, origin));
     setSessionCookie(response, auth.token);
     clearOauthCookies(response);
+    if (exploreToken) clearExploreCookie(response);
     response.headers.set("Cache-Control", "no-store");
     return response;
   } catch {
