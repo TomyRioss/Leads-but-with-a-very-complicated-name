@@ -82,6 +82,7 @@
         }
       ]
     },
+    "closing": {"title": "This one actually works", "button": "Get US$10 in credits to try it"},
     "footer": {
       "aria": "Leadta links",
       "tagline": "Find. Organize. Move forward.",

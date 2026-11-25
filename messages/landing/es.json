@@ -82,6 +82,7 @@
         }
       ]
     },
+    "closing": {"title": "Este sí funciona", "button": "Obtén US$10 en créditos para probarlo"},
     "footer": {
       "aria": "Enlaces de Leadta",
       "tagline": "Encuentra. Organiza. Avanza.",

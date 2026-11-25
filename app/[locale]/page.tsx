@@ -5,6 +5,7 @@ import { LandingHeader } from "@/app/landing/header";
 import { Hero } from "@/app/landing/hero";
 import { HowItWorks } from "@/app/landing/how-it-works";
 import { ThreeThings } from "@/app/landing/three-things";
+import { ClosingCta } from "@/app/landing/closing-cta";
 import { WhatsappFloat } from "@/app/landing/whatsapp-float";
 import { SignupPopup } from "@/app/landing/signup-popup";
 import "@/app/landing/landing.css";
@@ -61,6 +62,7 @@ export default async function LandingPage({ params }: { params: Promise<{ locale
         <Hero />
         <HowItWorks />
         <ThreeThings />
+        <ClosingCta />
       </main>
       <LandingFooter />
       <SignupPopup />
