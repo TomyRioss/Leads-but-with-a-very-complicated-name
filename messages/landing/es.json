@@ -21,7 +21,7 @@
       "signup": "Crear cuenta"
     },
     "hero": {
-      "title": "Comienza el Vibeselling. <green>45 clientes potenciales</green> en 24 horas, GRATIS.",
+      "title": "<green>45 clientes potenciales</green> en 24 horas, GRATIS.",
       "explore": {
         "modeLabel": "Tipo de entrada",
         "modeText": "Texto",

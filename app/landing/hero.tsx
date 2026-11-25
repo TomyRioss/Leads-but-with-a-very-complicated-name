@@ -8,7 +8,7 @@ export async function Hero() {
       <div className="lp-hero-copy mb-0!">
         <h1 id="lp-hero-title" className="tracking-[-0.065em]! leading-[0.95]!">
           {t.rich("title", {
-            green: (chunks) => <span className="block text-(color:--lime-dark)">{chunks}</span>,
+            green: (chunks) => <span className="block font-normal underline decoration-(--lime) decoration-[0.12em] underline-offset-[0.12em]">{chunks}</span>,
           })}
         </h1>
         <ExploreInput />
