@@ -7,6 +7,7 @@ import {
   ShoppingCart, Sparkles, Store, Utensils, Wrench, type LucideProps,
 } from "lucide-react";
 import { FaWhatsapp } from "react-icons/fa";
+import { LeadsTable } from "./leads-table";
 import {
   EXPLORE_LEAD_COUNT, type ExploreCampaign, type ExploreCompetitors, type ExploreLead, type ExploreProduct, type ExploreProposal,
 } from "@/lib/explore/types";
@@ -184,15 +185,10 @@ export function CampaignsStep({ campaigns, selectedId, onSelect }: { campaigns: 
   );
 }
 
-function websiteHref(value: string) {
-  return /^https?:\/\//i.test(value) ? value : `https://${value}`;
-}
-
 export function LeadsStep({ leads, campaign, loading }: { leads: ExploreLead[] | null; campaign: ExploreCampaign | null; loading: boolean }) {
   const t = useTranslations("Explore");
   const count = leads?.length ?? EXPLORE_LEAD_COUNT;
   const name = campaign?.name ?? "";
-  const missing = <span className="compact-missing">{t("noData")}</span>;
   return (
     <section aria-labelledby="explore-leads-title">
       <h2 id="explore-leads-title" className="mb-3 text-sm font-semibold text-(color:--ash-800)">
@@ -203,47 +199,7 @@ export function LeadsStep({ leads, campaign, loading }: { leads: ExploreLead[] |
           <Loader2 size={16} className="animate-spin text-(color:--ink) motion-reduce:animate-none" aria-hidden="true" />{t("working.leads")}
         </p>
       ) : null}
-      <div className="table-frame" tabIndex={0} aria-label={t("leadsTableAria")}>
-        <table>
-          <thead>
-            <tr>
-              <th scope="col">{t("columns.business")}</th>
-              <th scope="col">{t("columns.phone")}</th>
-              <th scope="col">{t("columns.whatsapp")}</th>
-              <th scope="col">{t("columns.email")}</th>
-              <th scope="col">{t("columns.web")}</th>
-              <th scope="col">{t("columns.location")}</th>
-              <th scope="col">{t("columns.rating")}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading
-              ? Array.from({ length: 8 }, (_, index) => (
-                <tr className="skeleton-row" key={`skeleton-${index}`} aria-hidden="true">
-                  {Array.from({ length: 7 }, (__, cell) => <td key={cell}><span /></td>)}
-                </tr>
-              ))
-              : leads?.length
-                ? leads.map((lead) => (
-                  <tr key={lead.id}>
-                    <td title={lead.name}>
-                      {lead.maps_url
-                        ? <a className="compact-business-name" href={lead.maps_url} target="_blank" rel="noopener noreferrer">{lead.name}</a>
-                        : <strong className="compact-business-name">{lead.name}</strong>}
-                      {lead.category ? <span className="compact-business-meta">{lead.category}</span> : null}
-                    </td>
-                    <td>{lead.phone || missing}</td>
-                    <td>{lead.whatsapp ? <span className="compact-phone"><FaWhatsapp aria-hidden="true" />{lead.whatsapp}</span> : missing}</td>
-                    <td title={lead.email}>{lead.email ? <a className="table-link" href={`mailto:${lead.email}`}>{lead.email}</a> : missing}</td>
-                    <td>{lead.website ? <a className="table-link" href={websiteHref(lead.website)} target="_blank" rel="noopener noreferrer" title={lead.website}>{cleanDomain(lead.website)}</a> : missing}</td>
-                    <td title={lead.address}>{lead.address || missing}</td>
-                    <td>{lead.average_rating ? `★ ${lead.average_rating}${lead.review_count ? ` (${lead.review_count})` : ""}` : missing}</td>
-                  </tr>
-                ))
-                : <tr><td className="empty-cell" colSpan={7}><strong>{t("noLeads")}</strong></td></tr>}
-          </tbody>
-        </table>
-      </div>
+      <LeadsTable leads={leads} loading={loading} />
     </section>
   );
 }

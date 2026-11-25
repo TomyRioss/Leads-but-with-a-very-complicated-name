@@ -65,7 +65,9 @@
       "email": "Email",
       "web": "Web",
       "location": "Ubicación",
-      "rating": "Rating"
+      "rating": "Rating",
+      "category": "Categoría",
+      "contact": "Contacto"
     },
     "noData": "Sin datos",
     "leadsTableAria": "Tabla de clientes potenciales",
