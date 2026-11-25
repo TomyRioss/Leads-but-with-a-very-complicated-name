@@ -33,9 +33,12 @@ export function ClosingThreads() {
           position={0.5}
           spread={aspect * aspect * 0.16}
           frequency={4}
+          threadCount={12}
+          taper={0.5}
           mirror={false}
-          thickness={1.4}
-          brightness={2.2}
+          glow={0.04}
+          thickness={1.6}
+          brightness={3.2}
           pulses={0.4}
           falloff={0.5}
           mouseInteraction={false}
