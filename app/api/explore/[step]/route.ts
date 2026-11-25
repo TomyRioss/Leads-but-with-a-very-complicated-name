@@ -47,7 +47,7 @@ async function runStep(token: string, step: ExploreStep, campaignId: string, loc
     case "leads": {
       if (run.leads) return run.leads;
       const campaign = need(need(run.campaigns).find((item) => item.id === campaignId));
-      const leads = await runLeads(need(run.product), campaign);
+      const leads = await runLeads(need(run.product), campaign, locale);
       await updateRun(token, { campaignId: campaign.id, leads });
       return leads;
     }

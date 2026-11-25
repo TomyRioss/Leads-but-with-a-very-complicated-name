@@ -67,7 +67,9 @@
       "location": "Location",
       "rating": "Rating",
       "category": "Category",
-      "contact": "Contact"
+      "contact": "Contact",
+      "description": "Description",
+      "customers": "Customers"
     },
     "noData": "No data",
     "leadsTableAria": "Potential customers table",

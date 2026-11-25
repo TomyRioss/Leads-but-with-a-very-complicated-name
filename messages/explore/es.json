@@ -67,7 +67,9 @@
       "location": "Ubicación",
       "rating": "Rating",
       "category": "Categoría",
-      "contact": "Contacto"
+      "contact": "Contacto",
+      "description": "Descripción",
+      "customers": "Clientes"
     },
     "noData": "Sin datos",
     "leadsTableAria": "Tabla de clientes potenciales",

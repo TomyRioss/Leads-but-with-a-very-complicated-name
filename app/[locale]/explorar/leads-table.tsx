@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { useTranslations } from "next-intl";
+import { useState, type ReactNode } from "react";
+import { useLocale, useTranslations } from "next-intl";
 import { Building2, Mail, Phone } from "lucide-react";
 import { FaWhatsapp } from "react-icons/fa";
 import type { ExploreLead } from "@/lib/explore/types";
@@ -17,31 +17,61 @@ function LeadIcon({ website }: { website: string }) {
   const [failed, setFailed] = useState(false);
   const domain = host(website);
   if (!domain || failed) {
-    return <span className="grid size-5 shrink-0 place-items-center rounded bg-(--ash-150) text-(color:--ash-600)" aria-hidden="true"><Building2 size={12} /></span>;
+    return <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-(--ash-150) text-(color:--ash-600)" aria-hidden="true"><Building2 size={16} /></span>;
   }
   return (
     // eslint-disable-next-line @next/next/no-img-element -- favicon externo de 32px
     <img
-      src={`https://t1.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=${encodeURIComponent(`https://${domain}`)}&size=32`}
+      src={`https://t1.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=${encodeURIComponent(`https://${domain}`)}&size=64`}
       alt=""
-      width={20}
-      height={20}
+      width={32}
+      height={32}
       loading="lazy"
       onError={() => setFailed(true)}
-      className="size-5 shrink-0 rounded object-contain"
+      className="size-8 shrink-0 rounded-lg object-contain"
     />
+  );
+}
+
+/** 1905 → "1.9K", 3000 → "3K", 454 → "454". */
+export function compactCount(value: number) {
+  if (!Number.isFinite(value) || value < 0) return "";
+  if (value < 1000) return String(Math.round(value));
+  return `${(Math.round(value / 100) / 10).toString()}K`;
+}
+
+/** Bandera + "País, Ciudad, Distrito"; corridas viejas sin esos campos muestran la dirección. */
+function LeadLocation({ lead, locale, fallback }: { lead: ExploreLead; locale: string; fallback: ReactNode }) {
+  const code = /^[A-Z]{2}$/.test(lead.country_code ?? "") ? lead.country_code! : "";
+  let country = "";
+  try {
+    country = code ? new Intl.DisplayNames([locale], { type: "region" }).of(code) ?? "" : "";
+  } catch {
+    country = "";
+  }
+  const parts = [...new Set([country, lead.city ?? "", lead.district ?? ""].flatMap((part) => part.split(",")).map((part) => part.trim()).filter(Boolean))];
+  if (!parts.length) return lead.address ? <span className="line-clamp-2" title={lead.address}>{lead.address}</span> : <>{fallback}</>;
+  return (
+    <span className="flex min-w-0 items-center gap-2">
+      {code ? (
+        // eslint-disable-next-line @next/next/no-img-element -- bandera raster chica; el emoji de bandera no se ve en Windows.
+        <img src={`https://flagcdn.com/w40/${code.toLowerCase()}.png`} alt="" width={20} height={14} loading="lazy" className="h-3.5 w-5 shrink-0 rounded-[3px] object-cover" />
+      ) : null}
+      <span className="line-clamp-2">{parts.join(", ")}</span>
+    </span>
   );
 }
 
 /** Tabla de clientes potenciales del paso 4 de /explorar. */
 export function LeadsTable({ leads, loading }: { leads: ExploreLead[] | null; loading: boolean }) {
   const t = useTranslations("Explore");
+  const locale = useLocale();
   const missing = <span className="text-(color:--ash-500)">{t("noData")}</span>;
-  const columns = [t("columns.business"), t("columns.category"), t("columns.contact")];
+  const columns = [t("columns.business"), t("columns.description"), t("columns.location"), t("columns.contact"), t("columns.customers")];
 
   return (
-    <div className="max-h-[calc(100dvh-7rem)] overflow-auto rounded-xl border border-(color:--line) bg-(--paper)" tabIndex={0} aria-label={t("leadsTableAria")}>
-      <table className="w-full! min-w-[640px]! border-collapse text-[13px]">
+    <div className="max-h-[calc(100dvh-7rem)] overflow-auto rounded-2xl [scrollbar-color:var(--ash-300)_transparent] [scrollbar-width:thin] border border-(color:--line) bg-(--paper)" tabIndex={0} aria-label={t("leadsTableAria")}>
+      <table className="w-full! min-w-[1040px]! border-collapse text-[13px]">
         <thead>
           <tr>{columns.map((label) => <th key={label} scope="col" className={TH}>{label}</th>)}</tr>
         </thead>
@@ -57,8 +87,8 @@ export function LeadsTable({ leads, loading }: { leads: ExploreLead[] | null; lo
             : leads?.length
               ? leads.map((lead) => (
                 <tr key={lead.id} className="transition-colors hover:bg-(--ash-50)">
-                  <td className={`${TD} w-[40%]`}>
-                    <div className="flex min-w-0 items-center gap-2.5">
+                  <td className={`${TD} w-[24%]`}>
+                    <div className="flex min-w-0 items-center gap-3">
                       <LeadIcon website={lead.website} />
                       <div className="min-w-0">
                         {lead.maps_url
@@ -70,8 +100,9 @@ export function LeadsTable({ leads, loading }: { leads: ExploreLead[] | null; lo
                       </div>
                     </div>
                   </td>
-                  <td className={`${TD} w-[30%] text-(color:--ash-800)`}><span className="line-clamp-2">{lead.category || missing}</span></td>
-                  <td className={`${TD} w-[30%]`}>
+                  <td className={`${TD} w-[28%] text-(color:--ash-800)`}><span className="line-clamp-3" title={lead.description}>{lead.description || missing}</span></td>
+                  <td className={`${TD} w-[20%] text-(color:--ash-800)`}><LeadLocation lead={lead} locale={locale} fallback={missing} /></td>
+                  <td className={`${TD} w-[18%]`}>
                     <div className="flex min-w-0 flex-col gap-0.5">
                       {lead.whatsapp
                         ? <span className="flex items-center gap-1.5 text-(color:--whatsapp) tabular-nums"><FaWhatsapp aria-hidden="true" />{lead.whatsapp}</span>
@@ -81,6 +112,9 @@ export function LeadsTable({ leads, loading }: { leads: ExploreLead[] | null; lo
                         : null}
                       {!lead.whatsapp && !lead.phone && !lead.email ? missing : null}
                     </div>
+                  </td>
+                  <td className={`${TD} w-[10%] whitespace-nowrap! tabular-nums`}>
+                    {lead.review_count ? <strong className="font-semibold">{compactCount(Number(lead.review_count))}</strong> : missing}
                   </td>
                 </tr>
               ))

@@ -5,12 +5,15 @@ import { EXPLORE_LEAD_COUNT, type ExploreCampaign, type ExploreLead, type Explor
 import { actorSearch, mapPlace, type ActorPlace, type SearchFilters } from "@/lib/server/business-search";
 import { resolveLocation } from "@/lib/server/geography";
 import { splitEvenly } from "@/lib/search-random-location";
+import { exploreJson, languageRule, objectSchema, str, UNTRUSTED_RULE, type ExploreLocale } from "@/lib/server/explore/ai";
 
 const FALLBACK_COUNTRY = "Argentina";
 const FILTERS: SearchFilters = { website: "any", phone: "any", email: "any", skipClosed: true };
 // The step route allows 300 s; Apify calls must finish (or be abandoned) before that.
 const BUDGET_MS = 240_000;
 const MIN_CALL_MS = 30_000;
+const DESCRIPTION_MAX = 240;
+const AI_MIN_MS = 15_000;
 
 /**
  * Cheap WhatsApp signal, no worker or paid lookup: an explicit wa.me link in the profile, else a phone that is a
@@ -27,7 +30,7 @@ export function probableWhatsApp(phone: string, links: string) {
 }
 
 /** Step 4: up to EXPLORE_LEAD_COUNT businesses for the chosen campaign, from the Apify Maps actor. No credits, nothing persisted here. */
-export async function runLeads(product: ExploreProduct, campaign: ExploreCampaign): Promise<ExploreLead[]> {
+export async function runLeads(product: ExploreProduct, campaign: ExploreCampaign, locale: ExploreLocale): Promise<ExploreLead[]> {
   const token = process.env.APIFY_TOKEN;
   if (!token) throw new Error("APIFY_TOKEN is not configured");
   const startedAt = Date.now();
@@ -55,7 +58,11 @@ export async function runLeads(product: ExploreProduct, campaign: ExploreCampaig
         id: createHash("sha256").update(mapped.source_key).digest("hex").slice(0, 16),
         name: mapped.name,
         category: mapped.category,
+        description: (str(place.description, DESCRIPTION_MAX) || str(mapped.source_context.owner_description, DESCRIPTION_MAX)),
         address: mapped.address,
+        country_code: str(place.countryCode, 2).toUpperCase(),
+        city: str(place.city, 80),
+        district: str(place.neighborhood, 80),
         phone: mapped.phone,
         whatsapp: probableWhatsApp(mapped.phone, `${mapped.social_profiles}\n${mapped.website}`),
         email: mapped.email,
@@ -89,5 +96,34 @@ export async function runLeads(product: ExploreProduct, campaign: ExploreCampaig
     for (const { places } of second) add(places);
   }
   if (leads.size === 0) throw new Error("leads: no results");
-  return [...leads.values()];
+  const result = [...leads.values()];
+  await describeMissing(result, locale, BUDGET_MS - (Date.now() - startedAt));
+  return result;
+}
+
+/** One AI call writes a short description for the leads Maps left without one. Best effort: on failure they stay "". */
+async function describeMissing(leads: ExploreLead[], locale: ExploreLocale, budgetMs: number) {
+  const missing = leads.filter((lead) => !lead.description);
+  if (!missing.length || budgetMs < AI_MIN_MS) return;
+  const schema = objectSchema({
+    items: { type: "array", items: objectSchema({ id: { type: "string" }, description: { type: "string", maxLength: DESCRIPTION_MAX } }) },
+  });
+  const system = [
+    "For each business, write one short neutral sentence (max 20 words) describing what it is and offers, inferred only from its name, category and address.",
+    "Do not invent facts like years, awards or prices. Return every given id once.",
+    UNTRUSTED_RULE,
+    languageRule(locale),
+  ].join(" ");
+  const user = missing.map((lead) => `${lead.id} | ${lead.name} | ${lead.category} | ${lead.address}`).join("\n");
+  try {
+    const result = await exploreJson({ name: "explore_lead_descriptions", schema, system, user, maxTokens: 60 * missing.length + 200, timeoutMs: Math.min(budgetMs, 60_000) });
+    const byId = new Map(missing.map((lead) => [lead.id, lead]));
+    for (const item of Array.isArray(result.items) ? result.items : []) {
+      const record = item && typeof item === "object" ? item as Record<string, unknown> : {};
+      const lead = byId.get(str(record.id, 40));
+      if (lead) lead.description = str(record.description, DESCRIPTION_MAX);
+    }
+  } catch (error) {
+    console.error("Explore lead descriptions failed:", error instanceof Error ? error.message : "unknown");
+  }
 }

@@ -44,7 +44,11 @@ export type ExploreLead = {
   id: string;
   name: string;
   category: string;
+  description?: string; // del perfil o IA; ausente en corridas viejas
   address: string;
+  country_code?: string; // ISO 3166-1 alfa-2, ausente en corridas viejas
+  city?: string;
+  district?: string;
   phone: string;
   whatsapp: string; // número si tiene WhatsApp, "" si no
   email: string;

@@ -254,7 +254,7 @@ export function ExploreShell() {
   return (
     <div className="min-h-dvh bg-(--ash-100) text-(color:--ink) lg:grid lg:grid-cols-[248px_minmax(0,1fr)]">
       <p className="sr-only" aria-live="polite">{liveMessage}</p>
-      <aside className="border-b border-(color:--line) bg-(--ash-50) lg:sticky lg:top-0 lg:h-dvh lg:overflow-y-auto lg:border-r lg:border-b-0">
+      <aside className="border-b border-(color:--line) bg-(--ash-50) lg:sticky lg:top-0 lg:h-dvh lg:overflow-y-auto lg:border-b-0">
         <div className="px-4 pt-4 lg:px-5 lg:pt-6">
           <Link href="/" className="brand" style={{ fontSize: 34 }} aria-label="Leadta">Leadta<span className="brand-period">.</span></Link>
           {run.product ? (
@@ -303,7 +303,7 @@ export function ExploreShell() {
       </aside>
 
       <main className="min-w-0 px-4 py-6 sm:px-6 lg:px-10 lg:py-10">
-        <div className="mx-auto max-w-6xl">
+        <div className="mx-auto max-w-[1560px]">
           <h1 className="sr-only">{t(`titles.${view}`)}</h1>
           <div>
             {viewStatus === "error" ? (
