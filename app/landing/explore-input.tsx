@@ -95,7 +95,7 @@ export function ExploreInput() {
     `min-h-7 rounded-[7px] px-2.5 text-[13px] font-semibold transition-colors outline-none focus-visible:shadow-[0_0_0_3px_color-mix(in_srgb,var(--lime)_55%,transparent)] ${on ? "bg-(--paper) text-(color:--ink) shadow-[0_1px_2px_color-mix(in_srgb,var(--ash-950)_14%,transparent)]" : "text-(color:--muted) hover:text-(color:--ink)"}`;
 
   return (
-    <div ref={rootRef} className="mx-auto grid w-full max-w-[560px] justify-items-center gap-3">
+    <div ref={rootRef} className="mx-auto mt-12 grid w-full max-w-[560px] justify-items-center gap-3">
       <form
         className="relative isolate w-full"
         onSubmit={submit}
@@ -153,7 +153,7 @@ export function ExploreInput() {
         </div>
         {/* Fondo: el pinch (cruce) queda en el centro del recuadro. */}
         <div aria-hidden="true" className="pointer-events-none absolute top-1/2 left-1/2 -z-10 h-[440px] w-screen -translate-x-1/2 -translate-y-1/2">
-          <WebThreads colors={["#1b6b00", "#2eff00"]} thickness={0.9} brightness={1.4} spread={0.23} pulses={0.3} falloff={0.5} pinch={0.5} position={0.5} lightMode />
+          <WebThreads colors={["#1b6b00", "#2eff00"]} thickness={1.6} brightness={2.4} spread={0.23} pulses={0.3} falloff={0.5} pinch={0.5} position={0.5} lightMode />
         </div>
         {domain && focused && !busy && (
           <button
