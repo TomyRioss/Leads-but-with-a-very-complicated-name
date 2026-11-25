@@ -153,7 +153,7 @@ export function ExploreInput() {
         </div>
         {/* Fondo: el pinch (cruce) queda centrado justo bajo el borde inferior del recuadro. */}
         <div aria-hidden="true" className="pointer-events-none absolute top-full left-1/2 -z-10 h-[440px] w-screen -translate-x-1/2 -translate-y-1/2">
-          <WebThreads colors={["#ffffff", "#2eff00"]} thickness={0.45} spread={0.23} pulses={0.3} falloff={0.5} pinch={0.5} position={0.5} lightMode />
+          <WebThreads colors={["#1b6b00", "#2eff00"]} thickness={0.9} brightness={1.4} spread={0.23} pulses={0.3} falloff={0.5} pinch={0.5} position={0.5} lightMode />
         </div>
         {domain && focused && !busy && (
           <button
