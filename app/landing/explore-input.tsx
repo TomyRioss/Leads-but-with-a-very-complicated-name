@@ -124,7 +124,7 @@ export function ExploreInput() {
         aria-busy={busy || undefined}
       >
         <div
-          className={`flex w-full flex-col gap-1.5 rounded-[18px] border bg-(--paper) p-2 text-left transition-[border-color,box-shadow] ${active ? "border-(--ink) shadow-[0_0_0_1px_var(--ink)]" : "border-(--line) shadow-[0_1px_2px_color-mix(in_srgb,var(--ash-950)_6%,transparent)]"}`}
+          className={`flex w-full flex-col gap-1.5 rounded-[18px] border bg-(--paper) p-2 text-left transition-[border-color,box-shadow] ${active ? "border-(--ink) shadow-[0_0_0_1px_var(--ink),0_0_32px_-2px_color-mix(in_srgb,var(--lime)_75%,transparent)]" : "border-(--lime-dark) shadow-[0_0_0_1px_color-mix(in_srgb,var(--lime)_60%,transparent),0_0_28px_-4px_color-mix(in_srgb,var(--lime)_70%,transparent)]"}`}
         >
           <div role="group" aria-label={t("modeLabel")} className="inline-flex w-fit gap-0.5 rounded-[9px] bg-(--ash-100) p-0.5">
             <button type="button" className={toggleClass(mode === "text")} aria-pressed={mode === "text"} onClick={() => { setMode("text"); setError(""); }}>{t("modeText")}</button>
@@ -165,7 +165,7 @@ export function ExploreInput() {
               type="submit"
               disabled={!valid || busy}
               aria-label={t("submit")}
-              className={`grid size-10 flex-none place-items-center rounded-[10px] transition-colors outline-none focus-visible:shadow-[0_0_0_3px_color-mix(in_srgb,var(--lime)_55%,transparent)] disabled:cursor-not-allowed ${active || busy ? "bg-(--ink) text-(color:--paper)" : "bg-(--ash-150) text-(color:--ash-600)"}`}
+              className={`grid size-10 flex-none place-items-center rounded-[10px] transition-colors outline-none focus-visible:shadow-[0_0_0_3px_color-mix(in_srgb,var(--lime)_55%,transparent)] disabled:cursor-not-allowed ${active || busy ? "bg-(--lime) text-(color:--ash-950) hover:bg-(--lime-dark)" : "bg-(--ash-150) text-(color:--ash-600)"}`}
             >
               {busy ? <Loader2 className="animate-spin motion-reduce:animate-none" size={18} aria-hidden="true" /> : <ArrowUp size={18} aria-hidden="true" />}
             </button>
