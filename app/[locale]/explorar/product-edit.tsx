@@ -7,6 +7,31 @@ import type { ExploreProduct } from "@/lib/explore/types";
 
 const FIELD = "w-full rounded-md border border-(color:--line) bg-(--paper) px-2 py-1.5 text-xs text-(color:--ink) outline-none focus-visible:border-(color:--ink)";
 
+const fold = (value: string) => value.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+let countryNames: [string, string][] | null = null;
+
+/** Códigos ISO de los países nombrados en el texto libre de ubicación, en orden de aparición. Nombres en es y en vía Intl. */
+function countriesIn(text: string) {
+  if (!countryNames) {
+    const names = ["es", "en"].map((locale) => new Intl.DisplayNames([locale], { type: "region", fallback: "none" }));
+    countryNames = [];
+    for (let a = 65; a <= 90; a++) for (let b = 65; b <= 90; b++) {
+      const code = String.fromCharCode(a, b);
+      for (const display of names) {
+        const name = display.of(code);
+        if (name) countryNames.push([code, fold(name)]);
+      }
+    }
+  }
+  const haystack = ` ${fold(text).replace(/[^a-z]+/g, " ")} `;
+  const found = new Map<string, number>();
+  for (const [code, name] of countryNames) {
+    const index = haystack.indexOf(` ${name.replace(/[^a-z]+/g, " ").trim()} `);
+    if (index >= 0 && !found.has(code)) found.set(code, index);
+  }
+  return [...found].sort((x, y) => x[1] - y[1]).map(([code]) => code);
+}
+
 /** Resumen y ubicación del paso 1 en la barra lateral, con edición manual ("¿Los datos están mal?"). */
 export function ProductSummary({ product, busy, onSaved }: { product: ExploreProduct; busy: boolean; onSaved: (product: ExploreProduct, reset: boolean) => void }) {
   const t = useTranslations("Explore");
@@ -77,7 +102,12 @@ export function ProductSummary({ product, busy, onSaved }: { product: ExplorePro
   return (
     <div className="mt-1 mb-2 hidden pr-2 pl-10 lg:block">
       <p className="line-clamp-3 text-xs leading-relaxed text-(color:--muted)">{product.summary}</p>
-      <p className="mt-1.5 text-xs text-(color:--ash-700)">{t("location")} | {product.location || t("noLocation")}</p>
+      <p className="mt-2 inline-flex max-w-full items-center gap-1.5 rounded-full border border-(color:--line) bg-(--paper) py-1 pr-2.5 pl-2 text-xs text-(color:--ash-700)">
+        {countriesIn(product.location).map((code) => (
+          <img key={code} src={`https://flagcdn.com/w40/${code.toLowerCase()}.png`} alt="" width={20} height={14} loading="lazy" className="h-3 w-4 shrink-0 rounded-[2px] object-cover" />
+        ))}
+        <span className="truncate" title={product.location || undefined}>{product.location || t("noLocation")}</span>
+      </p>
       <button type="button" onClick={open} disabled={busy} className="mt-1.5 disabled:cursor-not-allowed disabled:opacity-50 rounded text-xs font-medium text-(color:--ink) underline decoration-(--ash-300) underline-offset-4 hover:decoration-(--ink) focus-visible:outline-2 focus-visible:outline-(color:--ink)">
         {t("edit.open")}
       </button>
