@@ -5,6 +5,7 @@ import { sendWelcomeEmail, updateEmailUser } from "@/lib/server/email";
 import { pocketBaseFetch } from "@/lib/server/pocketbase";
 import { EXPLORE_TOKEN_COOKIE } from "@/lib/explore/types";
 import { claimRun } from "@/lib/server/explore/store";
+import { pendingOnboardingBusinessId } from "@/lib/server/workspace/active";
 
 const stateCookie = "leadta_google_state";
 const verifierCookie = "leadta_google_verifier";
@@ -160,7 +161,10 @@ export async function GET(request: NextRequest) {
       return response;
     }
     const isOwner = toUserRole(auth.record.role) === "owner";
-    const destination = locale === "en" ? (isOwner ? "/en/owner" : "/en/leadtita") : (isOwner ? "/owner" : "/leadtita");
+    // Negocio con onboarding pendiente (p. ej. recién traído de /explorar): se completa antes de entrar a la app.
+    const pendingBusiness = isOwner ? "" : await pendingOnboardingBusinessId(user.id);
+    const prefix = locale === "en" ? "/en" : "";
+    const destination = isOwner ? `${prefix}/owner` : pendingBusiness ? `${prefix}/onboarding?business=${encodeURIComponent(pendingBusiness)}` : `${prefix}/leadtita`;
     // Return path set by /api/auth/google (already validated there); re-checked to stay on this origin.
     const next = request.cookies.get(nextCookie)?.value ?? "";
     const back = next.startsWith("/") && !next.startsWith("//") ? new URL(next, origin) : null;

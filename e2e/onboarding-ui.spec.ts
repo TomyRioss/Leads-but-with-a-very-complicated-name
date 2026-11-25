@@ -19,7 +19,7 @@ function makeBusiness(id: string, name: string, domain: string, step = "company"
 
 type Api = { patches: { step: string; data: Record<string, unknown> }[]; posts: unknown[]; active: unknown[]; unhandled: string[] };
 
-async function mockApi(page: Page, options: { businesses?: Business[]; activeId?: string } = {}): Promise<Api> {
+async function mockApi(page: Page, options: { businesses?: Business[]; activeId?: string; pendingId?: string; proposals?: unknown[] } = {}): Promise<Api> {
   const api: Api = { patches: [], posts: [], active: [], unhandled: [] };
   // Sin el aviso de novedades del sidebar (tapa la página).
   await page.addInitScript((email) => localStorage.setItem(`leadta:whatsNew:whatsapp-gmail:${email}`, "1"), user.email);
@@ -43,6 +43,8 @@ async function mockApi(page: Page, options: { businesses?: Business[]; activeId?
       activeId = body.businessId;
       return json(route, { activeId });
     }
+    if (pathname === "/api/onboarding/pending") return json(route, { businessId: options.pendingId ?? "" });
+    if (pathname === "/api/proposals" && method === "GET") return json(route, { proposals: options.proposals ?? [] });
     if (pathname === "/api/onboarding" && method === "POST") {
       api.posts.push(request.postDataJSON());
       await new Promise((resolve) => setTimeout(resolve, 600));
@@ -191,4 +193,25 @@ test("SELECTOR DE NEGOCIO: sin negocios muestra Crear negocio", async ({ page })
   await mockApi(page, { businesses: [] });
   await page.goto("/negocios");
   await expect(page.getByRole("link", { name: "Crear negocio" })).toHaveAttribute("href", /\/onboarding\?new=1$/);
+});
+
+test("DESPUÉS DE /explorar: al entrar con un negocio a medio onboarding va a /onboarding", async ({ page }) => {
+  await mockApi(page, { businesses: [makeBusiness("biz-1", "Loruppa", "loruppa.com", "confirm")], activeId: "biz-1", pendingId: "biz-1" });
+  await page.goto("/login");
+  await expect(page).toHaveURL(/\/onboarding\?business=biz-1$/);
+  await expect(page.getByRole("heading", { name: "¿Te entendimos bien?" })).toBeVisible();
+});
+
+test("SIN ONBOARDING PENDIENTE: al entrar va a /leadtita", async ({ page }) => {
+  await mockApi(page);
+  await page.goto("/login");
+  await expect(page).toHaveURL(/\/leadtita$/);
+});
+
+test("ONBOARDING NEGOCIO: con propuestas, Empezar lleva a Mis propuestas del negocio", async ({ page }) => {
+  const api = await mockApi(page, { businesses: [makeBusiness("biz-1", "Loruppa", "loruppa.com", "capacity")], activeId: "biz-1", proposals: [{ id: "p1" }] });
+  await page.goto("/onboarding?business=biz-1");
+  await page.getByRole("button", { name: "Empezar" }).click();
+  await expect(page).toHaveURL(/\/propuestas\?business=biz-1$/);
+  expect(api.patches.at(-1)).toEqual({ step: "capacity", data: {} });
 });

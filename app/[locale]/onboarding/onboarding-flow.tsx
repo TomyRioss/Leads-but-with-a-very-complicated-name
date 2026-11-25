@@ -162,7 +162,9 @@ export function OnboardingFlow() {
     setBusiness(saved);
     if (step === "capacity") {
       window.dispatchEvent(new Event(ACTIVE_BUSINESS_EVENT));
-      router.push("/leadtita");
+      // Con propuestas (negocio traído de /explorar) sigue a enviarlas; si no, a Leadtita.
+      const proposals = await requestJson<{ proposals: unknown[] }>(`/api/proposals?business=${encodeURIComponent(saved.id)}`);
+      router.push(proposals.ok && proposals.data.proposals?.length ? `/propuestas?business=${encodeURIComponent(saved.id)}` : "/leadtita");
       return;
     }
     setBusy(false);

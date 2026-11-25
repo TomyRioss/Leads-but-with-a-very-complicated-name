@@ -8,6 +8,7 @@ const routes: [string, "GET" | "POST" | "PATCH", string, unknown][] = [
   ["GUARDAR PASO DEL ONBOARDING", "PATCH", `/api/onboarding/${ID}`, { step: "plan", data: {} }],
   ["ELEGIR NEGOCIO ACTIVO", "PATCH", "/api/businesses/active", { businessId: ID }],
   ["MIS NEGOCIOS (con activo)", "GET", "/api/businesses", undefined],
+  ["ONBOARDING PENDIENTE AL ENTRAR", "GET", "/api/onboarding/pending", undefined],
 ];
 
 for (const [feature, method, path, data] of routes) {

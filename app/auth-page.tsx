@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { useLocale } from "next-intl";
 import { AuthForm } from "@/app/auth-form";
 import { getPathname } from "@/i18n/navigation";
@@ -32,12 +32,21 @@ export function AuthPage({ mode }: { mode: "login" | "register" }) {
   // Read once on mount: switching login/register rewrites the URL and drops the query.
   const next = useRef<string | null>(null);
 
+  // Destino al entrar: ?next= manda; si no, un negocio con onboarding pendiente (p. ej. recién traído de /explorar); si no, la app.
+  const home = useCallback(async () => {
+    if (next.current) return next.current;
+    const pending = await fetch("/api/onboarding/pending", { cache: "no-store" }).then((r) => (r.ok ? r.json() : null)).catch(() => null) as { businessId?: unknown } | null;
+    return typeof pending?.businessId === "string" && pending.businessId
+      ? getPathname({ href: { pathname: "/onboarding", query: { business: pending.businessId } }, locale })
+      : app;
+  }, [app, locale]);
+
   // Already signed in: straight to the app (or the requested return path).
   useEffect(() => {
     next.current = safeNextPath(new URLSearchParams(window.location.search).get("next"));
-    void getSession().then((session) => { if (session.user) window.location.replace(next.current ?? app); });
-  }, [app]);
+    void getSession().then(async (session) => { if (session.user) window.location.replace(await home()); });
+  }, [home]);
 
   // Full navigation (like /buscar's reload) so the app starts from the new session cookie.
-  return <AuthForm initialMode={mode} paths={paths} onAuthenticated={() => window.location.assign(next.current ?? app)} />;
+  return <AuthForm initialMode={mode} paths={paths} onAuthenticated={() => void home().then((path) => window.location.assign(path))} />;
 }

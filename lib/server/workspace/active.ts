@@ -76,3 +76,9 @@ export async function listBusinessesWithProfile(userId: string): Promise<Busines
   migrating.set(userId, task);
   return task;
 }
+
+/** Negocio activo con onboarding sin terminar (p. ej. recién traspasado de /explorar); "" si no hay. A dónde mandar al usuario al entrar. */
+export async function pendingOnboardingBusinessId(userId: string): Promise<string> {
+  const business = await getActiveBusiness(userId).catch(() => null);
+  return business && business.onboardingStep !== "done" ? business.id : "";
+}
