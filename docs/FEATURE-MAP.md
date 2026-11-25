@@ -55,6 +55,7 @@ CONECTAR INTEGRACIONES (GOOGLE / WHATSAPP) | "/integraciones" > Botones "Conecta
 AUTORIZAR CLIENTE OAUTH (MCP) | "/oauth/authorize"
 SERVIDOR MCP | POST "/api/mcp" + "/.well-known/oauth-authorization-server"
 PANEL OWNER | "/owner" > GET "/api/owner/me"
+GENERAR LINK CON UTM | "/owner?s=analiticas" > "Generador de links con UTM" > Red social + campaña > "Copiar" (solo navegador, no guarda)
 ENVIAR FEEDBACK | Sidebar > Botón "¡Ayuda a mejorar Leadta!" > POST "/api/feedback"
 ESTADO DEL SERVICIO | GET "/api/status"
 PÁGINA 404 | Ruta inexistente > Not found

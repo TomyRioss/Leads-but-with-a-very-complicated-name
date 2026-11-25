@@ -9,6 +9,7 @@ import {
   sortTheadClass, tdClass, titleDot, trClass, useOwnerFormat,
 } from "../ui";
 import { SortableTh } from "./sortable-th";
+import { UtmBuilder } from "./utm-builder";
 
 type Days = 7 | 30 | 90;
 type Traffic =
@@ -286,6 +287,10 @@ export default function AnalyticsSection({ onUnauthorized }: { onUnauthorized: (
           )}
         </div>
       )}
+
+      <div className="mt-3.5">
+        <UtmBuilder />
+      </div>
     </section>
   );
 }

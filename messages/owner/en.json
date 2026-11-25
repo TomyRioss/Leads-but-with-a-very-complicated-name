@@ -609,6 +609,7 @@
       "snippetPlaceholderDescription": "The description people will see in search results."
     },
     "analytics": {
+      "utm": {"title": "UTM link builder", "hint": "Build the link for each network and see where visits come from in PostHog.", "channel": "Channel", "result": "Ready link", "incomplete": "Fill in URL, source, medium and campaign.", "copy": "Copy", "copied": "Copied", "slugHint": "Values are saved lowercase and without spaces so they group well.", "fields": {"url": "Destination URL", "source": "Source (utm_source)", "medium": "Medium (utm_medium)", "campaign": "Campaign (utm_campaign)", "content": "Content (utm_content)", "term": "Term (utm_term)"}, "placeholders": {"source": "instagram", "medium": "social", "campaign": "november-launch", "content": "reel-1", "term": "restaurant-leads"}, "presets": {"instagram": "Instagram", "facebook": "Facebook", "linkedin": "LinkedIn", "tiktok": "TikTok", "x": "X", "youtube": "YouTube", "whatsapp": "WhatsApp", "email": "Email", "google": "Google Ads"}},
       "title": "Analytics",
       "loading": "Loading analytics…",
       "loadError": "We couldn't load the analytics.",

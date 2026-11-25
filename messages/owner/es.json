@@ -609,6 +609,7 @@
       "snippetPlaceholderDescription": "La descripción que verá la gente en los resultados de búsqueda."
     },
     "analytics": {
+      "utm": {"title": "Generador de links con UTM", "hint": "Armá el link para cada red y medí de dónde vienen las visitas en PostHog.", "channel": "Canal", "result": "Link listo", "incomplete": "Completá URL, origen, medio y campaña.", "copy": "Copiar", "copied": "Copiado", "slugHint": "Los valores se guardan en minúsculas y sin espacios para que se agrupen bien.", "fields": {"url": "URL destino", "source": "Origen (utm_source)", "medium": "Medio (utm_medium)", "campaign": "Campaña (utm_campaign)", "content": "Contenido (utm_content)", "term": "Término (utm_term)"}, "placeholders": {"source": "instagram", "medium": "social", "campaign": "lanzamiento-noviembre", "content": "reel-1", "term": "leads-restaurantes"}, "presets": {"instagram": "Instagram", "facebook": "Facebook", "linkedin": "LinkedIn", "tiktok": "TikTok", "x": "X", "youtube": "YouTube", "whatsapp": "WhatsApp", "email": "Email", "google": "Google Ads"}},
       "title": "Analíticas",
       "loading": "Cargando analíticas…",
       "loadError": "No pudimos cargar las analíticas.",
