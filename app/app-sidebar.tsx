@@ -339,11 +339,10 @@ export function AppSidebar({ active, user, onSignOut }: AppSidebarProps) {
               ) : <span className="side-nav-item side-nav-credits side-nav-skeleton" aria-hidden="true" />}
             </li>
             <li>
-              {/* Leadtita: first and featured (lime icon chip + "New" text tag, so it doesn't rely on color alone). */}
+              {/* Leadtita: first and featured (lime icon chip, centered label). */}
               <Link title={tip(s("navLeadtita"))} className="side-nav-item side-nav-featured" href="/leadtita" aria-current={active === "leadtita" ? "page" : undefined} onClick={close}>
                 <span className="side-nav-chip" aria-hidden="true"><Sparkles size={16} strokeWidth={2} /></span>
                 <span className="side-nav-featured-label">{s("navLeadtita")}</span>
-                <span className="side-nav-new">{s("navNewBadge")}</span>
               </Link>
             </li>
             <li>
