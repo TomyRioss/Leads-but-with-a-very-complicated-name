@@ -4,6 +4,12 @@
 
 - VALIDACIÓN EMPÍRICA OBLIGATORIA: Confirmar visual e interactivamente que lo agregado funciona o se aplicó; de lo contrario, SIEMPRE asumir que no funciona.
 
+## Paralelismo subagéntico obligatorio
+
+- Trabajar siempre en paralelo con enfoque subagéntico: delegar a subagentes (Agent tool) toda tarea o parte de tarea que se pueda delegar.
+- Máximo 10 subagentes simultáneos por instancia de Claude.
+- Lanzar los subagentes independientes en un solo mensaje. Cada uno recibe su alcance exacto y los archivos que puede tocar; ninguno edita archivos asignados a otro.
+
 ## Formato de explicación
 
 - Siempre explicar lo que se hizo en formato ASD-STE100.
