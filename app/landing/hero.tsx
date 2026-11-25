@@ -7,7 +7,7 @@ export async function Hero() {
       <div className="lp-hero-copy mb-0!">
         <h1 id="lp-hero-title">
           {t.rich("title", {
-            green: (chunks) => <span className="text-(color:--lime-dark)">{chunks}</span>,
+            green: (chunks) => <span className="block text-(color:--lime-dark)">{chunks}</span>,
           })}
         </h1>
       </div>
