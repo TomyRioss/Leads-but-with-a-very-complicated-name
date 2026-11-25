@@ -1,5 +1,6 @@
 'use client';
-// React Bits "Web Threads" (https://reactbits.dev/backgrounds/web-threads), TS + Tailwind; único cambio: settingsRef se actualiza en un effect (regla react-hooks/refs).
+// React Bits "Web Threads" (https://reactbits.dev/backgrounds/web-threads), TS + Tailwind. Cambios: settingsRef se actualiza en un effect
+// (regla react-hooks/refs) y `excite` (0–1): más velocidad, brillo y grosor, y hasta EXTRA_THREADS hilos que se suman de a uno.
 
 import { useEffect, useMemo, useRef, type CSSProperties } from 'react';
 
@@ -33,6 +34,8 @@ export interface WebThreadsProps {
   mouseStrength?: number;
   pulseOnClick?: boolean;
   paused?: boolean;
+  /** 0–1, se sigue con suavidad: sube rápido y vuelve despacio. */
+  excite?: number;
   dpr?: number;
   className?: string;
   style?: CSSProperties;
@@ -62,6 +65,13 @@ const ROOT = 'relative h-full w-full overflow-hidden';
 const CANVAS = 'absolute inset-0 block h-full w-full';
 
 const MAX_THREADS = 24;
+const EXTRA_THREADS = 5;
+// Al máximo de excite: +40 % velocidad, glow ×1.9, grosor ×1.3. Subida ~0.35 s, bajada ~1.6 s.
+const EXCITE_SPEED = 0.4;
+const EXCITE_GLOW = 0.9;
+const EXCITE_THICKNESS = 0.3;
+const EXCITE_RISE = 0.35;
+const EXCITE_FALL = 1.6;
 const MAX_COLORS = 6;
 const MAX_SURGES = 3;
 const SURGE_SECONDS = 1.6;
@@ -81,6 +91,8 @@ uniform vec2 uResolution;
 uniform float uPhase;
 uniform float uClock;
 uniform int uCount;
+uniform int uBase;
+uniform float uExtra;
 uniform float uFrequency;
 uniform float uSpread;
 uniform float uTaper;
@@ -170,7 +182,7 @@ void main() {
   vec2 s = space(p, aspect);
   float x = s.x;
   float y = s.y;
-  float n = float(uCount);
+  float n = float(uBase);
   float pixel = 1.0 / uResolution.y;
   float hub = hubAt(x);
   float presence = uFocusState.x;
@@ -183,8 +195,16 @@ void main() {
 
   for (int idx = 0; idx < ${MAX_THREADS}; idx++) {
     if (idx >= uCount) break;
+    // Hilos extra: entran de a uno (weight) y se ubican entre los base para no mover el dibujo de siempre.
+    float weight = 1.0;
     float i = float(idx);
-    float ci = n > 1.0 ? i / (n - 1.0) : 0.0;
+    if (idx >= uBase) {
+      float k = float(idx - uBase);
+      weight = clamp(uExtra - k, 0.0, 1.0);
+      i = (k + 0.5) * n / ${EXTRA_THREADS.toFixed(1)};
+    }
+    if (weight <= 0.0) continue;
+    float ci = n > 1.0 ? clamp(i / (n - 1.0), 0.0, 1.0) : 0.0;
 
     float head = 2.0;
     float bead = 0.0;
@@ -220,7 +240,7 @@ void main() {
       float bend = t.y * smoothstep(0.0, 0.04, abs(x - hub));
       d = abs(y - t.x) / sqrt(1.0 + bend * bend / (aspect * aspect));
     }
-    float g = uGlow / pow(max(d / width, pixel * 0.35), uFalloff) * front * born;
+    float g = uGlow / pow(max(d / width, pixel * 0.35), uFalloff) * front * born * weight;
     float onLine = exp(-d / (width * 0.012));
 
     if (bead > 0.0) {
@@ -384,6 +404,7 @@ export default function WebThreads({
   mouseStrength = 0.5,
   pulseOnClick = true,
   paused = false,
+  excite = 0,
   dpr = 2,
   className = '',
   style
@@ -431,6 +452,7 @@ export default function WebThreads({
     mouseStrength: clamp(mouseStrength, 0, 1),
     pulseOnClick,
     paused,
+    excite,
     dpr: Math.max(0.5, dpr)
   };
   const settingsRef = useRef(settings);
@@ -480,6 +502,8 @@ export default function WebThreads({
       'uPhase',
       'uClock',
       'uCount',
+      'uBase',
+      'uExtra',
       'uFrequency',
       'uSpread',
       'uTaper',
@@ -542,6 +566,7 @@ export default function WebThreads({
       target: -1,
       surges: [] as Surge[],
       quiet: 0,
+      boost: 0,
       seen: null as typeof settings | null
     };
 
@@ -600,7 +625,10 @@ export default function WebThreads({
       gl.uniform2f(u.uResolution, state.width, state.height);
       gl.uniform1f(u.uPhase, state.phase);
       gl.uniform1f(u.uClock, reduced ? 0 : state.clock);
-      gl.uniform1i(u.uCount, s.count);
+      const extra = state.boost * EXTRA_THREADS;
+      gl.uniform1i(u.uBase, s.count);
+      gl.uniform1i(u.uCount, Math.min(MAX_THREADS, s.count + Math.ceil(extra - 0.001)));
+      gl.uniform1f(u.uExtra, extra);
       gl.uniform1f(u.uFrequency, s.frequency);
       gl.uniform1f(u.uSpread, s.spread);
       gl.uniform1f(u.uTaper, s.taper);
@@ -608,9 +636,9 @@ export default function WebThreads({
       gl.uniform1f(u.uPinch, s.pinch);
       gl.uniform1f(u.uNodes, s.nodes);
       gl.uniform2f(u.uAngle, Math.cos(s.angle), Math.sin(s.angle));
-      gl.uniform1f(u.uGlow, s.glow * Math.sqrt(6 / Math.max(s.count, 6)));
+      gl.uniform1f(u.uGlow, s.glow * Math.sqrt(6 / Math.max(s.count, 6)) * (1 + EXCITE_GLOW * state.boost));
       gl.uniform1f(u.uFalloff, s.falloff);
-      gl.uniform1f(u.uThickness, s.thickness);
+      gl.uniform1f(u.uThickness, s.thickness * (1 + EXCITE_THICKNESS * state.boost));
       gl.uniform1f(u.uBrightness, s.brightness);
       gl.uniform1f(u.uOpacity, s.opacity);
       gl.uniform1f(u.uMirror, s.mirror ? 1 : 0);
@@ -654,7 +682,10 @@ export default function WebThreads({
       const reduced = prefersReduced();
       state.clock += dt;
       if (state.introAt < 0) state.introAt = state.clock;
-      if (!s.paused && !reduced) state.phase += dt * s.speed;
+      const goal = clamp(s.excite, 0, 1);
+      state.boost += (goal - state.boost) * (1 - Math.exp(-dt / (goal > state.boost ? EXCITE_RISE : EXCITE_FALL)));
+      if (Math.abs(goal - state.boost) < 0.001) state.boost = goal;
+      if (!s.paused && !reduced) state.phase += dt * s.speed * (1 + EXCITE_SPEED * state.boost);
       const focusing = updateFocus(s, dt, reduced);
       state.surges = state.surges.filter(
         surge => state.clock - surge.at < SURGE_SECONDS + (s.count - 1) * SURGE_STAGGER
@@ -662,7 +693,7 @@ export default function WebThreads({
 
       const still = s.paused || reduced;
       const transient =
-        state.surges.length > 0 || (s.intro && !reduced && state.clock - state.introAt < introLength(s)) || focusing;
+        state.surges.length > 0 || state.boost !== clamp(s.excite, 0, 1) || (s.intro && !reduced && state.clock - state.introAt < introLength(s)) || focusing;
       if (state.seen !== s || transient || !still) state.quiet = 0;
       else state.quiet += 1;
       state.seen = s;

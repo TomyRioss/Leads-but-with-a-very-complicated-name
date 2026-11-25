@@ -10,6 +10,8 @@ import { TurnstileField, type TurnstileFieldHandle } from "@/app/turnstile-field
 import { ServicesDialog } from "./services-dialog";
 
 const TEXT_MAX = 1000;
+/** Energía que suma cada tecla: ~6 teclas llevan los hilos al máximo. */
+const ENERGY_STEP = 0.18;
 const URL_MAX = 300;
 const TEXT_MAX_HEIGHT = 112; // ~4 líneas
 const DOMAIN_RE = /^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,24}$/;
@@ -53,6 +55,9 @@ export function ExploreInput() {
   const [text, setText] = useState("");
   const [url, setUrl] = useState("");
   const [focused, setFocused] = useState(false);
+  // Fondo: cada tecla con el recuadro enfocado suma energía a los hilos (más rápidos, intensos y numerosos); al desenfocar vuelven solos.
+  const [energy, setEnergy] = useState(0);
+  const charge = () => setEnergy((value) => Math.min(1, value + ENERGY_STEP));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<ErrorKind>("");
   const [servicesOpen, setServicesOpen] = useState(false);
@@ -104,7 +109,10 @@ export function ExploreInput() {
   }
 
   function onBlur(event: FocusEvent<HTMLFormElement>) {
-    if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setFocused(false);
+    if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+      setFocused(false);
+      setEnergy(0);
+    }
   }
 
   const errorNode = error === "quota"
@@ -138,7 +146,7 @@ export function ExploreInput() {
                 value={text}
                 maxLength={TEXT_MAX}
                 disabled={busy}
-                onChange={(event) => { setText(event.target.value); fitText(event.target); }}
+                onChange={(event) => { setText(event.target.value); fitText(event.target); charge(); }}
                 onKeyDown={onTextKeyDown}
                 placeholder={t("textPlaceholder")}
                 aria-label={t("textLabel")}
@@ -155,7 +163,7 @@ export function ExploreInput() {
                 value={url}
                 maxLength={URL_MAX}
                 disabled={busy}
-                onChange={(event) => setUrl(event.target.value)}
+                onChange={(event) => { setUrl(event.target.value); charge(); }}
                 placeholder={t("webPlaceholder")}
                 aria-label={t("webLabel")}
                 className="min-h-10 flex-1 border-0 bg-transparent px-2 text-[16px] text-(color:--ink) outline-none! placeholder:text-(color:--ash-500) disabled:opacity-60"
@@ -173,7 +181,7 @@ export function ExploreInput() {
         </div>
         {/* Fondo: el pinch (cruce) queda en el centro del recuadro. */}
         <div aria-hidden="true" className="pointer-events-none absolute top-1/2 left-1/2 -z-10 h-[440px] w-screen -translate-x-1/2 -translate-y-1/2">
-          <WebThreads colors={["#1b6b00", "#2eff00"]} thickness={1.6} brightness={2.4} spread={0.23} pulses={0.3} falloff={0.5} pinch={0.5} position={0.5} lightMode />
+          <WebThreads colors={["#1b6b00", "#2eff00"]} thickness={1.6} brightness={2.4} spread={0.23} pulses={0.3} falloff={0.5} pinch={0.5} position={0.5} lightMode excite={focused ? energy : 0} />
         </div>
         {domain && focused && !busy && (
           <button
