@@ -54,10 +54,17 @@
       "title": "Empezó el <green>Vibeselling</green>",
       "intro": "Leadta elimina las tareas repetitivas en las ventas, dejándote a cargo solo de lo verdaderamente importante.",
       "steps": [
-        { "title": "Pone tu negocio." },
-        { "title": "El bot busca información y clientes potenciales." },
-        { "title": "El bot contacta a todos." }
-      ]
+        { "title": "Pone tu negocio.", "text": "Pega tu web o describe lo que vendes." },
+        { "title": "El bot busca información y clientes potenciales.", "text": "Analiza tu mercado, arma campañas y encuentra negocios que encajan con lo que vendes." },
+        { "title": "El bot contacta a todos.", "text": "Escribe una propuesta para cada negocio y la envía por WhatsApp o Gmail." }
+      ],
+      "preview": {
+        "url": "tunegocio.com",
+        "found": "Negocios encontrados",
+        "leads": ["Café Aroma", "Panadería Sol", "Barbería Norte"],
+        "message": "Hola, ¿cómo están? Vimos que Café Aroma recibe pedidos por WhatsApp…",
+        "sent": "Enviado"
+      }
     },
     "pains": {
       "title": "Descubre qué le duele a cada negocio antes de escribirle.",

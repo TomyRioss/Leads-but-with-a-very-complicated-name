@@ -54,10 +54,17 @@
       "title": "<green>Vibeselling</green> has begun",
       "intro": "Leadta removes the repetitive tasks in sales, leaving you in charge of only what truly matters.",
       "steps": [
-        { "title": "Enter your business." },
-        { "title": "The bot finds information and potential customers." },
-        { "title": "The bot contacts all of them." }
-      ]
+        { "title": "Enter your business.", "text": "Paste your website or describe what you sell." },
+        { "title": "The bot finds information and potential customers.", "text": "It studies your market, builds campaigns and finds businesses that fit what you sell." },
+        { "title": "The bot contacts all of them.", "text": "It writes a proposal for each business and sends it by WhatsApp or Gmail." }
+      ],
+      "preview": {
+        "url": "yourbusiness.com",
+        "found": "Businesses found",
+        "leads": ["Aroma Café", "Sun Bakery", "North Barbershop"],
+        "message": "Hi there! We saw that Aroma Café takes orders on WhatsApp…",
+        "sent": "Sent"
+      }
     },
     "pains": {
       "title": "Know what hurts each business before you write to it.",
