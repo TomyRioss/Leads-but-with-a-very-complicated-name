@@ -31,7 +31,7 @@ type ErrorKind = "" | "quota" | "failed";
 function DomainIcon({ domain }: { domain: string }) {
   const [winner, setWinner] = useState(-1);
   const sources = [
-    `/api/favicon?domain=${encodeURIComponent(domain)}`,
+    `/api/favicon?domain=${encodeURIComponent(domain)}&v=2`,
     `https://${domain}/favicon.ico`,
   ];
   return (

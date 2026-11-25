@@ -66,9 +66,9 @@ const CANVAS = 'absolute inset-0 block h-full w-full';
 
 const MAX_THREADS = 24;
 const EXTRA_THREADS = 5;
-// Al máximo de excite: +40 % velocidad, glow ×1.9, grosor ×1.3. Subida exponencial (~0.35 s); bajada lineal en EXCITE_FALL s,
+// Al máximo de excite: +80 % velocidad, glow ×1.9, grosor ×1.3. Subida exponencial (~0.35 s); bajada lineal en EXCITE_FALL s,
 // y el efecto visible sigue smoothstep(boost): arranca y termina suave, sin caídas bruscas.
-const EXCITE_SPEED = 0.4;
+const EXCITE_SPEED = 0.8;
 const EXCITE_GLOW = 0.9;
 const EXCITE_THICKNESS = 0.3;
 const EXCITE_RISE = 0.35;
