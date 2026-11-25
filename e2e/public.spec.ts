@@ -46,15 +46,16 @@ test("LINKS LEGALES DEL FOOTER", async ({ page }) => {
 test("VER PLANES Y PRECIOS", async ({ page }) => {
   await page.goto("/pricing");
   await expect(page.getByRole("heading", { name: "Elige tu plan mensual" })).toBeVisible();
+  await expect(page.getByText("Uso aún más extendido del agente IA", { exact: true })).toBeVisible();
 });
 
 test.describe("CAMBIAR MONEDA DE PRECIOS", () => {
   test.use({ extraHTTPHeaders: { "x-vercel-ip-country": "AR" } });
-  test("alterna entre moneda local y USD", async ({ page }) => {
+  // Sin toggle: ARS principal y USD secundario siempre visibles, para cualquier país.
+  test("muestra ARS y USD a la vez", async ({ page }) => {
     await page.goto("/pricing");
-    const usd = page.getByRole("button", { name: "USD", exact: true });
-    await usd.click();
-    await expect(usd).toHaveAttribute("aria-pressed", "true");
+    await expect(page.getByText("$25.000 ARS", { exact: true })).toBeVisible();
+    await expect(page.getByText("aprox. $15 USD", { exact: true })).toBeVisible();
   });
 });
 

@@ -7,11 +7,11 @@ import { SubscriptionError } from "@/lib/server/subscriptions";
 const STATUS: Record<SubscriptionError["code"], number> = {
   invalid_plan: 400,
   already_subscribed: 409,
-  not_configured: 503,
+  payments_unavailable: 503,
   not_found: 404,
   invalid_subscription: 400,
   forbidden: 403,
-  rebill: 502,
+  mercadopago: 502,
 };
 
 /** The signed-in user, null when signed out, undefined when the session service failed. */

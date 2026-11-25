@@ -21,40 +21,7 @@
       "signup": "Crear cuenta"
     },
     "hero": {
-      "title": "No pierdas más tiempo buscando <mark>Leads</mark>",
-      "description": "Leadta es <strong>la herramienta para ti o tu equipo comercial</strong>: genera leads, busca dolores, audita las páginas, revisa las reseñas y rastrea contactos directos.",
-      "primary": "Crear cuenta gratis",
-      "demo": "Agendar Demo",
-      "demoMessage": "Hola, quiero agendar una demo de Leadta"
-    },
-    "sheet": {
-      "caption": "Lote de ejemplo con leads de veterinarias",
-      "searchLabel": "Búsqueda",
-      "query": "Veterinarias en Palermo, Buenos Aires",
-      "count": "25 leads",
-      "sample": "Datos de ejemplo",
-      "missing": "Sin dato",
-      "analyzePain": "Analizar Dolor con IA",
-      "analyzedPain": "Poco seguimiento de reseñas negativas",
-      "analyzedService": "Gestión de reseñas",
-      "serviceLabel": "Servicio:",
-      "csv": "CSV",
-      "xlsx": "XLSX",
-      "cols": {
-        "business": "Negocio",
-        "reviews": "Reseñas",
-        "phone": "Teléfono",
-        "email": "Mail",
-        "socials": "Redes",
-        "pain": "Dolor detectado"
-      },
-      "rows": [
-        { "name": "Veterinaria Huellitas del Sur", "category": "Veterinaria", "rating": "4,7", "reviews": "212", "phone": "+54 11 4555-0132", "email": "hola@huellitas.example", "socials": "Instagram, Facebook", "pain": "Turnos difíciles de conseguir", "service": "Integración de reservas" },
-        { "name": "Pet Care Recoleta", "category": "Veterinaria", "rating": "4,8", "reviews": "301", "phone": "", "email": "info@petcare.example", "socials": "Instagram, YouTube", "pain": "", "service": "" },
-        { "name": "Clínica Vet Belgrano", "category": "Clínica veterinaria", "rating": "4,3", "reviews": "96", "phone": "+54 11 4555-0178", "email": "", "socials": "Instagram", "pain": "Esperas largas con turno", "service": "Turnos online con recordatorios" },
-        { "name": "Mascotas del Plata", "category": "Veterinaria", "rating": "4,5", "reviews": "58", "phone": "+54 11 4555-0145", "email": "contacto@mascotasdelplata.example", "socials": "", "pain": "No responden por WhatsApp", "service": "Chatbot de WhatsApp" },
-        { "name": "Vet 24 Villa Crespo", "category": "Urgencias 24 h", "rating": "4,1", "reviews": "143", "phone": "+54 11 4555-0199", "email": "", "socials": "Facebook, LinkedIn", "pain": "Precios poco claros", "service": "Diseño web con precios" }
-      ]
+      "title": "<strong>Comienza el Vibeselling</strong>, contacta tus primeros <u>45 clientes</u> potenciales en <u>24 horas</u>, gratis."
     },
     "how": {
       "title": "El primer paso de la intención a la acción.",
@@ -161,7 +128,7 @@
         { "q": "¿De dónde salen los negocios?", "a": "De fuentes públicas de negocios locales. Buscas por rubro y zona y Leadta trae los negocios con los datos públicos que figuran en su ficha." },
         { "q": "¿Siempre vienen teléfono y mail?", "a": "No. Si la ficha pública o el sitio del negocio no publican un dato, la celda queda vacía. Nunca rellenamos con datos inventados." },
         { "q": "¿Cómo se detectan los dolores?", "a": "Se analizan las reseñas guardadas de cada negocio y cada hallazgo cita la reseña que lo respalda. Sin reseñas legibles no hay hallazgos." },
-        { "q": "¿Cuántos leads rinde un plan?", "a": "Cada lead consume 2 créditos. Con 500 créditos obtienes hasta 250 leads El análisis de dolores es gratis." },
+        { "q": "¿Cuántos leads rinde un plan?", "a": "Cada lead consume 2 créditos. Starter trae 350 créditos (hasta 175 leads) y Growth 1.750 créditos (hasta 875 leads). El análisis de dolores no consume créditos." },
         { "q": "¿Puedo repetir una búsqueda en la misma zona?", "a": "Sí. Leadta recuerda los negocios que ya te trajo en esa zona para devolverte resultados nuevos en las búsquedas siguientes." },
         { "q": "¿Mis búsquedas son privadas?", "a": "Sí. Cada cuenta tiene su propio historial y nadie más ve tus lotes ni tus leads." }
       ]

@@ -28,7 +28,6 @@
     "react-dom": "19.3.0",
     "react-icons": "^5.7.0",
     "react-phone-number-input": "^3.4.18",
-    "rebill": "^1.17.47",
     "recharts": "^3.10.1",
     "unpdf": "^1.9.1",
     "write-excel-file": "^4.1.1",

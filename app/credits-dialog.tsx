@@ -106,14 +106,15 @@ export function CreditsDialog({ open, onClose }: { open: boolean; onClose: () =>
                 {plan.featured ? <span className="credits-plan-badge"><Flame size={14} aria-hidden="true" />{pricing("popularBadge")}</span> : null}
               </div>
               <p className="credits-plan-amount">
-                <strong>{isArgentina ? `$${number.format(plan.priceArs)} ARS` : `$${number.format(plan.priceUsd)} USD`}</strong>
+                <strong>{`$${number.format(plan.priceArs)} ARS`}</strong>
                 <span>{pricing("perMonth")}</span>
+                <span className="basis-full">{pricing("usdApprox", { price: number.format(plan.priceUsd) })}</span>
               </p>
               <ul>
                 <li><Check size={14} aria-hidden="true" />{pricing("planCredits", { credits: number.format(plan.credits) })}</li>
                 <li><Check size={14} aria-hidden="true" />{pricing("planWhatsapp", { count: number.format(plan.limits.whatsappMonthly) })}</li>
                 <li><Check size={14} aria-hidden="true" />{pricing("planEmail", { count: number.format(plan.limits.emailMonthly) })}</li>
-                <li><Check size={14} aria-hidden="true" />{pricing("unlimitedAgent")}</li>
+                <li><Check size={14} aria-hidden="true" />{pricing("agentUsage", { plan: plan.id })}</li>
               </ul>
               <Link className="price-button price-button-subscribe" href="/pricing">
                 {pricing("subscribe")}<ArrowRight size={16} aria-hidden="true" />

@@ -15,7 +15,6 @@ export type SubscriptionRecord = {
   user: string;
   plan_id: string;
   external_reference: string;
-  rebill_subscription_id?: string;
   status: string;
   price_ars: number;
   monthly_credits: number;

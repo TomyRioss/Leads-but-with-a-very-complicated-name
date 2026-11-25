@@ -44,11 +44,11 @@ export const findPlan = (plans: readonly Plan[], id: string) => plans.find((plan
  * Transitional fallback until the external catalog is wired in (see the PocketBase proposal
  * sent with ORQ-1-0044). Existing callers still import these; new code must use the Plan helpers above.
  */
-const growthLimits: PlanLimits = { whatsappMonthly: 500, emailMonthly: 500, scheduledMonthly: 50 };
+const growthLimits: PlanLimits = { whatsappMonthly: 750, emailMonthly: 750, scheduledMonthly: 100 };
 
 export const subscriptionPlans: readonly Plan[] = [
-  { id: "starter", name: "Starter", priceUsd: 10, priceArs: 15_000, credits: 350, limits: { whatsappMonthly: 150, emailMonthly: 150, scheduledMonthly: 20 }, featured: false, visibility: "public", period: PLAN_PERIOD },
-  { id: "growth", name: "Growth", priceUsd: 50, priceArs: 75_000, credits: 750, limits: growthLimits, featured: true, visibility: "public", period: PLAN_PERIOD },
+  { id: "starter", name: "Starter", priceUsd: 15, priceArs: 25_000, credits: 350, limits: { whatsappMonthly: 150, emailMonthly: 150, scheduledMonthly: 20 }, featured: false, visibility: "public", period: PLAN_PERIOD },
+  { id: "growth", name: "Growth", priceUsd: 50, priceArs: 75_000, credits: 1_750, limits: growthLimits, featured: true, visibility: "public", period: PLAN_PERIOD },
 ];
 
 /** Accounts without an active plan (unchanged pre-plan behavior): 10 schedules count every channel; no monthly email cap. */

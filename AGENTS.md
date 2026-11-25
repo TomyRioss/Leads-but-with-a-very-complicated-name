@@ -6,8 +6,8 @@
 
 ## Paralelismo subagéntico obligatorio
 
-- Trabajar siempre en paralelo con enfoque subagéntico: delegar a subagentes (Agent tool) toda tarea o parte de tarea que se pueda delegar.
-- Máximo 10 subagentes simultáneos por instancia de Claude.
+- Trabajar siempre en paralelo y de forma asíncrona siempre que se pueda, con enfoque subagéntico: delegar a subagentes (Agent tool) toda tarea o parte de tarea que se pueda delegar. Varios pedidos o varios frentes de un mismo pedido se reparten entre subagentes a la vez, no en serie. Los procesos largos (tests, builds, servidores) corren en segundo plano mientras se avanza con lo demás.
+- Máximo 20 subagentes simultáneos por instancia de Claude.
 - Lanzar los subagentes independientes en un solo mensaje. Cada uno recibe su alcance exacto y los archivos que puede tocar; ninguno edita archivos asignados a otro.
 
 ## Formato de explicación
@@ -78,8 +78,7 @@ Fuente de los valores: OSPECTO, app/globals.css.
 
 ### Delegación de programación con subagentes
 
-- En tareas sustantivas de programación, separá el trabajo en frentes independientes y delegalos en subagentes en paralelo cuando eso reduzca el tiempo total. Usá hasta 10 subagentes si la plataforma lo permite.
-- Para una tarea pequeña o un único cambio indivisible, no fuerces paralelismo. Si las instrucciones de mayor prioridad limitan la delegación, respetalas.
+- Enfoque en paralelismo y trabajo asíncrono siempre que se pueda: separá el trabajo en frentes independientes y delegalos en subagentes en paralelo, hasta 20 a la vez. Solo un cambio indivisible se hace en serie.
 - Antes de delegar, asigná a cada subagente un objetivo concreto, archivos de su propiedad, límites de alcance y criterios de entrega. Evitá que dos agentes editen los mismos archivos a la vez.
 - Avisá que el workspace es compartido y que no deben revertir cambios de otros. Coordiná dependencias y conflictos antes de integrar.
 - El agente principal conserva responsabilidad por la arquitectura, la seguridad, la revisión de cada diff, la integración y la verificación final. No integres resultados sin revisarlos.
@@ -375,7 +374,7 @@ Before the final response, run one reporting pass. If candidates remain, from th
 
 ## Proyecto
 
-Leadta: buscador de leads de Google Maps (Apify) con asistente IA (Leadtita), Lead Suite (CRM liviano), búsqueda de personas, integraciones Google/WhatsApp, servidor MCP y suscripciones Rebill.
+Leadta: buscador de leads de Google Maps (Apify) con asistente IA (Leadtita), Lead Suite (CRM liviano), búsqueda de personas, integraciones Google/WhatsApp, servidor MCP y suscripciones Mercado Pago.
 
 ### Comandos
 
@@ -387,8 +386,8 @@ Leadta: buscador de leads de Google Maps (Apify) con asistente IA (Leadtita), Le
 ### Estructura
 
 - `app/[locale]/`: páginas (next-intl; `es` default sin prefijo, `en`). Rutas: `/`, `pricing`, `blog`, `login`, `register`, `verificar`, `restablecer`, `leadtita`, `lead-suite`, `buscar`, `personas`, `historial`, `integraciones`, `oauth/authorize`, `owner`, `terminos`, `privacidad`.
-- `app/api/`: route handlers delgados (auth, search, export, lead-suite, leadtita, people, owner, integrations, oauth, mcp, rebill, subscriptions, scheduled).
-- `lib/`: dominio compartido; `lib/server/`: casos de uso y adaptadores (PocketBase, Apify, Google, WhatsApp, Rebill, email).
+- `app/api/`: route handlers delgados (auth, search, export, lead-suite, leadtita, people, owner, integrations, oauth, mcp, mercadopago, subscriptions, scheduled).
+- `lib/`: dominio compartido; `lib/server/`: casos de uso y adaptadores (PocketBase, Apify, Google, WhatsApp, Mercado Pago, email).
 - `messages/`: traducciones por área (`<area>/es.json`, `en.json`).
 - `pb_migrations/`: migraciones PocketBase (se aplican al reiniciar en el VPS). `deploy/`: docker compose del VPS. `services/whatsapp-worker`: worker Baileys.
 - `proxy.ts`: middleware de next-intl (Next 16 usa `proxy.ts`).

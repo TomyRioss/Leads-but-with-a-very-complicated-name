@@ -4,7 +4,11 @@ import { sameOrigin } from "@/lib/server/leadtita-conversations";
 import { cancelUserSubscriptions, getCurrentSubscription, startCheckout } from "@/lib/server/subscriptions";
 import { fail, session } from "./_shared";
 
-// The session user's paid plan: GET current, POST starts a checkout (returns what the Rebill widget needs), DELETE cancels it.
+// The session user's paid plan: GET current, POST starts a Mercado Pago checkout ({ url } to redirect to), DELETE cancels it.
+
+/** Where Mercado Pago sends the payer back (it appends ?preapproval_id=…). APP_URL like the other absolute URLs. */
+const backUrl = (request: Request) =>
+  new URL("/api/subscriptions/confirm", process.env.APP_URL?.trim() || (process.env.VERCEL ? "https://leadta.app" : new URL(request.url).origin)).toString();
 
 export async function GET(request: Request) {
   const current = await session(request);
@@ -24,7 +28,7 @@ export async function POST(request: Request) {
   if (!current) return NextResponse.json({ error: "sign_in_required" }, { status: 401 });
   const body = await request.json().catch(() => ({})) as { planId?: unknown };
   try {
-    return withRefreshedSession(NextResponse.json(await startCheckout(current.user, typeof body.planId === "string" ? body.planId : "")), current.token);
+    return withRefreshedSession(NextResponse.json(await startCheckout(current.user, typeof body.planId === "string" ? body.planId : "", backUrl(request))), current.token);
   } catch (error) {
     return fail(error, "checkout");
   }

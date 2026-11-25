@@ -8,10 +8,10 @@ IR A REGISTRO DESDE LANDING | "/" > Header > Botón "Crear cuenta"
 CAMBIAR IDIOMA | "/" > Selector de idioma > "English" ("/en")
 LINKS LEGALES DEL FOOTER | "/" > Footer > "Términos y condiciones" / "Política de privacidad"
 VER PLANES Y PRECIOS | "/pricing"
-CAMBIAR MONEDA DE PRECIOS | "/pricing" > Toggle "USD" / moneda local
+CAMBIAR MONEDA DE PRECIOS | "/pricing" > Cards de planes: ARS principal + "aprox. USD" secundario (sin toggle)
 SUSCRIBIRSE A PLAN | "/pricing" > Botón "Suscribirme" > POST "/api/subscriptions"
-CONFIRMAR SUSCRIPCIÓN | POST "/api/subscriptions/confirm"
-WEBHOOK DE PAGOS REBILL | POST "/api/rebill/webhook"
+CONFIRMAR SUSCRIPCIÓN | Checkout Mercado Pago > back_url GET "/api/subscriptions/confirm?preapproval_id="
+WEBHOOK DE PAGOS MERCADO PAGO | POST "/api/mercadopago/webhook"
 LEER BLOG | "/blog"
 LEER ARTÍCULO DEL BLOG | "/blog/[slug]"
 VER TÉRMINOS | "/terminos"

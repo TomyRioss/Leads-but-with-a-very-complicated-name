@@ -1,14 +1,12 @@
-import { ArrowRight, Check, Download, History, MapPin, Plus, Sparkles, Table2, Users } from "lucide-react";
+import { ArrowRight, Check, MapPin, MessageCircle, Plus, Sparkles, Users } from "lucide-react";
 import { FaWhatsapp } from "react-icons/fa";
 import { SiGmail } from "react-icons/si";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { headers } from "next/headers";
-import { isArgentinaMarket, marketCurrency } from "@/lib/market";
-import { displayPrice, getPlanPrices } from "@/lib/server/rebill";
+import { isArgentinaMarket } from "@/lib/market";
 import { isDevEnvironment } from "@/lib/env-features";
 import { CUSTOM_PLAN_WHATSAPP, publicPlans, subscriptionPlans } from "@/lib/plans";
 import { CREDITS_PER_LEAD } from "@/lib/server/credits";
-import { CurrencyProvider, CurrencyToggle, PlanAmount } from "./currency-toggle";
 import { SubscribeButton } from "./subscribe-button";
 
 /** Título con el punto final en lime, como el logo "Leadta.". */
@@ -20,7 +18,7 @@ function Dotted({ text }: { text: string }) {
 export async function MarketPricing({ locale }: { locale: string }) {
   const argentina = isArgentinaMarket(await headers());
   const showSubscribe = argentina || isDevEnvironment();
-  return <PriceSections locale={locale} argentina={argentina} showSubscribe={showSubscribe} currency={marketCurrency(await headers())} />;
+  return <PriceSections locale={locale} argentina={argentina} showSubscribe={showSubscribe} />;
 }
 
 async function CallButton({ tone = "light", argentina }: { tone?: "light" | "dark"; argentina: boolean }) {
@@ -34,25 +32,24 @@ async function CallButton({ tone = "light", argentina }: { tone?: "light" | "dar
   );
 }
 
-export async function PriceSections({ locale, argentina, showSubscribe, currency }: { locale: string; argentina: boolean; showSubscribe: boolean; currency: string }) {
+export async function PriceSections({ locale, argentina, showSubscribe }: { locale: string; argentina: boolean; showSubscribe: boolean }) {
   setRequestLocale(locale);
   const t = await getTranslations("Pricing");
   const number = new Intl.NumberFormat(locale);
-  const prices = await getPlanPrices();
   const plans = publicPlans(subscriptionPlans).map((plan) => ({
     ...plan,
-    price: displayPrice(prices, plan, currency),
-    usdPrice: displayPrice(prices, plan, "USD"),
+    // ARS principal y USD secundario para todos los visitantes, desde el catálogo.
+    price: t("planPrice", { price: number.format(plan.priceArs), currency: "ARS" }),
+    usdPrice: t("usdApprox", { price: number.format(plan.priceUsd) }),
     features: [
       t("planCredits", { credits: number.format(plan.credits) }),
       t("planLeads", { leads: number.format(Math.floor(plan.credits / CREDITS_PER_LEAD)) }),
       t("planWhatsapp", { count: number.format(plan.limits.whatsappMonthly) }),
       t("planEmail", { count: number.format(plan.limits.emailMonthly) }),
       t("planScheduled", { count: number.format(plan.limits.scheduledMonthly) }),
-      t("unlimitedAgent"),
+      t("agentUsage", { plan: plan.id }),
     ],
   }));
-  const localCurrency = plans[0]?.price.currency ?? "USD";
   const customHref = `https://wa.me/${CUSTOM_PLAN_WHATSAPP}?text=${encodeURIComponent(t("customMessage"))}`;
   const abroadHref = `https://wa.me/${CUSTOM_PLAN_WHATSAPP}?text=${encodeURIComponent(t("customMessage"))}`;
   const vibe = [
@@ -60,13 +57,10 @@ export async function PriceSections({ locale, argentina, showSubscribe, currency
     { icon: FaWhatsapp, text: t("vibeWhatsapp") },
     { icon: SiGmail, text: t("vibeEmail") },
   ];
-  const included = [
-    { icon: MapPin, title: t("mapsTitle"), text: t("mapsText") },
-    { icon: Table2, title: t("sheetTitle"), text: t("sheetText") },
-    { icon: Sparkles, title: t("painTitle"), text: t("painText") },
-    { icon: History, title: t("historyTitle"), text: t("historyText") },
-    { icon: Download, title: t("exportTitle"), text: t("exportText") },
-    { icon: Check, title: t("supportTitle"), text: t("supportText") },
+  const flow = [
+    { icon: MapPin, title: t("flowLeadsTitle"), text: t("flowLeadsText") },
+    { icon: Sparkles, title: t("flowPainTitle"), text: t("flowPainText") },
+    { icon: MessageCircle, title: t("flowContactTitle"), text: t("flowContactText") },
   ];
   const steps = [
     { title: t("tellVolume"), text: t("tellVolumeText") },
@@ -74,7 +68,7 @@ export async function PriceSections({ locale, argentina, showSubscribe, currency
     { title: t("startSearching"), text: t("startSearchingText") },
   ];
   const faqs = [
-    { q: t("faqCostQ"), a: argentina ? t("faqCostArgentina") : t("faqCostInternational") },
+    { q: t("faqCostQ"), a: t("faqCostA") },
     { q: t("faqFeesQ"), a: t("faqFeesA") },
     { q: t("faqVolumeQ"), a: t("faqVolumeA") },
     { q: t("faqIncludedQ"), a: t("faqIncludedA") },
@@ -83,13 +77,11 @@ export async function PriceSections({ locale, argentina, showSubscribe, currency
   return (
     <>
       <section className="price-band price-band-paper border-t-0!" aria-labelledby="price-plans">
-        <CurrencyProvider>
         <div className="price-inner">
           <div className="price-head mx-auto max-w-none! text-center">
             <h1 id="price-plans"><Dotted text={t("plansTitle")} /></h1>
             {argentina ? <p className="price-plans-note">{t("paymentsNote")}</p> : null}
           </div>
-          {localCurrency !== "USD" ? <CurrencyToggle local={localCurrency} label={t("currencyLabel")} /> : null}
           <ul className="price-plans">
             {plans.map((plan) => (
               <li key={plan.id} className={plan.featured ? "price-plan price-plan-featured" : "price-plan"}>
@@ -98,18 +90,16 @@ export async function PriceSections({ locale, argentina, showSubscribe, currency
                   {plan.featured ? <span className="price-plan-badge">{t("featuredBadge")}</span> : null}
                 </div>
                 <p className="price-plan-amount">
-                  <strong><PlanAmount
-                    local={t("planPrice", { price: number.format(plan.price.amount), currency: plan.price.currency })}
-                    usd={t("planPrice", { price: number.format(plan.usdPrice.amount), currency: "USD" })}
-                  /></strong>
+                  <strong>{plan.price}</strong>
                   <span>{t("perMonth")}</span>
+                  <span className="basis-full">{plan.usdPrice}</span>
                 </p>
                 <ul className="price-plan-features">
                   {plan.features.map((feature) => (
                     <li key={feature}><Check size={16} aria-hidden="true" />{feature}</li>
                   ))}
                 </ul>
-                {showSubscribe ? <SubscribeButton planId={plan.id} label={`${plan.name} · ${t("planPrice", { price: number.format(plan.price.amount), currency: plan.price.currency })} ${t("perMonth")}`} /> : <p className="price-plan-unavailable">{t("customOnly")}</p>}
+                {showSubscribe ? <SubscribeButton planId={plan.id} label={`${plan.name} · ${plan.price} ${t("perMonth")}`} /> : <p className="price-plan-unavailable">{t("customOnly")}</p>}
               </li>
             ))}
             <li className="price-plan">
@@ -124,12 +114,11 @@ export async function PriceSections({ locale, argentina, showSubscribe, currency
             </li>
           </ul>
         </div>
-        </CurrencyProvider>
       </section>
 
       <section className="price-band" aria-labelledby="price-credits">
-        <div className="price-inner grid gap-10">
-          <h2 id="price-credits" className="m-0 whitespace-nowrap text-[clamp(26px,6.5vw,76px)] font-semibold leading-none tracking-[-.045em] text-(color:--ink)"><Dotted text={t("vibeTitle")} /></h2>
+        <div className="price-inner grid gap-10 md:grid-cols-2 md:items-center md:gap-16">
+          <h2 id="price-credits" className="m-0 whitespace-nowrap text-[clamp(26px,6.5vw,76px)] font-semibold md:whitespace-normal md:text-balance leading-none tracking-[-.045em] text-(color:--ink)"><Dotted text={t("vibeTitle")} /></h2>
           <ul className="grid">
             {vibe.map(({ icon: Icon, text }) => (
               <li key={text} className="flex items-center gap-4 border-t border-(--ash-300) py-[22px] text-lg font-semibold tracking-tight text-(color:--ink) last:border-b">
@@ -143,26 +132,29 @@ export async function PriceSections({ locale, argentina, showSubscribe, currency
 
       <section className="price-band price-band-paper" aria-labelledby="price-included">
         <div className="price-inner">
-          <div className="price-head">
-            <p className="price-kicker">{t("included")}</p>
-            <h2 id="price-included"><Dotted text={t("includedTitle")} /></h2>
+          <div className="price-head max-w-[720px]!">
+            <h2 id="price-included"><Dotted text={t("flowTitle")} /></h2>
+            <p>{t("flowText")}</p>
           </div>
-          <ul className="price-included">
-            {included.map(({ icon: Icon, title, text }) => (
-              <li key={title}>
-                <Icon size={20} aria-hidden="true" />
-                <h3>{title}</h3>
-                <p>{text}</p>
+          <ol className="mt-10 grid gap-4 p-0 md:mt-14 md:grid-cols-3 md:gap-12">
+            {flow.map(({ icon: Icon, title, text }, index) => (
+              <li key={title} className="relative flex flex-col gap-3 rounded-2xl border border-(--line) bg-(--ash-50) p-6">
+                <div className="flex items-center justify-between">
+                  <span aria-hidden="true" className="grid size-10 place-items-center rounded-[10px] bg-(--ash-950) text-(color:--lime)"><Icon size={20} /></span>
+                  <span aria-hidden="true" className="rounded-full bg-(--lime) px-2.5 py-0.5 text-sm font-semibold text-(color:--ash-950)">{String(index + 1).padStart(2, "0")}</span>
+                </div>
+                <h3 className="m-0 text-lg font-semibold tracking-tight text-(color:--ink)">{title}</h3>
+                <p className="m-0 text-[15px] leading-relaxed text-(color:--muted)">{text}</p>
+                {index < flow.length - 1 ? <ArrowRight size={24} aria-hidden="true" className="absolute top-1/2 -right-9 hidden -translate-y-1/2 text-(color:--lime-dark) md:block" /> : null}
               </li>
             ))}
-          </ul>
+          </ol>
         </div>
       </section>
 
       <section className="price-band" aria-labelledby="price-steps">
         <div className="price-inner">
           <div className="price-head">
-            <p className="price-kicker">{t("planSteps")}</p>
             <h2 id="price-steps"><Dotted text={t("stepsTitle")} /></h2>
           </div>
           <ol className="price-steps">
@@ -180,7 +172,6 @@ export async function PriceSections({ locale, argentina, showSubscribe, currency
       <section className="price-band price-band-paper" aria-labelledby="price-faq">
         <div className="price-inner price-split">
           <div className="price-head">
-            <p className="price-kicker">{t("questions")}</p>
             <h2 id="price-faq"><Dotted text={t("faqTitle")} /></h2>
           </div>
           <div className="price-faq">

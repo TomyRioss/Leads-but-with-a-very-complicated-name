@@ -1,25 +1,24 @@
 import { NextResponse } from "next/server";
 import { withRefreshedSession } from "@/lib/server/auth";
-import { sameOrigin } from "@/lib/server/leadtita-conversations";
-import { linkSubscription } from "@/lib/server/subscriptions";
-import { fail, session } from "../_shared";
+import { confirmSubscription } from "@/lib/server/subscriptions";
+import { session } from "../_shared";
 
-// Called by the browser when the Rebill widget reports success: links that subscription to the signed-in user.
-// Credits are never granted here, only by the signed webhook.
+// back_url of the Mercado Pago checkout: MP redirects the payer here with ?preapproval_id=…. The preapproval is read
+// back from Mercado Pago and its status stored on the user's row. Credits are never granted here, only by the signed webhook.
 
-const SUBSCRIPTION_ID = /^[A-Za-z0-9_-]{1,64}$/;
+const PREAPPROVAL_ID = /^[A-Za-z0-9_-]{1,64}$/;
 
-export async function POST(request: Request) {
-  if (!sameOrigin(request)) return NextResponse.json({ error: "forbidden" }, { status: 403 });
+export async function GET(request: Request) {
+  const to = (path: string) => NextResponse.redirect(new URL(path, request.url), 303);
+  const preapprovalId = new URL(request.url).searchParams.get("preapproval_id") ?? "";
   const current = await session(request);
-  if (current === undefined) return NextResponse.json({ error: "service" }, { status: 503 });
-  if (!current) return NextResponse.json({ error: "sign_in_required" }, { status: 401 });
-  const body = await request.json().catch(() => ({})) as { subscriptionId?: unknown };
-  if (typeof body.subscriptionId !== "string" || !SUBSCRIPTION_ID.test(body.subscriptionId)) return NextResponse.json({ error: "invalid_subscription" }, { status: 400 });
+  if (!current) return to(current === null ? "/login" : "/pricing");
+  if (!PREAPPROVAL_ID.test(preapprovalId)) return to("/pricing");
   try {
-    await linkSubscription(current.user, body.subscriptionId);
-    return withRefreshedSession(NextResponse.json({ ok: true }), current.token);
+    const status = await confirmSubscription(current.user, preapprovalId);
+    return withRefreshedSession(to(status === "canceled" ? "/pricing" : "/leadtita"), current.token);
   } catch (error) {
-    return fail(error, "confirm");
+    console.error("Subscription confirm failed", error instanceof Error ? error.name : "unknown");
+    return to("/pricing");
   }
 }
