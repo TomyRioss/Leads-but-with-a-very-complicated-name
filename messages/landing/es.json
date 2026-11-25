@@ -61,6 +61,7 @@
         "url": "tunegocio.com",
         "found": "Negocios encontrados",
         "leads": ["Café Aroma", "Panadería Sol", "Barbería Norte"],
+        "contacts": ["+54112345678", "hola@panaderiasol.com", "turnos@barberianorte.com"],
         "message": "Hola, ¿cómo están? Vimos que Café Aroma recibe pedidos por WhatsApp…",
         "sent": "Enviado"
       }

@@ -61,6 +61,7 @@
         "url": "yourbusiness.com",
         "found": "Businesses found",
         "leads": ["Aroma Café", "Sun Bakery", "North Barbershop"],
+        "contacts": ["+15551234567", "hello@sunbakery.com", "book@northbarbershop.com"],
         "message": "Hi there! We saw that Aroma Café takes orders on WhatsApp…",
         "sent": "Sent"
       }

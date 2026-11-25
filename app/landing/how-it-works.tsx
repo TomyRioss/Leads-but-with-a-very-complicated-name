@@ -1,10 +1,10 @@
 import type { ReactNode } from "react";
-import { ArrowUp, CheckCheck, Globe, Star } from "lucide-react";
+import { ArrowUp, CheckCheck, Globe, Mail, Phone } from "lucide-react";
 import { SiWhatsapp } from "react-icons/si";
 import { getTranslations } from "next-intl/server";
 
 type Step = { title: string; text: string };
-type Preview = { url: string; found: string; leads: string[]; message: string; sent: string };
+type Preview = { url: string; found: string; leads: string[]; contacts: string[]; message: string; sent: string };
 
 const initials = (name: string) => name.split(/\s+/).slice(0, 2).map((word) => word[0]).join("").toUpperCase();
 
@@ -38,7 +38,12 @@ function LeadsPreview({ preview }: { preview: Preview }) {
           <li key={name} className="flex items-center gap-2.5 rounded-lg bg-(--ash-50) px-2 py-1.5">
             <span className="grid size-6 shrink-0 place-items-center rounded-full bg-(--ash-950) text-[10px] font-semibold text-(color:--lime)">{initials(name)}</span>
             <span className="min-w-0 flex-1 truncate text-[13px] font-medium text-(color:--ink)">{name}</span>
-            <span className="inline-flex items-center gap-0.5 text-[11px] text-(color:--ash-700) tabular-nums"><Star size={11} className="fill-(--lime-dark) text-(color:--lime-dark)" />{(4.8 - index * 0.2).toFixed(1)}</span>
+            {preview.contacts[index] ? (
+              <span className="inline-flex min-w-0 items-center gap-1 truncate text-[11px] text-(color:--ash-700) tabular-nums">
+                {preview.contacts[index].includes("@") ? <Mail size={11} aria-hidden="true" className="shrink-0" /> : <Phone size={11} aria-hidden="true" className="shrink-0" />}
+                {preview.contacts[index]}
+              </span>
+            ) : null}
           </li>
         ))}
       </ul>
