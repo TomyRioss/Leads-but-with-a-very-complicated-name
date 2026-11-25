@@ -1,4 +1,4 @@
-import { ArrowRight, Check, MapPin, MessageCircle, Plus, Sparkles, Users } from "lucide-react";
+import { ArrowRight, Check, MapPin, MessageCircle, Sparkles, Users } from "lucide-react";
 import { FaWhatsapp } from "react-icons/fa";
 import { SiGmail } from "react-icons/si";
 import { getTranslations, setRequestLocale } from "next-intl/server";
@@ -61,18 +61,6 @@ export async function PriceSections({ locale, argentina, showSubscribe }: { loca
     { icon: MapPin, title: t("flowLeadsTitle"), text: t("flowLeadsText") },
     { icon: Sparkles, title: t("flowPainTitle"), text: t("flowPainText") },
     { icon: MessageCircle, title: t("flowContactTitle"), text: t("flowContactText") },
-  ];
-  const steps = [
-    { title: t("tellVolume"), text: t("tellVolumeText") },
-    { title: t("weBuildPlan"), text: t("weBuildPlanText") },
-    { title: t("startSearching"), text: t("startSearchingText") },
-  ];
-  const faqs = [
-    { q: t("faqCostQ"), a: t("faqCostA") },
-    { q: t("faqFeesQ"), a: t("faqFeesA") },
-    { q: t("faqVolumeQ"), a: t("faqVolumeA") },
-    { q: t("faqIncludedQ"), a: t("faqIncludedA") },
-    { q: t("faqContractQ"), a: t("faqContractA") },
   ];
   return (
     <>
@@ -149,39 +137,6 @@ export async function PriceSections({ locale, argentina, showSubscribe }: { loca
               </li>
             ))}
           </ol>
-        </div>
-      </section>
-
-      <section className="price-band" aria-labelledby="price-steps">
-        <div className="price-inner">
-          <div className="price-head">
-            <h2 id="price-steps"><Dotted text={t("stepsTitle")} /></h2>
-          </div>
-          <ol className="price-steps">
-            {steps.map((step, index) => (
-              <li key={step.title}>
-                <span aria-hidden="true">{String(index + 1).padStart(2, "0")}</span>
-                <h3>{step.title}</h3>
-                <p>{step.text}</p>
-              </li>
-            ))}
-          </ol>
-        </div>
-      </section>
-
-      <section className="price-band price-band-paper" aria-labelledby="price-faq">
-        <div className="price-inner price-split">
-          <div className="price-head">
-            <h2 id="price-faq"><Dotted text={t("faqTitle")} /></h2>
-          </div>
-          <div className="price-faq">
-            {faqs.map((item) => (
-              <details key={item.q}>
-                <summary>{item.q}<Plus size={18} aria-hidden="true" /></summary>
-                <p>{item.a}</p>
-              </details>
-            ))}
-          </div>
         </div>
       </section>
 
