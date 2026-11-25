@@ -41,7 +41,7 @@ export async function PriceSections({ locale, argentina, showSubscribe }: { loca
     // ARS principal y USD secundario para todos los visitantes, desde el catálogo.
     price: t("planPrice", { price: number.format(plan.priceArs), currency: "ARS" }),
     usdPrice: t("usdApprox", { price: number.format(plan.priceUsd) }),
-    features: plan.creditsOnly ? [t("planCredits", { credits: number.format(plan.credits) })] : [
+    features: [
       t("planCredits", { credits: number.format(plan.credits) }),
       t("planLeads", { leads: number.format(Math.floor(plan.credits / CREDITS_PER_LEAD)) }),
       t("planWhatsapp", { count: number.format(plan.limits.whatsappMonthly) }),
