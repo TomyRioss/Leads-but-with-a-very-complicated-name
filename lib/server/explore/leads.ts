@@ -58,6 +58,7 @@ export async function runLeads(product: ExploreProduct, campaign: ExploreCampaig
         id: createHash("sha256").update(mapped.source_key).digest("hex").slice(0, 16),
         name: mapped.name,
         category: mapped.category,
+        // Texto de Maps: solo materia prima para la IA (describeLeads); queda como respaldo si la IA falla.
         description: (str(place.description, DESCRIPTION_MAX) || str(mapped.source_context.owner_description, DESCRIPTION_MAX)),
         address: mapped.address,
         country_code: str(place.countryCode, 2).toUpperCase(),
@@ -97,31 +98,36 @@ export async function runLeads(product: ExploreProduct, campaign: ExploreCampaig
   }
   if (leads.size === 0) throw new Error("leads: no results");
   const result = [...leads.values()];
-  await describeMissing(result, locale, BUDGET_MS - (Date.now() - startedAt));
+  await describeLeads(result, locale, BUDGET_MS - (Date.now() - startedAt));
   return result;
 }
 
-/** One AI call writes a short description for the leads Maps left without one. Best effort: on failure they stay "". */
-async function describeMissing(leads: ExploreLead[], locale: ExploreLocale, budgetMs: number) {
-  const missing = leads.filter((lead) => !lead.description);
-  if (!missing.length || budgetMs < AI_MIN_MS) return;
+/**
+ * One AI call writes every description in its own words (never the Maps text verbatim), using name, category, address
+ * and the Maps text as source data. Best effort: on failure each lead keeps the Maps text (or "").
+ */
+async function describeLeads(leads: ExploreLead[], locale: ExploreLocale, budgetMs: number) {
+  if (!leads.length || budgetMs < AI_MIN_MS) return;
   const schema = objectSchema({
     items: { type: "array", items: objectSchema({ id: { type: "string" }, description: { type: "string", maxLength: DESCRIPTION_MAX } }) },
   });
   const system = [
-    "For each business, write one short neutral sentence (max 20 words) describing what it is and offers, inferred only from its name, category and address.",
+    "For each business, write one short sentence (max 20 words) in your own words saying what it is and what makes it distinct for a salesperson (specialty, type of cuisine or service, audience).",
+    "Use the name, category, address and the 'source' text as data; never copy the source text, never repeat the business name or city, never use generic filler like \"offers gastronomic service\".",
+    "With little data, describe it plainly from its category and name (e.g. \"Restaurante de mariscos frente al mar\" if the name suggests it). Never mention the source, missing data, or what the salesperson should do.",
     "Do not invent facts like years, awards or prices. Return every given id once.",
     UNTRUSTED_RULE,
     languageRule(locale),
   ].join(" ");
-  const user = missing.map((lead) => `${lead.id} | ${lead.name} | ${lead.category} | ${lead.address}`).join("\n");
+  const user = leads.map((lead) => `${lead.id} | ${lead.name} | ${lead.category} | ${lead.address} | source: ${lead.description || "-"}`).join("\n");
   try {
-    const result = await exploreJson({ name: "explore_lead_descriptions", schema, system, user, maxTokens: 60 * missing.length + 200, timeoutMs: Math.min(budgetMs, 60_000) });
-    const byId = new Map(missing.map((lead) => [lead.id, lead]));
+    const result = await exploreJson({ name: "explore_lead_descriptions", schema, system, user, maxTokens: 60 * leads.length + 200, timeoutMs: Math.min(budgetMs, 60_000) });
+    const byId = new Map(leads.map((lead) => [lead.id, lead]));
     for (const item of Array.isArray(result.items) ? result.items : []) {
       const record = item && typeof item === "object" ? item as Record<string, unknown> : {};
       const lead = byId.get(str(record.id, 40));
-      if (lead) lead.description = str(record.description, DESCRIPTION_MAX);
+      const description = str(record.description, DESCRIPTION_MAX);
+      if (lead && description) lead.description = description;
     }
   } catch (error) {
     console.error("Explore lead descriptions failed:", error instanceof Error ? error.message : "unknown");
