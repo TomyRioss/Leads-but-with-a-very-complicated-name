@@ -1,12 +1,13 @@
 import { connection } from "next/server";
-import { getActiveBusinessId } from "@/lib/server/workspace/active";
+import { getActiveBusinessId, listBusinessesWithProfile } from "@/lib/server/workspace/active";
 import { json, withUser } from "@/lib/server/workspace/http";
-import { listBusinesses } from "@/lib/server/workspace/repository";
 
 export async function GET(request: Request) {
   await connection();
   return withUser(request, "businesses list", async (user) => {
-    const [businesses, activeId] = await Promise.all([listBusinesses(user.id), getActiveBusinessId(user.id)]);
+    // En serie: si se crea el negocio desde el perfil, el activo se lee después.
+    const businesses = await listBusinessesWithProfile(user.id);
+    const activeId = await getActiveBusinessId(user.id);
     return json({ businesses, activeId });
   });
 }

@@ -1,7 +1,7 @@
 import "server-only";
 import type { Business } from "@/lib/workspace/types";
 import { pocketBaseFetch } from "@/lib/server/pocketbase";
-import { getBusiness } from "@/lib/server/workspace/repository";
+import { createBusiness, getBusiness, listBusinesses } from "@/lib/server/workspace/repository";
 import { isRecordId } from "@/lib/server/workspace/mapping";
 import { getCommercialProfile } from "@/lib/server/user-profile";
 import { profileFromBusiness } from "@/lib/workspace/business-prompt";
@@ -42,4 +42,37 @@ export async function ensureActiveBusiness(userId: string, businessId: string): 
 export async function activeServiceOffering(userId: string): Promise<string> {
   const [business, saved] = await Promise.all([getActiveBusiness(userId).catch(() => null), getCommercialProfile(userId).catch(() => ({ serviceOffering: "", commercialSectors: "" }))]);
   return (business ? profileFromBusiness(business, saved) : saved).serviceOffering;
+}
+
+const NAME_MAX = 40;
+// ponytail: dedupe en memoria por instancia; dos instancias a la vez podrían crear dos negocios (raro: una sola vez por cuenta).
+const migrating = new Map<string, Promise<Business[]>>();
+
+/** Nombre corto desde el servicio: hasta la primera coma o punto, cortado en palabra a NAME_MAX. */
+export function nameFromOffering(offering: string) {
+  const first = offering.split(/[.,;\n]/)[0].trim().replace(/\s+/g, " ");
+  if (first.length <= NAME_MAX) return first;
+  const cut = first.slice(0, NAME_MAX + 1);
+  return cut.slice(0, cut.lastIndexOf(" ") > 0 ? cut.lastIndexOf(" ") : NAME_MAX).trim();
+}
+
+/**
+ * Negocios del usuario. Cuentas viejas sin negocios pero con perfil comercial: una sola vez se crea el negocio
+ * desde ese perfil y queda activo, así el selector muestra el negocio con el que ya trabajan.
+ */
+export async function listBusinessesWithProfile(userId: string): Promise<Business[]> {
+  const businesses = await listBusinesses(userId);
+  if (businesses.length) return businesses;
+  const pending = migrating.get(userId);
+  if (pending) return pending;
+  const task = (async () => {
+    const { serviceOffering } = await getCommercialProfile(userId);
+    const name = nameFromOffering(serviceOffering);
+    if (!name) return [];
+    const business = await createBusiness(userId, { name, summary: serviceOffering });
+    await ensureActiveBusiness(userId, business.id).catch(() => {});
+    return [business];
+  })().finally(() => migrating.delete(userId));
+  migrating.set(userId, task);
+  return task;
 }
