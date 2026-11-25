@@ -372,15 +372,6 @@
     "label": "Cambiar idioma a inglés",
     "title": "English"
   },
-  "WhatsNew": {
-    "title": "Leadta x WhatsApp + Gmail!",
-    "close": "Cerrar",
-    "text": "Conecta tu WhatsApp y tu Gmail y deja que Leadtita escriba, envíe y haga seguimiento a tus leads por ti. Todo desde un solo chat.",
-    "whatsapp": "Mensajes a tus leads por WhatsApp, sin copiar y pegar.",
-    "gmail": "Emails desde tu Gmail, con seguimiento automático.",
-    "later": "Ahora no",
-    "cta": "Probar con Leadtita"
-  },
   "CampaignBanner": {
     "label": "Campaña promocional vigente"
   },

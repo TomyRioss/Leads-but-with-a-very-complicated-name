@@ -8,7 +8,6 @@ import { LanguageSwitcher } from "@/app/language-switcher";
 import { FeedbackDialog } from "@/app/feedback-dialog";
 import { IntegrationsDialog, OPEN_INTEGRATIONS_EVENT } from "@/app/integrations-dialog";
 import { OPEN_FEEDBACK_EVENT, type FeedbackPrefill } from "@/app/error-report";
-import { WhatsNewDialog } from "@/app/whats-new-dialog";
 import { getSession } from "@/lib/client/session";
 import { Link, useRouter } from "@/i18n/navigation";
 import { Popover, usePopover } from "@/app/ui/popover";
@@ -21,8 +20,6 @@ type AppSidebarProps = {
   /** null while the session loads: renders a same-size skeleton for account and credits. */
   user: { email: string; credits: number } | null;
   onSignOut: () => void | Promise<void>;
-  /** false holds the WhatsApp + Gmail announcement (e.g. until a page knows the user won't be redirected). */
-  announce?: boolean;
 };
 
 const COLLAPSED_KEY = "leadta.sideNavCollapsed";
@@ -163,7 +160,7 @@ function BusinessSwitcher({ tip, onNavigate }: { tip: (label: string) => string 
 }
 
 /** Sidebar único de la app con sesión: colapsa en móvil, cierra con Escape o clic fuera. */
-export function AppSidebar({ active, user, onSignOut, announce = true }: AppSidebarProps) {
+export function AppSidebar({ active, user, onSignOut }: AppSidebarProps) {
   const t = useTranslations("UI");
   const s = useTranslations("Search");
   const locale = useLocale();
@@ -367,7 +364,6 @@ export function AppSidebar({ active, user, onSignOut, announce = true }: AppSide
       <FeedbackDialog open={feedbackOpen} prefill={feedbackPrefill} onClose={() => setFeedbackOpen(false)} />
       <IntegrationsDialog open={integrationsOpen} onClose={() => setIntegrationsOpen(false)} returnTo={active === "leadtita" ? "/leadtita" : "/integraciones"} />
       {/* Not on /leadtita: the CTA points there and new users get the Leadtita tour on that page. */}
-      <WhatsNewDialog email={!announce || active === "leadtita" ? null : user?.email ?? null} />
     </>
   );
 }

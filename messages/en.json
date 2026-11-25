@@ -372,15 +372,6 @@
     "label": "Switch language to Spanish",
     "title": "Español"
   },
-  "WhatsNew": {
-    "title": "Leadta x WhatsApp + Gmail!",
-    "close": "Close",
-    "text": "Connect your WhatsApp and Gmail and let Leadtita write, send and follow up with your leads for you. All from one chat.",
-    "whatsapp": "Message your leads on WhatsApp, no copy-paste.",
-    "gmail": "Send emails from your Gmail, with automatic follow-ups.",
-    "later": "Not now",
-    "cta": "Try it with Leadtita"
-  },
   "CampaignBanner": {
     "label": "Current promotional campaign"
   },

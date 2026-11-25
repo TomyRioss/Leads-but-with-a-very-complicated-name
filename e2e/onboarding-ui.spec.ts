@@ -21,8 +21,6 @@ type Api = { patches: { step: string; data: Record<string, unknown> }[]; posts: 
 
 async function mockApi(page: Page, options: { businesses?: Business[]; activeId?: string; pendingId?: string; proposals?: unknown[] } = {}): Promise<Api> {
   const api: Api = { patches: [], posts: [], active: [], unhandled: [] };
-  // Sin el aviso de novedades del sidebar (tapa la página).
-  await page.addInitScript((email) => localStorage.setItem(`leadta:whatsNew:whatsapp-gmail:${email}`, "1"), user.email);
   const store = new Map<string, Business>((options.businesses ?? []).map((b) => [b.id, b]));
   let activeId = options.activeId ?? "";
   const json = (route: Route, body: unknown, status = 200) => route.fulfill({ status, json: body });
