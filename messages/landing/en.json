@@ -66,22 +66,22 @@
         "sent": "Sent"
       }
     },
-    "pains": {
-      "title": "Know what hurts each business before you write to it.",
-      "text": "Show up with the right offer, not a generic message.",
-      "rowsLabel": "Examples of signal, pain point and opportunity",
-      "signalLabel": "Signal",
-      "painLabel": "Pain point",
-      "offerLabel": "Opportunity",
-      "rows": [
-        { "signal": "Unanswered calls", "pain": "Losing customers by phone", "offer": "WhatsApp support" },
-        { "signal": "Long waits", "pain": "Customers losing patience", "offer": "Online booking" },
-        { "signal": "Unclear prices", "pain": "Doubts before buying", "offer": "Web catalog and rates" },
-        { "signal": "Little online presence", "pain": "Invisible to people searching", "offer": "Website and socials" }
-      ],
-      "enrichTitle": "Add their socials, verified.",
-      "enrichText": "Their official profiles, one click away.",
-      "networks": ["Facebook", "Instagram", "YouTube", "LinkedIn"]
+    "edge": {
+      "title": "Three things Leadta does for you",
+      "items": [
+        {
+          "title": "50 businesses per search",
+          "text": "Each with contact details, location and a description."
+        },
+        {
+          "title": "One message per business",
+          "text": "Each proposal is written around what that business sells."
+        },
+        {
+          "title": "WhatsApp and Gmail in one place",
+          "text": "Send and follow replies without switching apps."
+        }
+      ]
     },
     "export": {
       "title": "Export it, and come back whenever you want.",

@@ -184,7 +184,7 @@
 .lp-footer-links a:hover { color: var(--ink); text-decoration: underline; }
 
 /* Anclas con header fijo */
-#how, #data, #pains, #plans, #faq { scroll-margin-top: 88px; }
+#how, #data, #edge, #plans, #faq { scroll-margin-top: 88px; }
 
 /* Movimiento: una entrada al cargar (copy + filas de la hoja). El contenido es visible por defecto. */
 @media (prefers-reduced-motion: no-preference) {

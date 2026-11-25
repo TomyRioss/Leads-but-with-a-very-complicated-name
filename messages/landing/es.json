@@ -66,22 +66,22 @@
         "sent": "Enviado"
       }
     },
-    "pains": {
-      "title": "Descubre qué le duele a cada negocio antes de escribirle.",
-      "text": "Llega con la propuesta justa, no con un mensaje genérico.",
-      "rowsLabel": "Ejemplos de señal, dolor y oportunidad",
-      "signalLabel": "Señal",
-      "painLabel": "Dolor",
-      "offerLabel": "Oportunidad",
-      "rows": [
-        { "signal": "Llamadas sin respuesta", "pain": "Pierden clientes por teléfono", "offer": "Atención por WhatsApp" },
-        { "signal": "Esperas largas", "pain": "Clientes que se impacientan", "offer": "Turnos online" },
-        { "signal": "Precios poco claros", "pain": "Dudas antes de comprar", "offer": "Catálogo y tarifas web" },
-        { "signal": "Poca presencia online", "pain": "Invisibles para quien los busca", "offer": "Sitio web y redes" }
-      ],
-      "enrichTitle": "Suma sus redes, verificadas.",
-      "enrichText": "Sus perfiles oficiales, a un clic de distancia.",
-      "networks": ["Facebook", "Instagram", "YouTube", "LinkedIn"]
+    "edge": {
+      "title": "Tres cosas que Leadta hace por ti",
+      "items": [
+        {
+          "title": "50 negocios por búsqueda",
+          "text": "Cada uno con contacto, ubicación y descripción."
+        },
+        {
+          "title": "Un mensaje para cada negocio",
+          "text": "La propuesta se escribe según lo que vende cada uno."
+        },
+        {
+          "title": "WhatsApp y Gmail en un lugar",
+          "text": "Envías y sigues las respuestas sin cambiar de app."
+        }
+      ]
     },
     "export": {
       "title": "Exporta y vuelve cuando quieras.",
