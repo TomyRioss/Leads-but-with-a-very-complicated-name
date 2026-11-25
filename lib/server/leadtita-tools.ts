@@ -45,7 +45,8 @@ import { toUserRole } from "@/lib/server/auth";
 import { createHash } from "node:crypto";
 import { fetchPublicHtml } from "@/lib/server/contact-scrape";
 import { enqueueWhatsApp, getLeadWhatsApp, isWhatsAppConfigured, isWhatsAppConnected, WHATSAPP_BATCH_MAX, WHATSAPP_TEXT_MAX } from "@/lib/server/whatsapp";
-import { COMMERCIAL_SECTORS_MAX, getCommercialProfile, SERVICE_OFFERING_MAX, updateCommercialProfile, type CommercialProfile } from "@/lib/server/user-profile";
+import { COMMERCIAL_SECTORS_MAX, SERVICE_OFFERING_MAX, updateCommercialProfile, type CommercialProfile } from "@/lib/server/user-profile";
+import { activeServiceOffering } from "@/lib/server/workspace/active";
 import type { ChangeExtra, ConfirmedChange, LeadPreview, LeadSuiteAction, PendingPayload, ProposalInput } from "@/lib/server/lead-suite-agent";
 
 // Leadtita capabilities beyond logging contacts: feedback, message drafts, manual leads, analysis and lead generation.
@@ -683,7 +684,7 @@ export async function applyLeadtitaChange(userId: string, payload: PendingPayloa
     const brief = await getLeadPainBrief(userId, payload.leadId);
     if (!brief) throw new Error("Lead not found.");
     // No focus on the card = the user's service (what /api/analysis falls back to), so the replay guard compares the real focus.
-    const focus = typeof extra.focus === "string" && extra.focus ? extra.focus : await getCommercialProfile(userId).then((profile) => profile.serviceOffering).catch(() => "");
+    const focus = typeof extra.focus === "string" && extra.focus ? extra.focus : await activeServiceOffering(userId);
     // Replayed card: the lead was already analyzed with this focus, don't run (or count) it again.
     if (brief.analyzed && brief.focus === focus) return { kind: payload.kind, leadName: brief.lead.name, summary: { tags: brief.tags } };
     okBody(await (await useCases.analysis())(await sessionUser(userId), { batchId: extra.batchId, action: "pain_points", leadId: payload.leadId, focus }, { locale: call.locale }));

@@ -1,7 +1,6 @@
 "use client";
 
 import { useRef, useState, type FocusEvent, type FormEvent, type KeyboardEvent } from "react";
-import { preconnect } from "react-dom";
 import { useLocale, useTranslations } from "next-intl";
 import { ArrowRight, ArrowUp, Globe, Loader2 } from "lucide-react";
 import { Link, useRouter } from "@/i18n/navigation";
@@ -27,13 +26,12 @@ type ErrorKind = "" | "quota" | "failed";
 
 /**
  * Favicon del dominio; globo neutro hasta que carga (montar con key={domain} para no mostrar el de otro dominio).
- * Carrera: gstatic (tarda cuando Google no tiene el ícono en caché) contra /favicon.ico del propio sitio; gana el primero que carga.
+ * Carrera: /api/favicon (gstatic, 404 real si Google no lo tiene) contra /favicon.ico del propio sitio; gana el primero que carga.
  */
 function DomainIcon({ domain }: { domain: string }) {
   const [winner, setWinner] = useState(-1);
   const sources = [
-    // gstatic directo evita el 301 de google.com/s2/favicons.
-    `https://t1.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=${encodeURIComponent(`https://${domain}`)}&size=32`,
+    `/api/favicon?domain=${encodeURIComponent(domain)}`,
     `https://${domain}/favicon.ico`,
   ];
   return (
@@ -58,7 +56,6 @@ function DomainIcon({ domain }: { domain: string }) {
 
 /** Caja del hero que arranca el flujo público /explorar (texto, web o servicios). */
 export function ExploreInput() {
-  preconnect("https://t1.gstatic.com");
   const t = useTranslations("Landing.hero.explore");
   const locale = useLocale();
   const router = useRouter();
@@ -192,9 +189,10 @@ export function ExploreInput() {
             </button>
           </div>
         </div>
-        {/* Fondo: el pinch (cruce) queda en el centro del recuadro. */}
-        <div aria-hidden="true" className="pointer-events-none absolute top-1/2 left-1/2 -z-10 h-[440px] w-screen -translate-x-1/2 -translate-y-1/2">
-          <WebThreads colors={["#1b6b00", "#2eff00"]} thickness={1.6} brightness={2.4} spread={0.23} pulses={0.3} falloff={0.5} pinch={0.5} position={0.5} lightMode excite={focused ? energy : 0} />
+        {/* Fondo: el pinch (cruce) queda en el centro del recuadro. Lienzo alto (760px) con spread reducido en proporción
+            (mismo dibujo que con 440px y 0.23) para que los hilos excitados no toquen el borde; la máscara funde arriba y abajo. */}
+        <div aria-hidden="true" className="pointer-events-none absolute top-1/2 left-1/2 -z-10 h-[760px] w-screen -translate-x-1/2 -translate-y-1/2 [mask-image:linear-gradient(to_bottom,transparent,black_22%,black_78%,transparent)]">
+          <WebThreads colors={["#1b6b00", "#2eff00"]} thickness={1.6} brightness={2.4} spread={0.133} pulses={0.3} falloff={0.5} pinch={0.5} position={0.5} lightMode excite={focused ? energy : 0} />
         </div>
         {domain && focused && !busy && (
           <button

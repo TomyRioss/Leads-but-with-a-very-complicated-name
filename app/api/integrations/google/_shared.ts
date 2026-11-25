@@ -33,7 +33,7 @@ export function isConfigured() {
 export const redirectUri = () => new URL("/api/integrations/google/callback", appOrigin()).toString();
 
 // Destinos permitidos después del consentimiento (evita open redirects).
-const RETURN_PATHS = ["/leadtita", "/integraciones", "/en/leadtita", "/en/integraciones"];
+const RETURN_PATHS = ["/leadtita", "/integraciones", "/onboarding", "/en/leadtita", "/en/integraciones", "/en/onboarding"];
 export function safeReturnTo(value: string | null | undefined) {
   return RETURN_PATHS.includes(value ?? "") ? value as string : "/leadtita";
 }

@@ -58,6 +58,21 @@ export async function createBusinessForRun(record: { user: string; landing_run: 
   }
 }
 
+/** Crea un negocio del usuario (onboarding). `user` siempre sale de la sesión, nunca de `fields`. */
+export async function createBusiness(userId: string, fields: Record<string, unknown>): Promise<Business> {
+  const row = await pocketBaseFetch<BusinessRow>(records("businesses"), { method: "POST", body: JSON.stringify({ ...fields, user: userId }) });
+  return toBusiness(row);
+}
+
+/** PATCH de un negocio solo si es del usuario; null si no existe o es de otro. */
+export async function updateBusiness(userId: string, id: string, patch: Record<string, unknown>): Promise<Business | null> {
+  if (!(await findOwn<{ id: string }>("businesses", userId, id))) return null;
+  const data = { ...patch };
+  delete data.user; // el dueño no cambia nunca
+  const row = await pocketBaseFetch<BusinessRow>(recordPath("businesses", id), { method: "PATCH", body: JSON.stringify(data) });
+  return toBusiness(row);
+}
+
 // ---------- Campañas ----------
 
 /** result_count de cada lote del usuario, en una consulta por cada 80 ids (sin N+1). */

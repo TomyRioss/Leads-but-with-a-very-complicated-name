@@ -1,6 +1,6 @@
 import type { AppUser } from "@/lib/server/auth";
 import { apiResultFrom, type ApiResult } from "@/lib/server/api-result";
-import { getCommercialProfile } from "@/lib/server/user-profile";
+import { activeServiceOffering } from "@/lib/server/workspace/active";
 import { CreditOperationBusyError, CREDITS_PER_PAIN_ANALYSIS, InsufficientCreditsError, reserveCreditAmount } from "@/lib/server/credits";
 import { featurePricing } from "@/lib/server/campaigns";
 import { freeLimit, reserveFreeUsage, type FreeUsageReservation } from "@/lib/server/usage-limits";
@@ -627,7 +627,7 @@ export async function runLeadAnalysis(user: Pick<AppUser, "id" | "role">, rawBod
   let painFocus = typeof body.focus === "string" ? text(body.focus, 300) : "";
   const reuseExistingPain = body.reuseExistingPain === true;
   // Without an explicit focus, analyze pains against the service the user sells (their commercial profile).
-  if (!painFocus && action === "pain_points") painFocus = await getCommercialProfile(user.id).then((profile) => profile.serviceOffering).catch(() => "");
+  if (!painFocus && action === "pain_points") painFocus = await activeServiceOffering(user.id);
   const requestedNetworks = Array.isArray(body.socialNetworks)
     ? body.socialNetworks.filter((value): value is SocialNetwork => typeof value === "string" && supportedSocialNetworks.includes(value as SocialNetwork))
     : supportedSocialNetworks;

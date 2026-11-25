@@ -1,7 +1,7 @@
 // Reglas puras de "Mis negocios / Mis campañas / Mis propuestas": registro PocketBase ↔ contrato, validación y límites.
 // Sin imports con costo en runtime: el selfcheck lo corre con node plano.
 import type { ExploreCampaign, ExploreCompetitors, ExploreProduct, ExploreProposal } from "@/lib/explore/types";
-import type { Business, Proposal, ProposalChannel, ProposalStatus, SalesCampaign } from "@/lib/workspace/types";
+import type { Business, BusinessMarket, ONBOARDING_STEPS, OnboardingStep, Proposal, ProposalChannel, ProposalStatus, SalesCampaign } from "@/lib/workspace/types";
 
 export const RECORD_ID = /^[a-zA-Z0-9]{15}$/;
 export const WORKSPACE_LIMITS = {
@@ -40,7 +40,11 @@ export function pbToIso(value: unknown): string {
 }
 export const isoToPb = (iso: string) => iso.replace("T", " ");
 
-export type BusinessRow = { id: string; name?: string; domain?: string; summary?: string; location?: string; country?: string; headline?: string; value_props?: unknown; buyer_searches?: unknown; competitors?: unknown; created?: string };
+export type BusinessRow = {
+  id: string; name?: string; domain?: string; summary?: string; location?: string; country?: string; headline?: string;
+  value_props?: unknown; buyer_searches?: unknown; competitors?: unknown; created?: string;
+  markets?: unknown; business_types?: unknown; offer_confirmed_at?: string; markets_confirmed_at?: string; channels?: unknown; onboarding_step?: string;
+};
 export type CampaignRow = { id: string; business: string; name?: string; icon?: string; fit?: number; pitch?: string; pain?: string; criteria?: unknown; examples?: unknown; keywords?: unknown; batches?: unknown; created?: string };
 export type ProposalRow = { id: string; business: string; campaign: string; lead?: string; lead_name?: string; channel?: string; to?: string; subject?: string; body?: string; status?: string; error?: string; sent_at?: string; created?: string };
 
@@ -57,7 +61,145 @@ export function toBusiness(row: BusinessRow): Business {
     buyerSearches: strings(row.buyer_searches),
     competitors: competitorList(row.competitors),
     created: pbToIso(row.created),
+    markets: marketList(row.markets),
+    businessTypes: businessTypeList(row.business_types),
+    offerConfirmed: !!row.offer_confirmed_at,
+    marketsConfirmed: !!row.markets_confirmed_at,
+    channels: channelList(row.channels),
+    onboardingStep: storedStep(row),
   };
+}
+
+// ---------- Onboarding de un negocio ----------
+
+// Mismo orden que ONBOARDING_STEPS (el satisfies falla si divergen); copia local porque el selfcheck no resuelve "@/".
+const STEP_ORDER = ["company", "customers", "confirm", "plan", "channels", "capacity"] as const satisfies typeof ONBOARDING_STEPS;
+export type EditableStep = (typeof STEP_ORDER)[number];
+export const ONBOARDING_LIMITS = { markets: 10, place: 100, businessTypes: 12, businessType: 60, name: 200, summary: 2000, competitors: 20, competitorDomain: 255 } as const;
+const CHANNELS = new Set<ProposalChannel>(["whatsapp", "gmail"]);
+
+const isPlainObject = (value: unknown): value is Record<string, unknown> => !!value && typeof value === "object" && !Array.isArray(value);
+export const isEditableStep = (value: unknown): value is EditableStep => typeof value === "string" && (STEP_ORDER as readonly string[]).includes(value);
+const isStep = (value: unknown): value is OnboardingStep => value === "done" || isEditableStep(value);
+/** Posición del paso; "done" va después de todos. */
+const stepIndex = (step: OnboardingStep) => (step === "done" ? STEP_ORDER.length : STEP_ORDER.indexOf(step));
+
+/** Paso guardado si es válido; si falta: "confirm" para negocios de /explorar (ya traen ficha y competidores), si no "company". */
+function storedStep(row: Pick<BusinessRow, "onboarding_step" | "summary">): OnboardingStep {
+  if (isStep(row.onboarding_step)) return row.onboarding_step;
+  return typeof row.summary === "string" && row.summary.trim() ? "confirm" : "company";
+}
+
+const marketList = (value: unknown): BusinessMarket[] =>
+  Array.isArray(value)
+    ? value.flatMap((item) => {
+        if (!isPlainObject(item)) return [];
+        const country = text(item.country, ONBOARDING_LIMITS.place).trim();
+        return country ? [{ country, region: text(item.region, ONBOARDING_LIMITS.place).trim() }] : [];
+      }).slice(0, ONBOARDING_LIMITS.markets)
+    : [];
+const businessTypeList = (value: unknown) => strings(value, ONBOARDING_LIMITS.businessTypes, ONBOARDING_LIMITS.businessType).map((item) => item.trim()).filter(Boolean);
+const channelList = (value: unknown): ProposalChannel[] =>
+  Array.isArray(value) ? [...new Set(value.filter((item): item is ProposalChannel => CHANNELS.has(item as ProposalChannel)))] : [];
+
+/** Solo se edita un paso ya alcanzado (o el actual); nunca uno posterior. */
+export function canEditStep(current: OnboardingStep, step: unknown): step is EditableStep {
+  return isEditableStep(step) && stepIndex(step) <= stepIndex(current);
+}
+
+/** Paso siguiente a `step`; después de "capacity" viene "done". */
+export function nextStep(step: EditableStep): OnboardingStep {
+  return STEP_ORDER[STEP_ORDER.indexOf(step) + 1] ?? "done";
+}
+
+/** El más avanzado de los dos: volver a un paso anterior no retrocede el progreso. */
+export const furthestStep = (a: OnboardingStep, b: OnboardingStep): OnboardingStep => (stepIndex(a) >= stepIndex(b) ? a : b);
+
+// Validadores estrictos: fuera de rango = inválido (null); nunca se recorta en silencio lo que escribió el usuario.
+const requiredText = (value: unknown, max: number) => {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  return trimmed && trimmed.length <= max ? trimmed : null;
+};
+const optionalText = (value: unknown, max: number) => {
+  if (value === undefined || value === null) return "";
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  return trimmed.length <= max ? trimmed : null;
+};
+/** Cada ítem por `parse`; null si no es array, si hay uno inválido o si pasa de `max`. */
+function parseList<T>(value: unknown, max: number, parse: (item: unknown) => T | null): T[] | null {
+  if (!Array.isArray(value) || value.length > max) return null;
+  const out: T[] = [];
+  for (const item of value) {
+    const parsed = parse(item);
+    if (parsed === null) return null;
+    out.push(parsed);
+  }
+  return out;
+}
+
+function parseCompetitor(item: unknown) {
+  if (!isPlainObject(item)) return null;
+  const name = requiredText(item.name, ONBOARDING_LIMITS.name);
+  const domain = optionalText(item.domain, ONBOARDING_LIMITS.competitorDomain);
+  return name !== null && domain !== null ? { name, domain } : null;
+}
+
+function parseMarket(item: unknown): BusinessMarket | null {
+  if (!isPlainObject(item)) return null;
+  const country = requiredText(item.country, ONBOARDING_LIMITS.place);
+  const region = optionalText(item.region, ONBOARDING_LIMITS.place);
+  return country !== null && region !== null ? { country, region } : null;
+}
+
+/** Sin repetidos (sin distinguir mayúsculas); se queda el primero. */
+function dedupe<T>(items: T[], key: (item: T) => string): T[] {
+  const seen = new Set<string>();
+  return items.filter((item) => {
+    const k = key(item).toLowerCase();
+    if (seen.has(k)) return false;
+    seen.add(k);
+    return true;
+  });
+}
+
+/**
+ * PATCH de un paso del onboarding → campos de PocketBase, o null si el payload es inválido.
+ * `now` fecha las confirmaciones del paso "confirm". "plan" y "capacity" no guardan datos ({}).
+ */
+export function parseOnboardingStep(step: unknown, data: unknown, now = new Date()): Record<string, unknown> | null {
+  if (!isEditableStep(step)) return null;
+  const raw = data === undefined || data === null ? {} : data;
+  if (!isPlainObject(raw)) return null;
+  switch (step) {
+    case "company": {
+      const name = requiredText(raw.name, ONBOARDING_LIMITS.name);
+      const summary = optionalText(raw.summary, ONBOARDING_LIMITS.summary);
+      const competitors = parseList(raw.competitors ?? [], ONBOARDING_LIMITS.competitors, parseCompetitor);
+      if (name === null || summary === null || competitors === null) return null;
+      return { name, summary, competitors: dedupe(competitors, (item) => item.domain || item.name) };
+    }
+    case "customers": {
+      const markets = parseList(raw.markets, ONBOARDING_LIMITS.markets, parseMarket);
+      const businessTypes = parseList(raw.businessTypes ?? [], ONBOARDING_LIMITS.businessTypes, (item) => requiredText(item, ONBOARDING_LIMITS.businessType));
+      if (!markets?.length || businessTypes === null) return null;
+      return { markets: dedupe(markets, (item) => `${item.country}|${item.region}`), business_types: dedupe(businessTypes, (item) => item) };
+    }
+    case "confirm": {
+      if (raw.offerConfirmed !== true || raw.marketsConfirmed !== true) return null;
+      const at = isoToPb(now.toISOString());
+      return { offer_confirmed_at: at, markets_confirmed_at: at };
+    }
+    case "channels": {
+      const channels = parseList(raw.channels, CHANNELS.size, (item) => (CHANNELS.has(item as ProposalChannel) ? (item as ProposalChannel) : null));
+      if (!channels?.length) return null;
+      return { channels: [...new Set(channels)] };
+    }
+    case "plan":
+    case "capacity":
+      return {};
+  }
 }
 
 export const campaignBatchIds = (row: Pick<CampaignRow, "batches">) => (Array.isArray(row.batches) ? row.batches.filter(isRecordId) : []);
@@ -154,6 +296,11 @@ export function businessRecord(userId: string, runId: string, product: ExplorePr
     buyer_searches: strings(competitors?.buyerSearches),
     competitors: competitorList(competitors?.competitors),
   };
+}
+
+/** Negocio nuevo del onboarding: la investigación de IA (pasos 1-2 de /explorar) sin corrida, en el paso "company". */
+export function onboardingBusinessRecord(userId: string, product: ExploreProduct, competitors: ExploreCompetitors) {
+  return { ...businessRecord(userId, "", product, competitors), onboarding_step: "company" satisfies OnboardingStep };
 }
 
 export function campaignRecord(userId: string, businessId: string, campaign: ExploreCampaign, batchIds: string[]) {

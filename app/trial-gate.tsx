@@ -7,7 +7,7 @@ import { usePathname, useRouter } from "@/i18n/navigation";
 import { getSession } from "@/lib/client/session";
 
 // Pages that need an account. An expired trial (lib/trial.ts) can only reach /pricing to pay.
-const PRIVATE = ["/lead-suite", "/leadtita", "/negocios", "/campanas", "/propuestas", "/historial", "/integraciones", "/oauth/authorize"];
+const PRIVATE = ["/lead-suite", "/leadtita", "/onboarding", "/negocios", "/campanas", "/propuestas", "/historial", "/integraciones", "/oauth/authorize"];
 
 /** Sends an expired-trial account from a private page to /pricing and shows why there. Public pages make no request. */
 export function TrialGate() {

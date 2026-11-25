@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useLocale, useTranslations } from "next-intl";
-import { Building2, ChevronDown, Headset, History, LayoutDashboard, LogOut, Megaphone, Menu, MessageSquare, Plug, PanelLeftClose, PanelLeftOpen, Send, ShieldCheck, Sparkles, Stars, X } from "lucide-react";
+import { Building2, Check, ChevronDown, Headset, History, LayoutDashboard, LogOut, Megaphone, Menu, MessageSquare, Plug, Plus, PanelLeftClose, PanelLeftOpen, Send, ShieldCheck, Sparkles, Stars, X } from "lucide-react";
 import { BrandLogo, BrandMark } from "@/app/brand-logo";
 import { LanguageSwitcher } from "@/app/language-switcher";
 import { FeedbackDialog } from "@/app/feedback-dialog";
@@ -10,8 +10,10 @@ import { IntegrationsDialog, OPEN_INTEGRATIONS_EVENT } from "@/app/integrations-
 import { OPEN_FEEDBACK_EVENT, type FeedbackPrefill } from "@/app/error-report";
 import { WhatsNewDialog } from "@/app/whats-new-dialog";
 import { getSession } from "@/lib/client/session";
-import { Link } from "@/i18n/navigation";
+import { Link, useRouter } from "@/i18n/navigation";
 import { Popover, usePopover } from "@/app/ui/popover";
+import { Favicon } from "@/app/[locale]/explorar/explore-steps";
+import type { Business } from "@/lib/workspace/types";
 
 type AppSidebarProps = {
   active: "history" | "leadSuite" | "leadtita" | "integrations" | "businesses" | "campaigns" | "proposals";
@@ -54,6 +56,110 @@ const WORKSPACE_NAV = [
   { key: "campaigns", href: "/campanas", label: "navCampaigns", Icon: Megaphone },
   { key: "proposals", href: "/propuestas", label: "navProposals", Icon: Send },
 ] as const;
+
+/** Se emite al cambiar o crear el negocio activo (también desde /onboarding): el selector recarga la lista. */
+export const ACTIVE_BUSINESS_EVENT = "leadta:active-business-changed";
+
+type BusinessList = { businesses: Business[]; activeId: string };
+// Ítems propios (no .side-nav-item): el menú vive dentro del nav y el modo colapsado ocultaría sus textos.
+const SWITCHER_ITEM = "flex min-h-11 w-full min-w-0 items-center gap-2.5 rounded-lg px-3 text-left text-sm font-[560] text-(color:--ink) hover:bg-(--ash-50) disabled:cursor-wait focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-(color:--ink)";
+
+/** Selector del negocio activo: lista de GET /api/businesses, cambia con PATCH /api/businesses/active. */
+function BusinessSwitcher({ tip, onNavigate }: { tip: (label: string) => string | undefined; onNavigate: () => void }) {
+  const t = useTranslations("BusinessSwitcher");
+  const router = useRouter();
+  const menu = usePopover({ menu: true });
+  const closeMenu = menu.close;
+  const [list, setList] = useState<BusinessList | null>(null);
+  const [failed, setFailed] = useState(false);
+  const [switching, setSwitching] = useState("");
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    let controller: AbortController | null = null;
+    const load = () => {
+      controller?.abort();
+      const current = new AbortController();
+      controller = current;
+      fetch("/api/businesses", { cache: "no-store", signal: current.signal })
+        .then((response) => (response.ok ? response.json() : Promise.reject(new Error(String(response.status)))))
+        .then((payload: Partial<BusinessList>) => { setList({ businesses: payload.businesses ?? [], activeId: payload.activeId ?? "" }); setFailed(false); })
+        .catch((cause: unknown) => { if (!current.signal.aborted && !(cause instanceof DOMException)) setFailed(true); });
+    };
+    load();
+    window.addEventListener(ACTIVE_BUSINESS_EVENT, load);
+    return () => { controller?.abort(); window.removeEventListener(ACTIVE_BUSINESS_EVENT, load); };
+  }, []);
+
+  async function select(id: string) {
+    if (!list || switching) return;
+    if (id === list.activeId) { closeMenu(); return; }
+    setSwitching(id);
+    setError("");
+    try {
+      const response = await fetch("/api/businesses/active", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ businessId: id }) });
+      if (!response.ok) throw new Error(String(response.status));
+      const payload = await response.json().catch(() => ({})) as { activeId?: string };
+      setList((prev) => (prev ? { ...prev, activeId: payload.activeId || id } : prev));
+      closeMenu();
+      router.refresh();
+      window.dispatchEvent(new Event(ACTIVE_BUSINESS_EVENT));
+    } catch {
+      setError(t("error"));
+    } finally {
+      setSwitching("");
+    }
+  }
+
+  if (failed) return null;
+  if (!list) return <span className="side-nav-item side-nav-skeleton" aria-hidden="true" />;
+  if (list.businesses.length === 0) {
+    return (
+      <Link title={tip(t("createBusiness"))} className="side-nav-item border border-dashed border-(color:--ash-300)" href="/onboarding?new=1" onClick={onNavigate}>
+        <Plus className="menu-icon" size={18} strokeWidth={1.8} aria-hidden="true" />
+        <span>{t("createBusiness")}</span>
+      </Link>
+    );
+  }
+  const active = list.businesses.find((item) => item.id === list.activeId) ?? list.businesses[0];
+  return (
+    <div className="side-nav-business">
+      <button {...menu.triggerProps} type="button" aria-haspopup="menu" title={tip(active.name) ?? `${t("label")}: ${active.name}`} className="side-nav-item border border-(color:--line) bg-(--paper)">
+        <span className="side-nav-chip bg-transparent! shadow-none!" aria-hidden="true"><Favicon domain={active.domain} size={20} plain /></span>
+        <span className="min-w-0 flex-1 truncate"><span className="sr-only">{t("label")}: </span>{active.name}</span>
+        <ChevronDown className="side-nav-account-chevron" size={16} strokeWidth={1.8} aria-hidden="true" />
+      </button>
+      <Popover {...menu.popoverProps} role="menu" placement="bottom-start" matchAnchorWidth className="side-nav-account-menu max-h-[60dvh] min-w-64 overflow-y-auto" aria-label={t("menuLabel")}>
+        {list.businesses.map((item) => {
+          const isActive = item.id === list.activeId;
+          const incomplete = Boolean(item.onboardingStep) && item.onboardingStep !== "done";
+          return (
+            <div key={item.id} className="flex min-w-0 items-center gap-1 pr-1">
+              <button type="button" role="menuitem" className={`${SWITCHER_ITEM} flex-1`} aria-current={isActive ? "true" : undefined} disabled={Boolean(switching)} onClick={() => void select(item.id)}>
+                <Favicon domain={item.domain} size={20} plain />
+                <span className="min-w-0 flex-1 truncate">{item.name}</span>
+                {switching === item.id ? <span className="size-4 shrink-0 animate-spin rounded-full border-2 border-(color:--ash-300) border-t-(color:--ink) motion-reduce:animate-none" aria-hidden="true" />
+                  : isActive ? <Check size={16} strokeWidth={2.2} className="shrink-0 text-(color:--lime-dark)" aria-label={t("active")} /> : null}
+              </button>
+              {incomplete ? (
+                <Link role="menuitem" href={`/onboarding?business=${encodeURIComponent(item.id)}`} aria-label={t("completeAria", { name: item.name })} onClick={() => { closeMenu(); onNavigate(); }}
+                  className="shrink-0 rounded-full bg-(--lime) px-2.5 py-1 text-xs font-semibold text-(color:--ink) hover:bg-(--lime-dark) focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(color:--ink)">
+                  {t("complete")}
+                </Link>
+              ) : null}
+            </div>
+          );
+        })}
+        {error ? <p role="alert" className="px-3 py-1.5 text-xs text-[#8a1c12]">{error}</p> : null}
+        <div className="my-1 border-t border-(color:--line)" role="separator" />
+        <Link role="menuitem" className={SWITCHER_ITEM} href="/onboarding?new=1" onClick={() => { closeMenu(); onNavigate(); }}>
+          <Plus className="menu-icon" size={18} strokeWidth={1.8} aria-hidden="true" />
+          <span>{t("newBusiness")}</span>
+        </Link>
+      </Popover>
+    </div>
+  );
+}
 
 /** Sidebar único de la app con sesión: colapsa en móvil, cierra con Escape o clic fuera. */
 export function AppSidebar({ active, user, onSignOut, announce = true }: AppSidebarProps) {
@@ -175,6 +281,7 @@ export function AppSidebar({ active, user, onSignOut, announce = true }: AppSide
           </button>
         </div>
         <div className="side-nav-panel" id="side-nav-panel">
+          {user ? <BusinessSwitcher tip={tip} onNavigate={close} /> : <span className="side-nav-item side-nav-skeleton" aria-hidden="true" />}
           <div className="side-nav-account">
             {user ? (
               <button {...account.triggerProps} type="button" className="side-nav-account-trigger" aria-haspopup="menu" title={user.email}>

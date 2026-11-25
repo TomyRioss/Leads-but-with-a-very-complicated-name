@@ -3,6 +3,7 @@ import type { ExploreInput, ExploreLead, ExploreRun } from "@/lib/explore/types"
 import { createLeadRecords, pocketBaseFetch } from "@/lib/server/pocketbase";
 import { businessRecord, campaignRecord, proposalRecord } from "@/lib/server/workspace/mapping";
 import { createBusinessForRun, createCampaign, createProposal } from "@/lib/server/workspace/repository";
+import { ensureActiveBusiness } from "@/lib/server/workspace/active";
 
 // Adaptador PocketBase de landing_runs (flujo público /explorar). Colección solo superuser: reglas en null.
 const COLLECTION = "landing_runs";
@@ -168,6 +169,8 @@ export async function claimRun(token: string, userId: string): Promise<{ batchId
   try {
     // Índice único en businesses.landing_run: un reintento reusa el negocio en vez de crear otro.
     const businessId = record.product ? await createBusinessForRun(businessRecord(userId, record.id, record.product, record.competitors ?? null)) : "";
+    // Best effort: el primer negocio de la cuenta queda activo; un fallo acá no corta el claim.
+    if (businessId) await ensureActiveBusiness(userId, businessId).catch(() => {});
     const batch = leads.length ? await createRunBatch(record, leads, userId, claimedAt, (id) => { batchId = id; }) : null;
     if (businessId) await createRunWorkspace(record, leads, { userId, businessId, batchId, leadIds: batch?.leadIds ?? new Map() });
     return { batchId };

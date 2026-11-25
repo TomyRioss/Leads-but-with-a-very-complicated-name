@@ -2,11 +2,11 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
-import { ArrowRight, Building2, Check, Compass, MapPin, Search } from "lucide-react";
+import { ArrowRight, Building2, Check, Compass, MapPin, Plus, Search } from "lucide-react";
 import { Link, useRouter } from "@/i18n/navigation";
 import { Favicon } from "@/app/[locale]/explorar/explore-steps";
 import type { Business } from "@/lib/workspace/types";
-import { CARD, EmptyState, ErrorBanner, LABEL, LoadingState, PageHeader, SECONDARY_BUTTON, requestJson, useErrorMessage } from "@/app/workspace/workspace-ui";
+import { CARD, EmptyState, ErrorBanner, LABEL, LoadingState, PageHeader, PRIMARY_BUTTON, SECONDARY_BUTTON, requestJson, useErrorMessage } from "@/app/workspace/workspace-ui";
 
 function cleanDomain(value: string) {
   return value.trim().replace(/^https?:\/\//i, "").replace(/^www\./i, "").replace(/\/.*$/, "");
@@ -85,6 +85,7 @@ function BusinessCard({ business }: { business: Business }) {
 
 export function BusinessesView() {
   const t = useTranslations("Workspace.businesses");
+  const tSwitcher = useTranslations("BusinessSwitcher");
   const errorMessage = useErrorMessage();
   const router = useRouter();
   const [businesses, setBusinesses] = useState<Business[] | null>(null);
@@ -107,6 +108,7 @@ export function BusinessesView() {
     <section aria-labelledby="businesses-title">
       <PageHeader id="businesses-title" title={t("title")} intro={t("intro")} count={businesses ? t("count", { count: businesses.length }) : undefined}>
         {businesses?.length ? <Link href="/" className={SECONDARY_BUTTON}><Compass size={16} aria-hidden="true" />{t("emptyCta")}</Link> : null}
+        <Link href="/onboarding?new=1" className={PRIMARY_BUTTON}><Plus size={16} aria-hidden="true" />{tSwitcher("newBusiness")}</Link>
       </PageHeader>
       {error ? <ErrorBanner message={error} onRetry={() => void load()} /> : null}
       {!businesses && !error ? <LoadingState label={t("loading")} /> : null}

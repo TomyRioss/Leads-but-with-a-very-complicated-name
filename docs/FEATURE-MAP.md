@@ -37,6 +37,9 @@ LEAD SUITE DASHBOARD | "/lead-suite" > GET "/api/lead-suite/dashboard"
 CONTACTOS DE LEAD SUITE | "/lead-suite" > Contactos > "/api/lead-suite/contacts"
 PROGRAMAR MENSAJES | "/lead-suite" > Diálogo "Programar" > "/api/scheduled"
 VER MIS NEGOCIOS | Sidebar > "Mis negocios" ("/negocios") > GET "/api/businesses" (ficha + competidores; vacío > "Explorar un negocio" > "/")
+CREAR NEGOCIO (ONBOARDING) | Sidebar > Selector de negocio > "+ Nuevo negocio" o "/negocios" > "Nuevo negocio" > "/onboarding?new=1" > Sitio web o descripción > POST "/api/onboarding"
+COMPLETAR ONBOARDING DE UN NEGOCIO | "/onboarding?business=<id>" > Pasos 1-6 (empresa, clientes, confirmación, plan, canales, capacidad) > PATCH "/api/onboarding/<id>" por paso > "Empezar" > "/leadtita"
+CAMBIAR NEGOCIO ACTIVO | Sidebar > Selector de negocio > Elegir negocio > PATCH "/api/businesses/active" (Leadtita y análisis usan el negocio activo)
 VER CAMPAÑAS DE UN NEGOCIO | "/negocios" > Botón "Ver campañas" > "/campanas?business=<id>" (chip "Quitar filtro")
 VER MIS CAMPAÑAS | Sidebar > "Mis campañas" ("/campanas") > GET "/api/sales-campaigns"
 VER LEADS DE UNA CAMPAÑA | "/campanas" > Tarjeta de campaña > GET "/api/sales-campaigns/<id>/leads"

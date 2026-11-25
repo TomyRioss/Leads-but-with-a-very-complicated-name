@@ -9,7 +9,7 @@ import "./google-drive-connect.css";
 export type ConnectedDriveFile = { id: string; name: string; mimeType: string; url: string; addedAt?: string };
 export type GoogleFeatureName = "drive" | "gmail" | "calendar";
 type Status = { configured: boolean; connected: boolean; email: string; files: ConnectedDriveFile[]; fullAccess: boolean; features: Record<GoogleFeatureName, boolean> };
-type ReturnPath = "/integraciones" | "/leadtita";
+type ReturnPath = "/integraciones" | "/leadtita" | "/onboarding";
 
 // Estado compartido entre tarjetas: un solo /status en vuelo y aviso a todas cuando algo cambia (p. ej. desconectar).
 const STATUS_EVENT = "leadta:google-status";
