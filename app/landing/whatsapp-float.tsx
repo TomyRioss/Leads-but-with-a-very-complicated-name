@@ -4,9 +4,10 @@ import { useEffect, useState } from "react";
 import { FaWhatsapp } from "react-icons/fa";
 import { X } from "lucide-react";
 import { BrandMark } from "@/app/brand-logo";
+import { LEADTA_WHATSAPP } from "@/lib/plans";
 import "./whatsapp-float.css";
 
-const WHATSAPP_NUMBER = "5491134083140";
+const WHATSAPP_NUMBER = LEADTA_WHATSAPP;
 
 type WhatsappFloatProps = {
   hello: string;

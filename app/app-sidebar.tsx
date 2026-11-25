@@ -14,6 +14,7 @@ import { Link, useRouter } from "@/i18n/navigation";
 import { Popover, usePopover } from "@/app/ui/popover";
 import { Favicon } from "@/app/[locale]/explorar/explore-steps";
 import type { Business } from "@/lib/workspace/types";
+import { LEADTA_WHATSAPP } from "@/lib/plans";
 
 type AppSidebarProps = {
   active: "history" | "leadSuite" | "leadtita" | "integrations" | "businesses" | "campaigns" | "proposals";
@@ -301,7 +302,7 @@ export function AppSidebar({ active, user, onSignOut, announce = true }: AppSide
                   <Plug className="menu-icon" size={18} strokeWidth={1.8} aria-hidden="true" />
                   <span>{s("navIntegrations")}</span>
                 </button>
-                <a role="menuitem" className="side-nav-item" href={`https://wa.me/5491134083140?text=${encodeURIComponent(s("salesSupportMessage"))}`} target="_blank" rel="noopener noreferrer" onClick={close}>
+                <a role="menuitem" className="side-nav-item" href={`https://wa.me/${LEADTA_WHATSAPP}?text=${encodeURIComponent(s("salesSupportMessage"))}`} target="_blank" rel="noopener noreferrer" onClick={close}>
                   <Headset className="menu-icon" size={18} strokeWidth={1.8} aria-hidden="true" />
                   <span>{s("salesSupport")}</span>
                 </a>

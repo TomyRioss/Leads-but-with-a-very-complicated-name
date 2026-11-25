@@ -5,7 +5,7 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import { headers } from "next/headers";
 import { isArgentinaMarket } from "@/lib/market";
 import { isDevEnvironment } from "@/lib/env-features";
-import { CUSTOM_PLAN_WHATSAPP, publicPlans, subscriptionPlans } from "@/lib/plans";
+import { CUSTOM_PLAN_WHATSAPP, LEADTA_WHATSAPP, publicPlans, subscriptionPlans } from "@/lib/plans";
 import { CREDITS_PER_LEAD } from "@/lib/server/credits";
 import { SubscribeButton } from "./subscribe-button";
 
@@ -24,7 +24,7 @@ export async function MarketPricing({ locale }: { locale: string }) {
 async function CallButton({ tone = "light", argentina }: { tone?: "light" | "dark"; argentina: boolean }) {
   const t = await getTranslations("Pricing");
   const message = argentina ? t("callMessage") : t("customMessage");
-  const callHref = `https://wa.me/5491134083140?text=${encodeURIComponent(message)}`;
+  const callHref = `https://wa.me/${LEADTA_WHATSAPP}?text=${encodeURIComponent(message)}`;
   return (
       <a className={`price-button price-button-${tone}`} href={callHref} target="_blank" rel="noreferrer">
       {argentina ? t("call") : t("customCtaInternational")}<ArrowRight size={16} aria-hidden="true" />

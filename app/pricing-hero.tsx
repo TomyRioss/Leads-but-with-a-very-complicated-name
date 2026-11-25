@@ -1,4 +1,5 @@
 import { ArrowRight } from "lucide-react";
+import { LEADTA_WHATSAPP } from "@/lib/plans";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { headers } from "next/headers";
 import { isArgentinaMarket } from "@/lib/market";
@@ -10,7 +11,7 @@ export async function PricingHero({ variant, id, locale, argentina }: { variant:
   const Title = variant === "page" ? "h1" : "h2";
   // Argentina only: the catalog price in ARS (what Mercado Pago charges).
   const price = t("planPrice", { price: new Intl.NumberFormat(locale).format(getSubscriptionPlan("starter")!.priceArs), currency: "ARS" });
-  const callHref = `https://wa.me/5491134083140?text=${encodeURIComponent(argentina ? t("callMessage") : t("customMessage"))}`;
+  const callHref = `https://wa.me/${LEADTA_WHATSAPP}?text=${encodeURIComponent(argentina ? t("callMessage") : t("customMessage"))}`;
   return (
     <section className={`pricing-hero pricing-hero-${variant}`} id={id} aria-labelledby="pricing-title">
       <div className="pricing-hero-inner">

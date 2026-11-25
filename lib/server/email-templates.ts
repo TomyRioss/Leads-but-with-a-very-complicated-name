@@ -1,3 +1,4 @@
+import { LEADTA_WHATSAPP } from "@/lib/plans";
 import { getTranslator, localizedPath, type Locale } from "./locale";
 
 function escapeHtml(value: string) {
@@ -46,7 +47,7 @@ ${expiration}`,
 
 export function renderWelcomeEmail(locale: Locale) {
   const t = getTranslator(locale, "Email");
-  const demoUrl = `https://wa.me/5491134083140?text=${encodeURIComponent(t("welcomeDemoMessage"))}`;
+  const demoUrl = `https://wa.me/${LEADTA_WHATSAPP}?text=${encodeURIComponent(t("welcomeDemoMessage"))}`;
   const paragraphs = [t("welcomeP1"), t("welcomeP2"), t("welcomeP3"), t("welcomeP4")];
   const signoff = [t("welcomeSignoff"), t("welcomeSignature")];
   return {

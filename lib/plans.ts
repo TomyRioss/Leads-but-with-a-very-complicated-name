@@ -55,8 +55,10 @@ export const subscriptionPlans: readonly Plan[] = [
 export const FREE_LIMITS: PlanLimits = { whatsappMonthly: 100, emailMonthly: Infinity, scheduledMonthly: 10 };
 /** ponytail: an active subscription whose plan isn't in this catalog (legacy or Custom) gets Growth caps. Add Custom caps to the catalog when one is agreed. */
 export const UNKNOWN_PLAN_LIMITS = growthLimits;
+/** WhatsApp de Leadta: todo contacto por WhatsApp (ventas, soporte, plan Custom) va a este número. */
+export const LEADTA_WHATSAPP = "541171410652";
 /** Custom plan: agreed directly over WhatsApp. */
-export const CUSTOM_PLAN_WHATSAPP = "541171410652";
+export const CUSTOM_PLAN_WHATSAPP = LEADTA_WHATSAPP;
 
 export function getSubscriptionPlan(id: string) {
   return findPlan(subscriptionPlans, id);
