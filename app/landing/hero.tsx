@@ -13,7 +13,7 @@ export async function Hero() {
             lime: (chunks) => <span className="text-(color:--lime-dark)">{chunks}</span>,
           })}
         </h1>
-        <ul className="m-0 mt-6 flex list-none flex-wrap justify-center gap-2 p-0">
+        <ul className="m-0 flex list-none flex-wrap justify-center gap-2 p-0">
           {[Gift, CreditCard].map((Icon, i) => (
             <li key={i} className="inline-flex min-h-8 items-center gap-2 rounded-full bg-(--ash-150) px-3.5 text-[13px] font-medium text-(color:--ash-800)">
               <Icon size={14} aria-hidden="true" />
