@@ -42,7 +42,7 @@ async function generateModelName(userId: string, text: string) {
     });
     if (!response.ok) return fallback;
     const payload = await response.json() as { choices?: { message?: { content?: unknown } }[]; usage?: unknown };
-    void recordAiUsage({ feature: "leadtita_chat", model: NAME_MODEL, userId, usage: payload.usage });
+    void recordAiUsage({ feature: "leadtita_message_name", model: NAME_MODEL, userId, usage: payload.usage });
     const candidate = typeof payload.choices?.[0]?.message?.content === "string"
       ? payload.choices[0].message.content.replace(/[\"'`]/g, "").trim().replace(/[.!?]+$/u, "")
       : "";

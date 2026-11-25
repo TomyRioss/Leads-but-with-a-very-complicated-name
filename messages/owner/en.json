@@ -675,6 +675,9 @@
         "people_classify": "AI · People: classification",
         "lead_analysis": "AI · Pain analysis",
         "contact_ai_fill": "AI · AI contact fill",
+        "owner_assistant": "AI · Owner assistant",
+        "leadtita_message_name": "AI · Leadtita: message model name",
+        "explore": "AI · Explore (landing)",
         "other": "AI · Other"
       }
     },

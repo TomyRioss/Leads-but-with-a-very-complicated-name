@@ -1,4 +1,5 @@
 import { after } from "next/server";
+import { aiUsageFields } from "@/lib/ai-usage-fields";
 import { isPocketBaseConfigured, pocketBaseFetch } from "@/lib/server/pocketbase";
 
 export const AI_FEATURES = [
@@ -12,6 +13,7 @@ export const AI_FEATURES = [
   "lead_analysis",
   "contact_ai_fill",
   "owner_assistant",
+  "leadtita_message_name",
   "explore",
   "other",
 ] as const;
@@ -19,18 +21,24 @@ export type AiFeature = typeof AI_FEATURES[number];
 
 const RECORD_TIMEOUT_MS = 2_000;
 
-function nonNegative(value: unknown, integer: boolean) {
-  const parsed = typeof value === "number" ? value : typeof value === "string" ? Number(value) : NaN;
-  if (!Number.isFinite(parsed) || parsed < 0) return 0;
-  return integer ? Math.round(parsed) : parsed;
-}
+const MAX_STEP = 60;
+
+export type AiUsageEntry = {
+  feature: AiFeature;
+  model: string;
+  userId?: string;
+  /** OpenRouter `usage` object, stored as tokens, cost, cache, reasoning and server-tool counts. */
+  usage?: unknown;
+  /** Optional sub-step inside a feature (e.g. "research", "competitors"). */
+  step?: string;
+};
 
 /**
  * Stores one OpenRouter call's tokens and cost. Never throws; gives up after ~2s.
  * Runs via `after()` so serverless hosts keep it alive past the response; outside a request scope
  * (e.g. inside a cached function) `after` throws and the write runs inline instead.
  */
-export async function recordAiUsage(entry: Parameters<typeof writeAiUsage>[0]) {
+export async function recordAiUsage(entry: AiUsageEntry) {
   try {
     after(() => writeAiUsage(entry));
   } catch {
@@ -38,17 +46,16 @@ export async function recordAiUsage(entry: Parameters<typeof writeAiUsage>[0]) {
   }
 }
 
-async function writeAiUsage(entry: { feature: AiFeature; model: string; userId?: string; usage?: unknown }) {
+async function writeAiUsage(entry: AiUsageEntry) {
   try {
     if (!isPocketBaseConfigured()) return;
-    const usage = entry.usage && typeof entry.usage === "object" ? entry.usage as Record<string, unknown> : {};
+    const step = typeof entry.step === "string" ? entry.step.trim().slice(0, MAX_STEP) : "";
     const body = {
       feature: entry.feature,
       model: String(entry.model || "").slice(0, 120),
       ...(entry.userId ? { user: entry.userId } : {}),
-      prompt_tokens: nonNegative(usage.prompt_tokens, true),
-      completion_tokens: nonNegative(usage.completion_tokens, true),
-      cost_usd: nonNegative(usage.cost, false),
+      ...(step ? { step } : {}),
+      ...aiUsageFields(entry.usage),
     };
     const signal = AbortSignal.timeout(RECORD_TIMEOUT_MS);
     await Promise.race([

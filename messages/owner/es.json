@@ -675,6 +675,9 @@
         "people_classify": "IA · Personas: clasificación",
         "lead_analysis": "IA · Análisis de dolores",
         "contact_ai_fill": "IA · Completar contacto con IA",
+        "owner_assistant": "IA · Asistente del owner",
+        "leadtita_message_name": "IA · Leadtita: nombre de modelo de mensaje",
+        "explore": "IA · Explorar (landing)",
         "other": "IA · Otros"
       }
     },
