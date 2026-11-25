@@ -10,8 +10,10 @@ const host = (value: string) => value.trim().replace(/^https?:\/\//i, "").replac
 const href = (value: string) => (/^https?:\/\//i.test(value) ? value : `https://${value}`);
 
 // ponytail: "!" porque globals.css define th/td sin @layer y pisa las utilidades.
-const TH = "sticky top-0 z-10 h-auto! border-r-0! border-b border-(color:--line) bg-(--paper)! px-4! py-3.5! text-left text-[11px]! font-semibold tracking-[0.06em] text-(color:--muted)! uppercase";
-const TD = "h-auto! max-w-none! border-r-0! border-b border-(color:--ash-150) px-4! py-5! align-middle whitespace-normal!";
+const TH = "sticky top-0 z-10 h-auto! border-r! border-(color:--ash-150)! last:border-r-0! border-b border-b-(color:--line)! bg-white! px-4! py-3.5! text-left text-[11px]! font-semibold tracking-[0.06em] text-(color:--muted)! uppercase";
+// table-fixed toma los anchos de la primera fila (el encabezado).
+const WIDTHS = ["w-[24%]", "w-[28%]", "w-[20%]", "w-[18%]", "w-[10%]"];
+const TD = "h-auto! max-w-none! border-r! border-(color:--ash-150)! last:border-r-0! border-b px-4! py-6! align-middle whitespace-normal!";
 
 function LeadIcon({ website }: { website: string }) {
   const [failed, setFailed] = useState(false);
@@ -70,10 +72,10 @@ export function LeadsTable({ leads, loading }: { leads: ExploreLead[] | null; lo
   const columns = [t("columns.business"), t("columns.description"), t("columns.location"), t("columns.contact"), t("columns.customers")];
 
   return (
-    <div className="max-h-[calc(100dvh-7rem)] overflow-auto rounded-2xl [scrollbar-color:var(--ash-300)_transparent] [scrollbar-width:thin] border border-(color:--line) bg-(--paper)" tabIndex={0} aria-label={t("leadsTableAria")}>
-      <table className="w-full! min-w-[1040px]! border-collapse text-[13px]">
+    <div className="max-h-[calc(100dvh-6.5rem)] overflow-auto rounded-2xl [scrollbar-color:var(--ash-300)_transparent] [scrollbar-width:thin] border border-(color:--line) bg-white" tabIndex={0} aria-label={t("leadsTableAria")}>
+      <table className="w-full! min-w-[1040px]! table-fixed border-collapse text-[13px]">
         <thead>
-          <tr>{columns.map((label) => <th key={label} scope="col" className={TH}>{label}</th>)}</tr>
+          <tr>{columns.map((label, index) => <th key={label} scope="col" className={`${TH} ${WIDTHS[index]}`}>{label}</th>)}</tr>
         </thead>
         <tbody>
           {loading
@@ -86,7 +88,7 @@ export function LeadsTable({ leads, loading }: { leads: ExploreLead[] | null; lo
             ))
             : leads?.length
               ? leads.map((lead) => (
-                <tr key={lead.id} className="transition-colors hover:bg-(--ash-50)">
+                <tr key={lead.id} className="transition-colors hover:bg-(--ash-50)/60">
                   <td className={`${TD} w-[24%]`}>
                     <div className="flex min-w-0 items-center gap-3">
                       <LeadIcon website={lead.website} />
