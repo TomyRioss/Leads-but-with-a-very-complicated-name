@@ -66,12 +66,13 @@ const CANVAS = 'absolute inset-0 block h-full w-full';
 
 const MAX_THREADS = 24;
 const EXTRA_THREADS = 5;
-// Al máximo de excite: +40 % velocidad, glow ×1.9, grosor ×1.3. Subida ~0.35 s, bajada ~1.6 s.
+// Al máximo de excite: +40 % velocidad, glow ×1.9, grosor ×1.3. Subida exponencial (~0.35 s); bajada lineal en EXCITE_FALL s,
+// y el efecto visible sigue smoothstep(boost): arranca y termina suave, sin caídas bruscas.
 const EXCITE_SPEED = 0.4;
 const EXCITE_GLOW = 0.9;
 const EXCITE_THICKNESS = 0.3;
 const EXCITE_RISE = 0.35;
-const EXCITE_FALL = 1.6;
+const EXCITE_FALL = 5;
 const MAX_COLORS = 6;
 const MAX_SURGES = 3;
 const SURGE_SECONDS = 1.6;
@@ -567,6 +568,7 @@ export default function WebThreads({
       surges: [] as Surge[],
       quiet: 0,
       boost: 0,
+      level: 0,
       seen: null as typeof settings | null
     };
 
@@ -625,7 +627,7 @@ export default function WebThreads({
       gl.uniform2f(u.uResolution, state.width, state.height);
       gl.uniform1f(u.uPhase, state.phase);
       gl.uniform1f(u.uClock, reduced ? 0 : state.clock);
-      const extra = state.boost * EXTRA_THREADS;
+      const extra = state.level * EXTRA_THREADS;
       gl.uniform1i(u.uBase, s.count);
       gl.uniform1i(u.uCount, Math.min(MAX_THREADS, s.count + Math.ceil(extra - 0.001)));
       gl.uniform1f(u.uExtra, extra);
@@ -636,9 +638,9 @@ export default function WebThreads({
       gl.uniform1f(u.uPinch, s.pinch);
       gl.uniform1f(u.uNodes, s.nodes);
       gl.uniform2f(u.uAngle, Math.cos(s.angle), Math.sin(s.angle));
-      gl.uniform1f(u.uGlow, s.glow * Math.sqrt(6 / Math.max(s.count, 6)) * (1 + EXCITE_GLOW * state.boost));
+      gl.uniform1f(u.uGlow, s.glow * Math.sqrt(6 / Math.max(s.count, 6)) * (1 + EXCITE_GLOW * state.level));
       gl.uniform1f(u.uFalloff, s.falloff);
-      gl.uniform1f(u.uThickness, s.thickness * (1 + EXCITE_THICKNESS * state.boost));
+      gl.uniform1f(u.uThickness, s.thickness * (1 + EXCITE_THICKNESS * state.level));
       gl.uniform1f(u.uBrightness, s.brightness);
       gl.uniform1f(u.uOpacity, s.opacity);
       gl.uniform1f(u.uMirror, s.mirror ? 1 : 0);
@@ -683,9 +685,11 @@ export default function WebThreads({
       state.clock += dt;
       if (state.introAt < 0) state.introAt = state.clock;
       const goal = clamp(s.excite, 0, 1);
-      state.boost += (goal - state.boost) * (1 - Math.exp(-dt / (goal > state.boost ? EXCITE_RISE : EXCITE_FALL)));
+      if (goal > state.boost) state.boost += (goal - state.boost) * (1 - Math.exp(-dt / EXCITE_RISE));
+      else state.boost = Math.max(goal, state.boost - dt / EXCITE_FALL);
       if (Math.abs(goal - state.boost) < 0.001) state.boost = goal;
-      if (!s.paused && !reduced) state.phase += dt * s.speed * (1 + EXCITE_SPEED * state.boost);
+      state.level = state.boost * state.boost * (3 - 2 * state.boost);
+      if (!s.paused && !reduced) state.phase += dt * s.speed * (1 + EXCITE_SPEED * state.level);
       const focusing = updateFocus(s, dt, reduced);
       state.surges = state.surges.filter(
         surge => state.clock - surge.at < SURGE_SECONDS + (s.count - 1) * SURGE_STAGGER

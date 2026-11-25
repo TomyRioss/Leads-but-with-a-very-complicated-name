@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState, type FocusEvent, type FormEvent, type KeyboardEvent } from "react";
+import { preconnect } from "react-dom";
 import { useLocale, useTranslations } from "next-intl";
 import { ArrowRight, ArrowUp, Globe, Loader2 } from "lucide-react";
 import { Link, useRouter } from "@/i18n/navigation";
@@ -24,28 +25,40 @@ function toDomain(value: string) {
 
 type ErrorKind = "" | "quota" | "failed";
 
-/** Favicon del dominio; globo neutro hasta que carga (montar con key={domain} para no mostrar el de otro dominio). */
+/**
+ * Favicon del dominio; globo neutro hasta que carga (montar con key={domain} para no mostrar el de otro dominio).
+ * Carrera: gstatic (tarda cuando Google no tiene el ícono en caché) contra /favicon.ico del propio sitio; gana el primero que carga.
+ */
 function DomainIcon({ domain }: { domain: string }) {
-  const [loaded, setLoaded] = useState(false);
+  const [winner, setWinner] = useState(-1);
+  const sources = [
+    // gstatic directo evita el 301 de google.com/s2/favicons.
+    `https://t1.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=${encodeURIComponent(`https://${domain}`)}&size=32`,
+    `https://${domain}/favicon.ico`,
+  ];
   return (
     <span className="relative grid size-5 flex-none place-items-center">
-      {!loaded && <Globe size={16} className="text-(color:--ash-500)" aria-hidden="true" />}
-      {/* eslint-disable-next-line @next/next/no-img-element -- favicon externo de 32px */}
-      <img
-        // ponytail: gstatic directo evita el 301 de google.com/s2/favicons.
-        src={`https://t1.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=${encodeURIComponent(`https://${domain}`)}&size=32`}
-        alt=""
-        width={20}
-        height={20}
-        onLoad={() => setLoaded(true)}
-        className={`absolute inset-0 size-5 rounded ${loaded ? "" : "invisible"}`}
-      />
+      {winner < 0 && <Globe size={16} className="text-(color:--ash-500)" aria-hidden="true" />}
+      {sources.map((src, index) => (
+        // eslint-disable-next-line @next/next/no-img-element -- favicon externo de 32px
+        <img
+          key={src}
+          src={src}
+          alt=""
+          width={20}
+          height={20}
+          referrerPolicy="no-referrer"
+          onLoad={(event) => { if (event.currentTarget.naturalWidth > 1) setWinner((current) => (current < 0 ? index : current)); }}
+          className={`absolute inset-0 size-5 rounded ${winner === index ? "" : "invisible"}`}
+        />
+      ))}
     </span>
   );
 }
 
 /** Caja del hero que arranca el flujo público /explorar (texto, web o servicios). */
 export function ExploreInput() {
+  preconnect("https://t1.gstatic.com");
   const t = useTranslations("Landing.hero.explore");
   const locale = useLocale();
   const router = useRouter();

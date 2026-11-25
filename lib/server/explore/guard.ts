@@ -64,10 +64,13 @@ export type StartGuard = { ok: true; ipHash: string } | { ok: false; status: num
 /** Start of a run: in-memory burst limit, Turnstile, then the DB-backed daily quota per IP. */
 export async function guardStart(request: Request, turnstileToken: unknown): Promise<StartGuard> {
   const ip = clientIp(request);
-  if (rateLimited(`explore-start:${ip}`, START_RATE.max, START_RATE.windowMs)) return { ok: false, status: 429, error: "rate_limited" };
+  // Fuera de producción (next dev) no hay límites por IP: probar el flujo una y otra vez. Turnstile sigue.
+  const limited = process.env.NODE_ENV === "production";
+  if (limited && rateLimited(`explore-start:${ip}`, START_RATE.max, START_RATE.windowMs)) return { ok: false, status: 429, error: "rate_limited" };
   const captcha = await verifyTurnstile(turnstileToken, ip);
   if (!captcha.ok) return { ok: false, status: 400, error: "captcha" };
   const ipHash = hashIp(ip);
+  if (!limited) return { ok: true, ipHash };
   const used = await countRunsByIp(ipHash, new Date(Date.now() - DAY_MS).toISOString());
   if (used >= EXPLORE_RUNS_PER_IP_PER_DAY) return { ok: false, status: 429, error: "quota" };
   return { ok: true, ipHash };
