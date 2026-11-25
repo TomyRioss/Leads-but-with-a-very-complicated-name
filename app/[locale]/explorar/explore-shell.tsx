@@ -187,9 +187,8 @@ export function ExploreShell() {
 
       <main className="min-w-0 px-4 py-6 sm:px-6 lg:px-10 lg:py-10">
         <div className="mx-auto max-w-6xl">
-          <p className="text-xs font-semibold tracking-[0.08em] text-(color:--muted) uppercase">{stepIndex(view)} / 5 · {t(`steps.${view}`)}</p>
-          <h1 className="mt-1.5 text-2xl font-semibold tracking-tight sm:text-3xl">{t(`titles.${view}`)}</h1>
-          <div className="mt-6">
+          <h1 className="sr-only">{t(`titles.${view}`)}</h1>
+          <div>
             {viewStatus === "error" ? (
               <div role="alert" className="flex flex-col items-start gap-3 rounded-xl border border-(color:--line) bg-(--paper) p-6 sm:flex-row sm:items-center sm:justify-between">
                 <p className="flex items-center gap-2 text-sm"><CircleAlert size={18} className="text-(color:--ash-700)" aria-hidden="true" />{errors[view]}</p>

@@ -5,6 +5,7 @@ import type { ClipboardEvent, DragEvent, FormEvent, KeyboardEvent, ReactNode, Re
 import { useLocale, useTranslations } from "next-intl";
 import { ErrorReportButton } from "@/app/feedback-dialog";
 import { BrandMark } from "@/app/brand-logo";
+import LatticeLoader from "@/app/ui/lattice-loader";
 import { ArrowDown, ArrowUp, ArrowUpRight, AtSign, Ban, BadgeCheck, Bookmark, BrainCircuit, BriefcaseBusiness, Building2, CalendarCheck, CalendarClock, CalendarPlus, ChartNoAxesCombined, Check, ChevronRight, CircleAlert, CircleCheck, CircleHelp, ClipboardPlus, Coins, ContactRound, Copy, Download, FilePlus2, FileSearch, FileText, FileUp, Filter, FolderOpen, FolderSearch, Globe, History, Image as ImageIcon, Layers3, ListChecks, ListFilter, ListPlus, LoaderCircle, Mail, MailPlus, Mails, MessagesSquare, Maximize2, MessageCircle, MessageSquarePlus, MessageSquareText, PackagePlus, PencilLine, Plus, RotateCcw, ScanSearch, Search, Send, Sheet, Sparkles, Square, SquarePen, Star, StickyNote, Tag, Trash2, Upload, UserPen, UserPlus, UserRoundPen, UserRoundPlus, UserRoundX, UserSearch, X, Wrench } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import type { ContactChannel, ContactStatus } from "@/lib/lead-suite";
@@ -2928,12 +2929,11 @@ export function LeadSuiteChat({ onActivity, variant = "panel" }: { onActivity?: 
         })}
 
         {sending ? (
-          <li className={`ls-chat__msg ls-chat__msg--assistant ls-chat__typing${messages[messages.length - 1]?.role === "assistant" ? " is-grouped" : ""}`} role="status">
+          <li className={`ls-chat__msg ls-chat__msg--assistant ls-chat__typing${messages[messages.length - 1]?.role === "assistant" ? " is-grouped" : ""}`}>
             <span className="ls-chat__avatar" aria-hidden="true"><BrandMark /></span>
             <div className="ls-chat__msg-body">
-              <span className="ls-chat__dots" aria-hidden="true"><span /><span /><span /></span>
+              <span className="ls-chat__typing-row"><LatticeLoader label={t("typing")} showTimer={false} color="var(--ink)" cellSize={4} gap={1.5} fontSize={12} /><span className="ls-chat__typing-dots" aria-hidden="true"><span>.</span><span>.</span><span>.</span></span></span>
               <span className="ls-chat__elapsed" aria-hidden="true">{t("typingElapsed", { time: `${Math.floor(elapsedSeconds / 60)}:${String(elapsedSeconds % 60).padStart(2, "0")}` })}</span>
-              <span className="ls-chat__sr">{t("typing")}</span>
             </div>
           </li>
         ) : null}

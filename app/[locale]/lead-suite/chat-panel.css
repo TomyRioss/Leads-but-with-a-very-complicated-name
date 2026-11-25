@@ -662,12 +662,13 @@ a.ls-chat__error-primary:focus-visible { outline: 2px solid var(--ink); outline-
 .ls-chat__options button:disabled { opacity: 0.55; cursor: not-allowed; }
 
 /* ───────── Escribiendo e ir al final ───────── */
-.ls-chat__dots { display: inline-flex; align-items: center; gap: 5px; height: 25px; }
-.ls-chat__dots span { width: 7px; height: 7px; border-radius: 999px; background: var(--ash-500); animation: ls-chat-dot 1.2s ease-in-out infinite; }
-.ls-chat__dots span:nth-child(2) { animation-delay: 0.15s; }
-.ls-chat__dots span:nth-child(3) { animation-delay: 0.3s; background: var(--lime-dark); }
 .ls-chat__elapsed { color: var(--ash-600); font-size: 12px; font-variant-numeric: tabular-nums; line-height: 1; }
-@keyframes ls-chat-dot { 0%, 60%, 100% { opacity: 0.35; transform: translateY(0); } 30% { opacity: 1; transform: translateY(-3px); } }
+.ls-chat__typing .ls-chat__msg-body { padding-top: 8px; }
+.ls-chat__typing-row { display: inline-flex; align-items: center; font-size: 12px; line-height: 1; color: var(--ink); }
+.ls-chat__typing-dots span { animation: ls-chat-typing-dot 1.2s ease-in-out infinite; }
+.ls-chat__typing-dots span:nth-child(2) { animation-delay: 0.2s; }
+.ls-chat__typing-dots span:nth-child(3) { animation-delay: 0.4s; }
+@keyframes ls-chat-typing-dot { 0%, 60%, 100% { opacity: 0.2; } 30% { opacity: 1; } }
 
 .ls-chat__jump {
   position: relative;
@@ -701,8 +702,7 @@ a.ls-chat__error-primary:focus-visible { outline: 2px solid var(--ink); outline-
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .ls-chat__dots span, .ls-chat__progress-bar::after { animation: none; }
-  .ls-chat__dots span { opacity: 0.7; }
+  .ls-chat__progress-bar::after, .ls-chat__typing-dots span { animation: none; }
   .ls-chat__progress-bar::after { width: 100%; opacity: 0.5; }
   .ls-chat__time, .ls-chat__action, .ls-chat__action-buttons button, .ls-chat__draft header button, .ls-chat__options button { transition: none; }
 }

@@ -346,7 +346,7 @@
     "statusConfirmed": "Confirmado",
     "statusCancelled": "Cancelado",
     "irreversible": "Esto no se puede deshacer.",
-    "typing": "Leadtita está escribiendo…",
+    "typing": "Pensando",
     "typingElapsed": "Tiempo transcurrido: {time}",
     "jumpToLatest": "Ir al final",
     "summary": "Resumen",
