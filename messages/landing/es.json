@@ -50,12 +50,12 @@
       }
     },
     "how": {
-      "title": "El primer paso de la intención a la acción.",
-      "intro": "Pon tu rubro, la cantidad de clientes potenciales que quieres y dale a generar. En 1 minuto ya tienes suficiente para comenzar a vender.",
+      "title": "Empezó el Vibeselling",
+      "intro": "Leadta elimina las tareas repetitivas en las ventas, dejándote a cargo solo de lo verdaderamente importante.",
       "steps": [
-        { "title": "Elige rubro y zona", "text": "Escribe una o varias keywords y elige país, provincia y distrito. Solo el país es obligatorio." },
-        { "title": "Define el tamaño del lote", "text": "Pide hasta 150 negocios por búsqueda. El máximo se respeta aunque uses varias keywords." },
-        { "title": "Revisa y exporta", "text": "Mira todo en una hoja, analiza lo que te interese y descarga el lote en CSV o XLSX." }
+        { "title": "Pone tu negocio." },
+        { "title": "El bot busca información y clientes potenciales." },
+        { "title": "El bot contacta a todos." }
       ]
     },
     "data": {

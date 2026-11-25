@@ -5,7 +5,7 @@ const stepIcons = [Search, Layers, FileSpreadsheet];
 
 export async function HowItWorks() {
   const t = await getTranslations("Landing.how");
-  const steps = t.raw("steps") as { title: string; text: string }[];
+  const steps = t.raw("steps") as { title: string }[];
   return (
     <section className="lp-section lp-wrap" id="how" aria-labelledby="lp-how-title">
       <div className="lp-section-head">
@@ -22,7 +22,6 @@ export async function HowItWorks() {
                 <Icon size={22} strokeWidth={1.75} aria-hidden="true" />
               </div>
               <h3>{step.title}</h3>
-              <p>{step.text}</p>
             </li>
           );
         })}

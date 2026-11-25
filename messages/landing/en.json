@@ -50,12 +50,12 @@
       }
     },
     "how": {
-      "title": "The first step from intent to action.",
-      "intro": "Enter your industry, how many potential customers you want, and hit generate. In 1 minute you'll have enough to start selling.",
+      "title": "Vibeselling has begun",
+      "intro": "Leadta removes the repetitive tasks in sales, leaving you in charge of only what truly matters.",
       "steps": [
-        { "title": "Pick an industry and area", "text": "Type one or more keywords and choose a country, province and district. Only the country is required." },
-        { "title": "Set the batch size", "text": "Ask for up to 150 businesses per search. The cap holds even when you use several keywords." },
-        { "title": "Review and export", "text": "See everything in one sheet, analyze what matters to you, and download the batch as CSV or XLSX." }
+        { "title": "Enter your business." },
+        { "title": "The bot finds information and potential customers." },
+        { "title": "The bot contacts all of them." }
       ]
     },
     "data": {
