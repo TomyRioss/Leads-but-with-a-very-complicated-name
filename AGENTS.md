@@ -27,6 +27,12 @@
 - Todo el trabajo se hace en el worktree `dev` (rama `dev`), ubicado como carpeta hermana del proyecto: `../<proyecto>-dev`.
 - Antes de cada tarea, cada terminal verifica con `git worktree list` que exista. Si no existe, lo crea con `git worktree add ../<proyecto>-dev -b dev` (o sin `-b` si la rama ya existe) y lo deja creado.
 - Todas las terminales y agentes trabajan bajo ese mismo worktree. No edites desde el worktree principal.
+- Cierre de tarea: cuando la tarea pasa la verificación ("Verificación de cada funcionalidad nueva"):
+  1. Commit en `dev` solo con los archivos de la tarea (+ `docs/FEATURE-MAP.md`, `e2e/`).
+  2. Desde el worktree principal: `git merge --ff-only dev`.
+  3. `git push origin main dev`.
+  Si el fast-forward falla: `git -C ../<proyecto>-dev merge main`, volver a verificar y repetir. Sin force ni reset.
+  Una tarea que no está en main no está terminada.
 
 ### Testing e2e con Playwright
 

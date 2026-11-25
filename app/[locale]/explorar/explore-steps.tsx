@@ -1,13 +1,18 @@
 "use client";
 
-import { Fragment, useState, type ComponentType } from "react";
+import { Fragment, useState, type ComponentType, type ReactNode } from "react";
+import { preconnect } from "react-dom";
 import { useTranslations } from "next-intl";
 import {
-  Briefcase, Building, Building2, Check, GraduationCap, HeartPulse, Loader2, Lock, Mail, MapPin, Search,
-  ShoppingCart, Sparkles, Store, Utensils, Wrench, type LucideProps,
+  Briefcase, Building, Building2, Check, Gift, GraduationCap, Handshake, HeartPulse, Loader2, Lock, Mail, MapPin, MessagesSquare, Search,
+  Send, ShoppingCart, Sparkles, Store, Utensils, Wrench, type LucideProps,
 } from "lucide-react";
 import { FaWhatsapp } from "react-icons/fa";
 import { LeadsTable } from "./leads-table";
+import { SiGmail, SiWhatsapp } from "react-icons/si";
+import "@/app/[locale]/lead-suite/chat-panel.css";
+import { FREE_LIMITS } from "@/lib/plans";
+import { TRIAL_DAYS } from "@/lib/trial";
 import {
   EXPLORE_LEAD_COUNT, type ExploreCampaign, type ExploreCompetitors, type ExploreLead, type ExploreProduct, type ExploreProposal,
 } from "@/lib/explore/types";
@@ -33,7 +38,9 @@ function cleanDomain(value: string) {
   return value.trim().replace(/^https?:\/\//i, "").replace(/^www\./i, "").replace(/\/.*$/, "");
 }
 
-function Favicon({ domain, size = 40 }: { domain: string; size?: number }) {
+/** plain: sin borde, fondo ni padding (logo completo, p. ej. en la barra lateral). */
+export function Favicon({ domain, size = 40, plain = false }: { domain: string; size?: number; plain?: boolean }) {
+  preconnect("https://t1.gstatic.com");
   const [failed, setFailed] = useState(false);
   const host = cleanDomain(domain);
   if (!host || failed) {
@@ -46,13 +53,13 @@ function Favicon({ domain, size = 40 }: { domain: string; size?: number }) {
   return (
     // eslint-disable-next-line @next/next/no-img-element -- favicon externo chico; next/image exigiría allowlist del host.
     <img
-      src={`https://www.google.com/s2/favicons?domain=${encodeURIComponent(host)}&sz=64`}
+      // Directo a gstatic: google.com/s2/favicons redirige acá y suma un salto (~0.4 s).
+      src={`https://t1.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=${encodeURIComponent(`https://${host}`)}&size=64`}
       alt=""
       width={size}
       height={size}
-      loading="lazy"
       onError={() => setFailed(true)}
-      className="shrink-0 rounded-lg border border-(color:--line) bg-(--ash-50) object-contain p-1"
+      className={plain ? "shrink-0 rounded-md object-contain" : "shrink-0 rounded-lg border border-(color:--line) bg-(--ash-50) object-contain p-1"}
     />
   );
 }
@@ -63,7 +70,7 @@ function RichPitch({ text }: { text: string }) {
   return <>{parts.map((part, index) => (index % 2 ? <strong key={index} className="font-semibold text-(color:--ink)">{part}</strong> : <Fragment key={index}>{part}</Fragment>))}</>;
 }
 
-export function ResearchStep({ product }: { product: ExploreProduct }) {
+export function ResearchStep({ product, live = false }: { product: ExploreProduct; live?: boolean }) {
   const t = useTranslations("Explore");
   return (
     <section className={CARD} aria-labelledby="explore-product-name">
@@ -73,12 +80,14 @@ export function ResearchStep({ product }: { product: ExploreProduct }) {
           <h2 id="explore-product-name" className="truncate text-lg font-semibold tracking-tight">{product.name}</h2>
           {product.domain ? <p className="truncate text-sm text-(color:--muted)">{cleanDomain(product.domain)}</p> : null}
         </div>
-        <span className="inline-flex items-center gap-1 rounded-full bg-(--lime) px-2.5 py-1 text-xs font-semibold text-(color:--ink)"><Check size={13} aria-hidden="true" />{t("found")}</span>
+        {live ? null : <span className="inline-flex items-center gap-1 rounded-full bg-(--lime) px-2.5 py-1 text-xs font-semibold text-(color:--ink)"><Check size={13} aria-hidden="true" />{t("found")}</span>}
       </div>
       <p className="mt-5 max-w-3xl text-[15px] leading-relaxed text-(color:--ash-800)">{product.summary}</p>
-      <p className="mt-5 inline-flex items-center gap-1.5 rounded-full border border-(color:--line) bg-(--ash-50) px-3 py-1 text-xs text-(color:--ash-700)">
-        <MapPin size={13} aria-hidden="true" />{t("location")}: {product.location || t("noLocation")}
-      </p>
+      {live && !product.location ? null : (
+        <p className="mt-5 inline-flex items-center gap-1.5 rounded-full border border-(color:--line) bg-(--ash-50) px-3 py-1 text-xs text-(color:--ash-700)">
+          <MapPin size={13} aria-hidden="true" />{t("location")}: {product.location || t("noLocation")}
+        </p>
+      )}
     </section>
   );
 }
@@ -129,7 +138,8 @@ export function CompetitorsStep({ data }: { data: ExploreCompetitors }) {
   );
 }
 
-export function CampaignsStep({ campaigns, selectedId, onSelect }: { campaigns: ExploreCampaign[]; selectedId: string; onSelect: (id: string) => void }) {
+/** extra: contenido no interactivo al pie de cada tarjeta (p. ej. cantidad de leads en /campanas). */
+export function CampaignsStep({ campaigns, selectedId, onSelect, extra }: { campaigns: ExploreCampaign[]; selectedId: string; onSelect: (id: string) => void; extra?: (campaign: ExploreCampaign) => ReactNode }) {
   const t = useTranslations("Explore");
   return (
     <ul className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -177,6 +187,7 @@ export function CampaignsStep({ campaigns, selectedId, onSelect }: { campaigns: 
                   ))}
                 </span>
               ) : null}
+              {extra ? extra(campaign) : null}
             </button>
           </li>
         );
@@ -204,6 +215,12 @@ export function LeadsStep({ leads, campaign, loading }: { leads: ExploreLead[] |
   );
 }
 
+const NEXT_STEPS = [
+  { key: "send", Icon: Send },
+  { key: "replies", Icon: MessagesSquare },
+  { key: "close", Icon: Handshake },
+] as const;
+
 function initials(name: string) {
   return name.split(/\s+/).filter(Boolean).slice(0, 2).map((word) => word[0]?.toUpperCase() ?? "").join("") || "?";
 }
@@ -228,6 +245,33 @@ export function ProposalsStep({ proposals, leads, onSend }: { proposals: Explore
           {t("proposalsSummary", { whatsapp, gmail: proposals.length - whatsapp })}
         </li>
       </ul>
+      <div className="mb-4 grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto]">
+        <div className="flex flex-col gap-4 rounded-xl border border-(color:--line) bg-(--paper) p-5 sm:flex-row sm:items-center">
+          <Gift size={26} aria-hidden="true" className="shrink-0 text-(color:--lime-dark)" />
+          <div className="min-w-0 flex-1">
+            <p className="text-base font-semibold tracking-tight">{t("trialOffer.title", { days: TRIAL_DAYS })}</p>
+            <ul className="mt-2 flex flex-wrap gap-1.5 text-xs text-(color:--ash-700)">
+              {[t("trialOffer.plan"), t("trialOffer.whatsapp", { count: FREE_LIMITS.whatsappMonthly }), t("trialOffer.after")].map((item) => (
+                <li key={item} className="rounded-md bg-(--ash-100) px-2 py-1">{item}</li>
+              ))}
+            </ul>
+          </div>
+          <button type="button" onClick={onSend} className={`inline-flex min-h-11 shrink-0 items-center justify-center rounded-lg bg-(--lime) px-5 text-sm font-semibold text-(color:--ink) hover:bg-(--lime-dark) ${FOCUS}`}>
+            {t("trialOffer.cta")}
+          </button>
+        </div>
+        <div className="rounded-xl border border-(color:--line) bg-(--paper) p-5">
+          <p className={LABEL}>{t("trialOffer.next")}</p>
+          <ol className="mt-3 flex flex-wrap gap-x-4 gap-y-3">
+            {NEXT_STEPS.map(({ key, Icon }) => (
+              <li key={key} className="flex items-center gap-2.5 text-sm leading-tight font-medium">
+                <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-(--ash-100) text-(color:--ink)" aria-hidden="true"><Icon size={16} /></span>
+                <span className="lg:max-w-[5.5rem]">{t(`trialOffer.steps.${key}`)}</span>
+              </li>
+            ))}
+          </ol>
+        </div>
+      </div>
       <div className="grid overflow-hidden rounded-xl border border-(color:--line) bg-(--paper) md:grid-cols-[300px_minmax(0,1fr)]">
         <ul aria-label={t("proposalsListAria")} className="max-h-[560px] overflow-y-auto border-b border-(color:--line) md:border-r md:border-b-0">
           {proposals.map((item) => {
@@ -239,17 +283,18 @@ export function ProposalsStep({ proposals, leads, onSend }: { proposals: Explore
                   type="button"
                   aria-current={current ? "true" : undefined}
                   onClick={() => setActiveId(item.leadId)}
-                  className={`flex w-full items-center gap-3 px-4 py-3 text-left -outline-offset-2 focus-visible:outline-2 focus-visible:outline-(color:--ink) ${current ? "bg-(--ash-100)" : "hover:bg-(--ash-50)"}`}
+                  className={`flex w-full items-start gap-3 px-4 py-3 text-left -outline-offset-2 focus-visible:outline-2 focus-visible:outline-(color:--ink) ${current ? "bg-(--ash-100)" : "hover:bg-(--ash-50)"}`}
                 >
                   <span className="grid size-9 shrink-0 place-items-center rounded-full bg-(--ash-150) text-xs font-semibold text-(color:--ash-800)" aria-hidden="true">{initials(name)}</span>
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-sm font-semibold">{name}</span>
-                    <span className="mt-0.5 flex items-center gap-1.5 text-xs text-(color:--muted)">
-                      {item.channel === "whatsapp" ? <FaWhatsapp aria-hidden="true" className="shrink-0" /> : <Mail size={12} aria-hidden="true" className="shrink-0" />}
-                      <span className="sr-only">{t(`channel.${item.channel}`)}:</span>
-                      <span className="truncate">{item.to}</span>
+                    <span className="mt-0.5 block truncate text-xs text-(color:--muted)">
+                      <span className="sr-only">{t(`channel.${item.channel}`)}:</span>{item.to}
                     </span>
                   </span>
+                  {item.channel === "whatsapp"
+                    ? <SiWhatsapp size={16} aria-hidden="true" className="mt-0.5 shrink-0 text-[#25D366]" />
+                    : <SiGmail size={16} aria-hidden="true" className="mt-0.5 shrink-0 text-[#EA4335]" />}
                 </button>
               </li>
             );

@@ -1,4 +1,7 @@
 {
+  "Trial": {
+    "ended": "Your 7-day trial has ended. Choose a plan to keep using Leadta."
+  },
   "Pricing": {
     "price": "$15 USD/month",
     "callMessage": "Hello, I'd like to schedule a call to learn about Leadta plans.",
@@ -11,7 +14,7 @@
     "flowTitle": "From lead to contact, 100% AI-automated.",
     "flowText": "Leadtita, our AI agent, runs every step for you: it finds, analyzes and reaches out.",
     "flowLeadsTitle": "Lead generation",
-    "flowLeadsText": "Find businesses on Google Maps by industry and area.",
+    "flowLeadsText": "Find businesses by industry and area.",
     "flowPainTitle": "Pain point prospecting",
     "flowPainText": "AI analyzes reviews and websites to spot what each business is missing.",
     "flowContactTitle": "WhatsApp and Gmail outreach",

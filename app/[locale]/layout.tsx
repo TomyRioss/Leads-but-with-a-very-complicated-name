@@ -7,6 +7,7 @@ import { getMessages, getTranslations, setRequestLocale } from "next-intl/server
 import { notFound } from "next/navigation";
 import { routing } from "@/i18n/routing";
 import { CampaignBanner } from "@/app/campaign-banner";
+import { TrialGate } from "@/app/trial-gate";
 import "react-phone-number-input/style.css";
 import "../globals.css";
 
@@ -58,6 +59,7 @@ export default async function RootLayout({ children, params }: { children: React
           timeZone="UTC"
         >
           <CampaignBanner />
+          <TrialGate />
           {children}
         </NextIntlClientProvider>
         <Analytics />

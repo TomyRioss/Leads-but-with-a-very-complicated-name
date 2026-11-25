@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { EXPLORE_STEPS, EXPLORE_TOKEN_COOKIE, type ExploreRun, type ExploreStep } from "@/lib/explore/types";
-import type { ExploreLocale } from "@/lib/server/explore/ai";
+import { EXPLORE_STEPS, EXPLORE_TOKEN_COOKIE, type ExploreProposal, type ExploreRun, type ExploreStep } from "@/lib/explore/types";
+import type { ExploreLive, ExploreLocale } from "@/lib/server/explore/ai";
 import { once, stepRateLimited } from "@/lib/server/explore/guard";
 import { getRun, updateRun } from "@/lib/server/explore/store";
 import { runResearch } from "@/lib/server/explore/research";
@@ -15,8 +15,10 @@ class PrerequisiteError extends Error {}
 
 const fail = (error: string, status: number) => NextResponse.json({ error }, { status });
 
+type Live = ExploreLive & { item: (proposal: ExploreProposal) => void };
+
 /** Runs one step from the run's previous outputs, saves it and returns it. Idempotent: a filled step is returned as is. */
-async function runStep(token: string, step: ExploreStep, campaignId: string, locale: ExploreLocale): Promise<unknown> {
+async function runStep(token: string, step: ExploreStep, campaignId: string, locale: ExploreLocale, live: Live): Promise<unknown> {
   const run: ExploreRun | null = await getRun(token);
   if (!run) throw new PrerequisiteError("not_found");
   const need = <T,>(value: T | null | undefined): T => {
@@ -26,19 +28,19 @@ async function runStep(token: string, step: ExploreStep, campaignId: string, loc
   switch (step) {
     case "research": {
       if (run.product) return run.product;
-      const product = await runResearch(run.input, locale);
+      const product = await runResearch(run.input, locale, live);
       await updateRun(token, { product });
       return product;
     }
     case "competitors": {
       if (run.competitors) return run.competitors;
-      const competitors = await runCompetitors(need(run.product), locale);
+      const competitors = await runCompetitors(need(run.product), locale, live);
       await updateRun(token, { competitors });
       return competitors;
     }
     case "campaigns": {
       if (run.campaigns) return run.campaigns;
-      const campaigns = await runCampaigns(need(run.product), need(run.competitors), locale);
+      const campaigns = await runCampaigns(need(run.product), need(run.competitors), locale, live);
       await updateRun(token, { campaigns });
       return campaigns;
     }
@@ -52,14 +54,18 @@ async function runStep(token: string, step: ExploreStep, campaignId: string, loc
     case "proposals": {
       if (run.proposals) return run.proposals;
       const campaign = need(need(run.campaigns).find((item) => item.id === run.campaignId));
-      const proposals = await runProposals(need(run.product), campaign, need(run.leads), locale);
+      const proposals = await runProposals(need(run.product), campaign, need(run.leads), locale, live.item);
       await updateRun(token, { proposals });
       return proposals;
     }
   }
 }
 
-/** POST /api/explore/{research|competitors|campaigns|leads|proposals} {campaignId?, locale?}: public, token cookie required. */
+/**
+ * POST /api/explore/{research|competitors|campaigns|leads|proposals} {campaignId?, locale?}: public, token cookie required.
+ * Answers NDJSON so the card builds live: {"t":delta} raw model JSON text, {"reset":true} drop the text so far,
+ * {"item":proposal} one finished proposal, then {"data":result} or {"error":code}.
+ */
 export async function POST(request: NextRequest, ctx: { params: Promise<{ step: string }> }) {
   const { step } = await ctx.params;
   if (!EXPLORE_STEPS.includes(step as ExploreStep)) return fail("not_found", 404);
@@ -77,12 +83,32 @@ export async function POST(request: NextRequest, ctx: { params: Promise<{ step: 
   const campaignId = typeof body?.campaignId === "string" ? body.campaignId.slice(0, 60) : "";
   if (step === "leads" && !campaignId) return fail("prerequisite", 400);
 
-  try {
-    const data = await once(`${token}:${step}`, () => runStep(token, step as ExploreStep, campaignId, locale));
-    return NextResponse.json({ data }, { headers: { "Cache-Control": "no-store" } });
-  } catch (error) {
-    if (error instanceof PrerequisiteError) return error.message === "not_found" ? fail("not_found", 404) : fail("prerequisite", 400);
-    console.error(`Explore step ${step} failed:`, error instanceof Error ? error.message : "unknown");
-    return fail("step_failed", 502);
-  }
+  const encoder = new TextEncoder();
+  const stream = new ReadableStream<Uint8Array>({
+    async start(controller) {
+      let open = true;
+      const send = (message: unknown) => {
+        if (!open) return;
+        try {
+          controller.enqueue(encoder.encode(`${JSON.stringify(message)}\n`));
+        } catch {
+          open = false; // Visitor left: the step still finishes and is saved.
+        }
+      };
+      const live: Live = { text: (t) => send({ t }), reset: () => send({ reset: true }), item: (item) => send({ item }) };
+      try {
+        // A duplicate call while the step runs gets only the final result, not the live text.
+        const data = await once(`${token}:${step}`, () => runStep(token, step as ExploreStep, campaignId, locale, live));
+        send({ data });
+      } catch (error) {
+        if (error instanceof PrerequisiteError) send({ error: error.message === "not_found" ? "not_found" : "prerequisite" });
+        else {
+          console.error(`Explore step ${step} failed:`, error instanceof Error ? error.message : "unknown");
+          send({ error: "step_failed" });
+        }
+      }
+      if (open) controller.close();
+    },
+  });
+  return new Response(stream, { headers: { "Content-Type": "application/x-ndjson; charset=utf-8", "Cache-Control": "no-store", "X-Accel-Buffering": "no" } });
 }

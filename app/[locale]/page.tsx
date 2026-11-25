@@ -7,7 +7,6 @@ import { LandingFooter } from "@/app/landing/footer";
 import { LandingHeader } from "@/app/landing/header";
 import { Hero } from "@/app/landing/hero";
 import { HowItWorks } from "@/app/landing/how-it-works";
-import { LeadRecord } from "@/app/landing/lead-record";
 import { PainsEnrichment } from "@/app/landing/pains-enrichment";
 import { WhatsappFloat } from "@/app/landing/whatsapp-float";
 import { SignupPopup } from "@/app/landing/signup-popup";
@@ -72,7 +71,6 @@ export default async function LandingPage({ params }: { params: Promise<{ locale
       <main>
         <Hero />
         <HowItWorks />
-        <LeadRecord />
         <PainsEnrichment />
         <ExportHistory />
         <Faq />

@@ -35,7 +35,7 @@ function city(address: string) {
 }
 
 /** Step 5: EXPLORE_PROPOSAL_COUNT drafts on distinct leads. Channels are chosen in code (mix enforced); AI only writes. */
-export async function runProposals(product: ExploreProduct, campaign: ExploreCampaign, leads: ExploreLead[], locale: ExploreLocale): Promise<ExploreProposal[]> {
+export async function runProposals(product: ExploreProduct, campaign: ExploreCampaign, leads: ExploreLead[], locale: ExploreLocale, onItem?: (proposal: ExploreProposal) => void): Promise<ExploreProposal[]> {
   const picks = pickProposalChannels(leads, EXPLORE_PROPOSAL_COUNT, EXPLORE_MIN_MINORITY_CHANNEL);
   if (picks.length === 0) throw new Error("proposals: no lead with a contact channel");
   const context = [
@@ -58,7 +58,9 @@ export async function runProposals(product: ExploreProduct, campaign: ExploreCam
     const result = await exploreJson({ name: "explore_proposal", schema, system, user, timeoutMs: 120_000 });
     const body = typeof result.body === "string" ? result.body.trim().slice(0, 1200) : "";
     if (!body) throw new Error("proposals: empty body");
-    return { leadId: lead.id, channel, to, subject: channel === "gmail" ? str(result.subject, 80) : "", body };
+    const proposal: ExploreProposal = { leadId: lead.id, channel, to, subject: channel === "gmail" ? str(result.subject, 80) : "", body };
+    onItem?.(proposal);
+    return proposal;
   }));
   return proposals;
 }

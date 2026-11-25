@@ -1,7 +1,7 @@
 import "server-only";
 import type { ExploreInput, ExploreProduct } from "@/lib/explore/types";
 import { resolveLocation } from "@/lib/server/geography";
-import { exploreJson, hostOf, languageRule, objectSchema, str, UNTRUSTED_RULE, webFetchTool, webSearchTool, type ExploreLocale } from "@/lib/server/explore/ai";
+import { exploreJson, hostOf, languageRule, objectSchema, str, UNTRUSTED_RULE, webFetchTool, webSearchTool, type ExploreLive, type ExploreLocale } from "@/lib/server/explore/ai";
 
 const schema = objectSchema({
   name: { type: "string", maxLength: 80 },
@@ -28,7 +28,7 @@ export async function canonicalCountry(value: string) {
 }
 
 /** Step 1: product card. Web mode reads the site (web_fetch) and searches the web; text/services derive it from the visitor's words. */
-export async function runResearch(input: ExploreInput, locale: ExploreLocale): Promise<ExploreProduct> {
+export async function runResearch(input: ExploreInput, locale: ExploreLocale, live?: ExploreLive): Promise<ExploreProduct> {
   const domain = input.mode === "web" ? hostOf(input.url) : "";
   const web = input.mode === "web" && Boolean(domain);
   const system = [
@@ -51,6 +51,7 @@ export async function runResearch(input: ExploreInput, locale: ExploreLocale): P
     tools: web ? [webFetchTool(2, [domain]), webSearchTool(1)] : [],
     maxToolCalls: 3,
     maxTokens: 1200,
+    live,
   });
   const name = str(result.name, 80);
   const summary = str(result.summary, 400);

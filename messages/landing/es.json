@@ -51,63 +51,12 @@
       }
     },
     "how": {
-      "title": "Empezó el Vibeselling",
+      "title": "Empezó el <green>Vibeselling</green>",
       "intro": "Leadta elimina las tareas repetitivas en las ventas, dejándote a cargo solo de lo verdaderamente importante.",
       "steps": [
         { "title": "Pone tu negocio." },
         { "title": "El bot busca información y clientes potenciales." },
         { "title": "El bot contacta a todos." }
-      ]
-    },
-    "data": {
-      "title": "La inteligencia que va a <mark>cambiar tus ventas</mark>.",
-      "text": "Usamos modelos de Inteligencia Artificial que analizan los datos geográficos, rastrean datos de negocios y te entregan a tu cliente ideal con fuentes exactas.",
-      "radarLabel": "Radar de alcance de ejemplo",
-      "range": "Radio 3 km · Palermo",
-      "feedLabel": "Leads detectados",
-      "serviceLabel": "Servicio:",
-      "metrics": {
-        "leads": "Leads encontrados",
-        "pains": "Dolores analizados",
-        "categories": "Rubros encontrados"
-      },
-      "leads": [
-        {
-          "name": "Veterinaria Huellitas del Sur",
-          "rating": "4,7",
-          "pain": "Turnos difíciles de conseguir",
-          "service": "Integración de reservas"
-        },
-        {
-          "name": "Pet Care Recoleta",
-          "rating": "4,8",
-          "pain": "Poco seguimiento de reseñas negativas",
-          "service": "Gestión de reseñas"
-        },
-        {
-          "name": "Clínica Vet Belgrano",
-          "rating": "4,3",
-          "pain": "Esperas largas con turno",
-          "service": "Turnos online con recordatorios"
-        },
-        {
-          "name": "Mascotas del Plata",
-          "rating": "4,5",
-          "pain": "No responden por WhatsApp",
-          "service": "Chatbot de WhatsApp"
-        },
-        {
-          "name": "Vet 24 Villa Crespo",
-          "rating": "4,1",
-          "pain": "Precios poco claros",
-          "service": "Diseño web con precios"
-        },
-        {
-          "name": "Centro Animal Núñez",
-          "rating": "4,6",
-          "pain": "Horarios poco claros",
-          "service": "Perfil del negocio optimizado"
-        }
       ]
     },
     "pains": {

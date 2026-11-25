@@ -66,6 +66,8 @@ body {
 @layer base {
   button, input, textarea { font: inherit; }
   button { color: inherit; }
+  button:not(:disabled), [role="button"]:not([aria-disabled="true"]) { cursor: pointer; }
+  textarea:not(:disabled), input:not(:disabled):is(:not([type]), [type="text"], [type="email"], [type="url"], [type="search"], [type="password"], [type="tel"], [type="number"]) { cursor: url("/cursors/text.png?v=2") 15 16, text; }
   a { color: inherit; }
 }
 

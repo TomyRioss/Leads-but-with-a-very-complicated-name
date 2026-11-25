@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { PocketBaseRequestError, pocketBasePublicFetch } from "@/lib/server/pocketbase";
+import { hasActivePlan } from "@/lib/server/usage-limits";
+import { trialAccess, trialEndsAt, type TrialAccess } from "@/lib/trial";
 
 const sessionCookieName = "leadta_session";
 const sessionDurationSeconds = 60 * 60 * 24 * 30;
@@ -7,8 +9,9 @@ const pendingPhoneCookieName = "leadta_google_phone";
 const pendingPhoneMaxAgeSeconds = 60 * 15;
 
 export type UserRole = "user" | "owner";
-export type AppUser = { id: string; email: string; name: string; credits: number; role: UserRole };
-type PocketBaseAuthResponse = { token: string; record: { id: string; email: string; name?: string; credits?: number; role?: unknown } };
+/** access: "expired" = trial over without a paid plan; trialEndsAt "" = no trial end (older account or owner). */
+export type AppUser = { id: string; email: string; name: string; credits: number; role: UserRole; access: TrialAccess; trialEndsAt: string };
+type PocketBaseAuthResponse = { token: string; record: PocketBaseUserRecord };
 
 /** Only the exact string "owner" grants the owner role; anything else (missing field included) is a regular user. */
 export function toUserRole(role: unknown): UserRole {
@@ -92,24 +95,21 @@ export async function getCurrentUser(request: Request, cookieName = sessionCooki
         `/api/collections/users/records/${encodeURIComponent(claims.id)}`,
         { headers: { Authorization: token } },
       );
-      return { token, user: mapUser(record) };
+      return withTrialGate(request, { token, user: await mapUser(record) });
     }
 
     const auth = await pocketBasePublicFetch<PocketBaseAuthResponse>(
       "/api/collections/users/auth-refresh",
       { method: "POST", headers: { Authorization: token }, body: "{}" },
     );
-    return {
-      token: auth.token,
-      user: mapUser(auth.record),
-    };
+    return withTrialGate(request, { token: auth.token, user: await mapUser(auth.record) });
   } catch (error) {
     if (error instanceof PocketBaseRequestError && [400, 401, 403].includes(error.status)) return null;
     throw error;
   }
 }
 
-type PocketBaseUserRecord = { id: string; email: string; name?: string; credits?: number; role?: unknown };
+type PocketBaseUserRecord = { id: string; email: string; name?: string; credits?: number; role?: unknown; created?: string };
 type AuthTokenClaims = { id?: unknown; refreshable?: unknown };
 
 function readAuthTokenClaims(token: string): AuthTokenClaims | null {
@@ -122,13 +122,29 @@ function readAuthTokenClaims(token: string): AuthTokenClaims | null {
   }
 }
 
-function mapUser(record: PocketBaseUserRecord): AppUser {
+// API paths an account with an expired trial still reaches: session, sign-in/out and paying.
+const TRIAL_OPEN_API = ["/api/auth/", "/api/subscriptions", "/api/mercadopago"];
+
+/** Expired trial: private APIs see no session (401); the open paths get the user with access "expired". */
+function withTrialGate<T extends { user: AppUser }>(request: Request, session: T): T | null {
+  if (session.user.access !== "expired") return session;
+  const path = new URL(request.url).pathname;
+  return TRIAL_OPEN_API.some((prefix) => path.startsWith(prefix)) ? session : null;
+}
+
+async function mapUser(record: PocketBaseUserRecord): Promise<AppUser> {
+  const role = toUserRole(record.role);
+  const endsAt = role === "owner" ? "" : trialEndsAt(record.created);
+  // Subscription lookup only once the trial is over: in-trial and older accounts cost no extra query.
+  const paid = endsAt && Date.now() >= Date.parse(endsAt) ? await hasActivePlan(record.id) : false;
   return {
     id: record.id,
     email: record.email,
     name: record.name || "",
     credits: typeof record.credits === "number" && record.credits >= 0 ? record.credits : 0,
-    role: toUserRole(record.role),
+    role,
+    access: trialAccess(endsAt, paid),
+    trialEndsAt: endsAt,
   };
 }
 

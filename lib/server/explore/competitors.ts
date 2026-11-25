@@ -1,6 +1,6 @@
 import "server-only";
 import type { ExploreCompetitors, ExploreProduct } from "@/lib/explore/types";
-import { exploreJson, hostOf, languageRule, objectSchema, str, strList, UNTRUSTED_RULE, webSearchTool, type ExploreLocale } from "@/lib/server/explore/ai";
+import { exploreJson, hostOf, languageRule, objectSchema, str, strList, UNTRUSTED_RULE, webSearchTool, type ExploreLive, type ExploreLocale } from "@/lib/server/explore/ai";
 
 const schema = objectSchema({
   headline: { type: "string", maxLength: 80 },
@@ -13,8 +13,11 @@ const schema = objectSchema({
   },
 });
 
+/** "linktr.ee" → "Linktr". */
+const nameOf = (domain: string) => (domain ? domain.split(".")[0].replace(/^./, (char) => char.toUpperCase()) : "");
+
 /** Step 2: positioning and real competitors found with web_search. */
-export async function runCompetitors(product: ExploreProduct, locale: ExploreLocale): Promise<ExploreCompetitors> {
+export async function runCompetitors(product: ExploreProduct, locale: ExploreLocale, live?: ExploreLive): Promise<ExploreCompetitors> {
   const system = [
     "You map the market of a product for a sales tool.",
     "Call web_search to find real competitors that sell a similar product to the same kind of customer, in the product's market when known.",
@@ -26,14 +29,15 @@ export async function runCompetitors(product: ExploreProduct, locale: ExploreLoc
     languageRule(locale),
   ].join(" ");
   const user = `Product: ${product.name}\nWebsite: ${product.domain || "(none)"}\nSummary: ${product.summary}\nMarket: ${product.location || product.country || "(unknown)"}`;
-  const result = await exploreJson({ name: "explore_competitors", schema, system, user, tools: [webSearchTool(2)], maxToolCalls: 3, maxTokens: 1500 });
+  const result = await exploreJson({ name: "explore_competitors", schema, system, user, tools: [webSearchTool(2)], maxToolCalls: 3, maxTokens: 1500, live });
 
   const seen = new Set(product.domain ? [product.domain] : []);
   const competitors = (Array.isArray(result.competitors) ? result.competitors : []).flatMap((item) => {
-    if (!item || typeof item !== "object") return [];
-    const record = item as Record<string, unknown>;
-    const name = str(record.name, 80);
+    // With web_search on, the model sometimes returns bare domains ("wix.com") instead of {name, domain}.
+    const record = typeof item === "string" ? { domain: item } : item && typeof item === "object" ? item as Record<string, unknown> : null;
+    if (!record) return [];
     const domain = hostOf(record.domain);
+    const name = str(record.name, 80) || nameOf(domain);
     if (!name || !domain || seen.has(domain)) return [];
     seen.add(domain);
     return [{ name, domain }];

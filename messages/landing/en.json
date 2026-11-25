@@ -51,63 +51,12 @@
       }
     },
     "how": {
-      "title": "Vibeselling has begun",
+      "title": "<green>Vibeselling</green> has begun",
       "intro": "Leadta removes the repetitive tasks in sales, leaving you in charge of only what truly matters.",
       "steps": [
         { "title": "Enter your business." },
         { "title": "The bot finds information and potential customers." },
         { "title": "The bot contacts all of them." }
-      ]
-    },
-    "data": {
-      "title": "The intelligence that will <mark>change your sales</mark>.",
-      "text": "We use AI models that analyze geographic data, track business data and deliver your ideal customer with exact sources.",
-      "radarLabel": "Sample reach radar",
-      "range": "3 km radius · Palermo",
-      "feedLabel": "Leads detected",
-      "serviceLabel": "Service:",
-      "metrics": {
-        "leads": "leads",
-        "pains": "pain points analyzed",
-        "categories": "categories"
-      },
-      "leads": [
-        {
-          "name": "Huellitas del Sur Veterinary",
-          "rating": "4.7",
-          "pain": "Appointments hard to get",
-          "service": "Booking integration"
-        },
-        {
-          "name": "Pet Care Recoleta",
-          "rating": "4.8",
-          "pain": "Little follow-up on negative reviews",
-          "service": "Review management"
-        },
-        {
-          "name": "Belgrano Vet Clinic",
-          "rating": "4.3",
-          "pain": "Long waits even with a booking",
-          "service": "Online booking with reminders"
-        },
-        {
-          "name": "Mascotas del Plata",
-          "rating": "4.5",
-          "pain": "No reply on WhatsApp",
-          "service": "WhatsApp chatbot"
-        },
-        {
-          "name": "Vet 24 Villa Crespo",
-          "rating": "4.1",
-          "pain": "Unclear pricing",
-          "service": "Web design with pricing"
-        },
-        {
-          "name": "Núñez Animal Center",
-          "rating": "4.6",
-          "pain": "Unclear opening hours",
-          "service": "Optimized business profile"
-        }
       ]
     },
     "pains": {

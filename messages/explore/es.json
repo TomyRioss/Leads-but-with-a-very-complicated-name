@@ -39,7 +39,7 @@
       "research": "Investigando tu empresa…",
       "competitors": "Analizando a tus competidores…",
       "campaigns": "Definiendo las mejores campañas…",
-      "leads": "Buscando en Google Maps… puede tardar 1–3 minutos",
+      "leads": "Buscando negocios… puede tardar 1–3 minutos",
       "proposals": "Escribiendo propuestas personalizadas…"
     },
     "stepError": "No pudimos completar este paso.",
@@ -77,12 +77,21 @@
     "to": "Para",
     "subject": "Asunto",
     "body": "Mensaje",
-    "send": "Enviar",
+    "send": "Crear cuenta Gratis",
     "channel": { "whatsapp": "WhatsApp", "gmail": "Gmail" },
     "noProposals": "No hay propuestas para mostrar.",
+    "trialOffer": {
+      "title": "Probá Leadta {days} días gratis",
+      "plan": "Plan Free",
+      "whatsapp": "{count} WhatsApp por mes",
+      "after": "Después elegís un plan",
+      "cta": "Empezar gratis",
+      "next": "Qué sigue",
+      "steps": { "send": "Enviar propuestas", "replies": "Seguir respuestas", "close": "Cerrar clientes" }
+    },
+    "trial": "7 Días de Prueba con $10 USD de uso GRATIS.",
     "signup": {
       "title": "Crea tu cuenta para enviar",
-      "text": "Tus 50 clientes y 10 propuestas se guardan en tu cuenta.",
       "create": "Crear cuenta",
       "google": "Continuar con Google",
       "close": "Cerrar"

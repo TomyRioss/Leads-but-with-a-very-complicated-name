@@ -4,8 +4,9 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { Check, Circle, CircleAlert, Loader2, RotateCcw } from "lucide-react";
 import { Link } from "@/i18n/navigation";
-import { EXPLORE_STEPS, type ExploreCampaign, type ExploreRun, type ExploreStep } from "@/lib/explore/types";
-import { CampaignsStep, CompetitorsStep, LeadsStep, ProposalsStep, ResearchStep } from "./explore-steps";
+import { EXPLORE_STEPS, type ExploreCampaign, type ExploreCompetitors, type ExploreProduct, type ExploreProposal, type ExploreRun, type ExploreStep } from "@/lib/explore/types";
+import { parsePartialJson } from "@/lib/explore/partial-json";
+import { CampaignsStep, CompetitorsStep, Favicon, LeadsStep, ProposalsStep, ResearchStep } from "./explore-steps";
 import { SignupDialog } from "./signup-dialog";
 import { ProductSummary } from "./product-edit";
 
@@ -17,11 +18,59 @@ const FIELD = {
   proposals: "proposals",
 } as const satisfies Record<ExploreStep, keyof ExploreRun>;
 
+// Tiempo que la ficha terminada queda a la vista antes de pasar al paso siguiente (que ya corre de fondo).
+const HOLD_MS = 5000;
+
 type LoadState = "loading" | "missing" | "error" | "ready";
+type LivePartial = Record<string, unknown> | ExploreProposal[];
 type StepStatus = "done" | "running" | "error" | "pending";
 
 function nextStep(run: ExploreRun) {
   return EXPLORE_STEPS.find((step) => run[FIELD[step]] === null) ?? null;
+}
+
+const text = (value: unknown) => (typeof value === "string" ? value : "");
+const texts = (value: unknown) => (Array.isArray(value) ? value.map(text).filter(Boolean) : []);
+const items = (value: unknown) => (Array.isArray(value) ? value.filter((item): item is Record<string, unknown> => Boolean(item) && typeof item === "object") : []);
+
+// Fichas a medio escribir: el JSON parcial del modelo, con lo que falta vacío. Devuelven null hasta que haya algo para mostrar.
+function liveProduct(raw: Record<string, unknown>, run: ExploreRun): ExploreProduct | null {
+  const name = text(raw.name);
+  if (!name) return null;
+  const domain = run.input.mode === "web" ? run.input.url.replace(/^https?:\/\//, "").replace(/\/.*$/, "") : "";
+  return { name, domain, summary: text(raw.summary), location: text(raw.location), country: "" };
+}
+
+function liveCompetitors(raw: Record<string, unknown>): ExploreCompetitors | null {
+  const headline = text(raw.headline);
+  if (!headline) return null;
+  return {
+    headline,
+    valueProps: texts(raw.valueProps),
+    buyerSearches: texts(raw.buyerSearches),
+    // Dominio a medio escribir ("wix.c"): no se muestra hasta que tenga forma de dominio, así no se piden favicons de más.
+    // El modelo a veces manda dominios sueltos ("wix.com") en vez de {name, domain}.
+    competitors: (Array.isArray(raw.competitors) ? raw.competitors : []).map((item) => {
+      const record = typeof item === "string" ? { domain: item } : item && typeof item === "object" ? item as Record<string, unknown> : {};
+      const domain = /\.[a-z]{2,}$/i.test(text(record.domain)) ? text(record.domain) : "";
+      return { name: text(record.name) || domain.split(".")[0], domain };
+    }).filter((item) => item.name),
+  };
+}
+
+function liveCampaigns(raw: Record<string, unknown>): ExploreCampaign[] | null {
+  const list = items(raw.campaigns).filter((item) => text(item.name)).map((item, index): ExploreCampaign => ({
+    id: `live-${index}`,
+    name: text(item.name),
+    icon: (text(item.icon) || "sparkles") as ExploreCampaign["icon"],
+    fit: typeof item.fit === "number" ? item.fit : 0,
+    pitch: text(item.pitch),
+    pain: text(item.pain),
+    criteria: texts(item.criteria),
+    examples: texts(item.examples),
+    keywords: [],
+  }));
+  return list.length ? list : null;
 }
 
 function topCampaign(campaigns: ExploreCampaign[] | null) {
@@ -39,7 +88,14 @@ export function ExploreShell() {
   const [view, setView] = useState<ExploreStep>("research");
   const [pickedCampaign, setPickedCampaign] = useState("");
   const [signupOpen, setSignupOpen] = useState(false);
+  const [partials, setPartials] = useState<Partial<Record<ExploreStep, LivePartial>>>({});
   const inFlight = useRef(false);
+  // Paso que la vista debe seguir (en curso o fallido) y si la ficha recién terminada todavía se está mostrando.
+  const active = useRef<ExploreStep | null>(null);
+  const holding = useRef(false);
+  const holdTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+
+  useEffect(() => () => clearTimeout(holdTimer.current), []);
 
   useEffect(() => {
     let ignore = false;
@@ -62,21 +118,60 @@ export function ExploreShell() {
 
   const runStep = useCallback(async (step: ExploreStep, campaignId: string) => {
     inFlight.current = true;
+    active.current = step;
+    if (!holding.current) setView(step);
     setRunning(step);
-    setView(step);
     try {
       const response = await fetch(`/api/explore/${step}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ campaignId: campaignId || undefined, locale }),
       });
-      const payload = (await response.json().catch(() => null)) as { data?: unknown; error?: string } | null;
-      if (!response.ok || !payload || payload.data == null) throw new Error(payload?.error || "");
-      setRun((prev) => (prev ? { ...prev, [FIELD[step]]: payload.data, ...(step === "leads" ? { campaignId } : {}) } : prev));
-    } catch (error) {
-      setErrors((prev) => ({ ...prev, [step]: error instanceof Error && error.message ? error.message : t("stepError") }));
+      if (!response.ok || !response.body) throw new Error("step_failed");
+      // NDJSON: {"t"} texto del modelo, {"reset"} descarta lo recibido, {"item"} propuesta lista, {"data"} o {"error"} al final.
+      const reader = response.body.pipeThrough(new TextDecoderStream()).getReader();
+      let buffer = "";
+      let raw = "";
+      const proposals: ExploreProposal[] = [];
+      let data: unknown = null;
+      for (;;) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buffer += value;
+        const lines = buffer.split("\n");
+        buffer = lines.pop() ?? "";
+        let changed = false;
+        for (const line of lines) {
+          if (!line) continue;
+          const message = JSON.parse(line) as { t?: string; reset?: true; item?: ExploreProposal; data?: unknown; error?: string };
+          if (message.error) throw new Error(message.error);
+          if (typeof message.t === "string") { raw += message.t; changed = true; }
+          else if (message.reset) { raw = ""; changed = true; }
+          else if (message.item) { proposals.push(message.item); changed = true; }
+          else if ("data" in message) data = message.data;
+        }
+        // Un parseo por lote de red, no por delta.
+        if (changed) {
+          const partial = step === "proposals" ? [...proposals] : parsePartialJson(raw);
+          setPartials((prev) => ({ ...prev, [step]: partial }));
+        }
+      }
+      if (data == null) throw new Error("step_failed");
+      setRun((prev) => (prev ? { ...prev, [FIELD[step]]: data, ...(step === "leads" ? { campaignId } : {}) } : prev));
+      // La ficha terminada queda a la vista HOLD_MS; el paso siguiente arranca ya, de fondo.
+      active.current = null;
+      clearTimeout(holdTimer.current);
+      holding.current = true;
+      holdTimer.current = setTimeout(() => {
+        holding.current = false;
+        if (active.current) setView(active.current);
+      }, HOLD_MS);
+    } catch {
+      setErrors((prev) => ({ ...prev, [step]: t("stepError") }));
+      if (!holding.current) setView(step);
     } finally {
       inFlight.current = false;
+      setPartials((prev) => ({ ...prev, [step]: undefined }));
       setRunning(null);
     }
   }, [locale, t]);
@@ -144,14 +239,29 @@ export function ExploreShell() {
 
   const leadsCampaign = run.campaigns?.find((item) => item.id === (run.campaignId || selectedCampaignId)) ?? null;
   const viewStatus = statusOf(view);
+  const partial = viewStatus === "running" ? partials[view] : undefined;
+  const record = partial && !Array.isArray(partial) ? partial : null;
+  const liveProductCard = view === "research" && record ? liveProduct(record, run) : null;
+  const liveCompetitorsCard = view === "competitors" && record ? liveCompetitors(record) : null;
+  const liveCampaignsCard = view === "campaigns" && record ? liveCampaigns(record) : null;
+  const liveProposals = view === "proposals" && Array.isArray(partial) && partial.length ? partial : null;
+  const liveCard = liveProductCard ? <ResearchStep product={liveProductCard} live />
+    : liveCompetitorsCard ? <CompetitorsStep data={liveCompetitorsCard} />
+    : liveCampaignsCard ? <CampaignsStep campaigns={liveCampaignsCard} selectedId="" onSelect={() => {}} />
+    : liveProposals ? <ProposalsStep proposals={liveProposals} leads={run.leads ?? []} onSend={() => setSignupOpen(true)} />
+    : null;
 
   return (
     <div className="min-h-dvh bg-(--ash-100) text-(color:--ink) lg:grid lg:grid-cols-[248px_minmax(0,1fr)]">
       <p className="sr-only" aria-live="polite">{liveMessage}</p>
       <aside className="border-b border-(color:--line) bg-(--ash-50) lg:sticky lg:top-0 lg:h-dvh lg:overflow-y-auto lg:border-r lg:border-b-0">
         <div className="px-4 pt-4 lg:px-5 lg:pt-6">
-          <Link href="/" className="brand" aria-label="Leadta">Leadta<span className="brand-period">.</span></Link>
-          {run.product ? <p className="mt-3 truncate text-sm font-semibold">{run.product.name}</p> : null}
+          <Link href="/" className="brand" style={{ fontSize: 34 }} aria-label="Leadta">Leadta<span className="brand-period">.</span></Link>
+          {run.product ? (
+            <p className="mt-3 flex min-w-0 items-center gap-2 text-sm font-semibold">
+              <Favicon domain={run.product.domain} size={20} plain /><span className="truncate">{run.product.name}</span>
+            </p>
+          ) : null}
         </div>
         <nav aria-label={t("stepsAria")} className="mt-3 pb-3 lg:mt-5 lg:pb-6">
           <ol className="flex gap-1 overflow-x-auto px-3 lg:flex-col lg:gap-0.5 lg:overflow-visible">
@@ -200,6 +310,13 @@ export function ExploreShell() {
               <div role="alert" className="flex flex-col items-start gap-3 rounded-xl border border-(color:--line) bg-(--paper) p-6 sm:flex-row sm:items-center sm:justify-between">
                 <p className="flex items-center gap-2 text-sm"><CircleAlert size={18} className="text-(color:--ash-700)" aria-hidden="true" />{errors[view]}</p>
                 <button type="button" onClick={() => retry(view)} className="inline-flex min-h-10 items-center gap-2 rounded-lg bg-(--lime) px-4 text-sm font-semibold hover:bg-(--lime-dark) focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(color:--ink)"><RotateCcw size={15} aria-hidden="true" />{t("retry")}</button>
+              </div>
+            ) : viewStatus === "running" && liveCard ? (
+              <div className="space-y-3">
+                <p role="status" className="flex items-center gap-2 text-sm text-(color:--muted)">
+                  <Loader2 size={16} className="animate-spin text-(color:--ink) motion-reduce:animate-none" aria-hidden="true" />{t(`working.${view}`)}
+                </p>
+                {liveCard}
               </div>
             ) : viewStatus === "running" && view !== "leads" ? (
               <div role="status" className="flex items-center gap-3 rounded-xl border border-(color:--line) bg-(--paper) p-8 text-sm text-(color:--muted)">

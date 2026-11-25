@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { useLocale, useTranslations } from "next-intl";
-import { Lock, X } from "lucide-react";
+import { Gift, Lock, X } from "lucide-react";
 import { FcGoogle } from "react-icons/fc";
 import { Link } from "@/i18n/navigation";
 import "@/app/modal-dialog.css";
@@ -10,6 +10,7 @@ import "@/app/modal-dialog.css";
 /** Se abre al intentar enviar una propuesta: el envío exige cuenta. */
 export function SignupDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
   const t = useTranslations("Explore.signup");
+  const tExplore = useTranslations("Explore");
   const locale = useLocale();
   const dialogRef = useRef<HTMLDialogElement>(null);
 
@@ -35,7 +36,9 @@ export function SignupDialog({ open, onClose }: { open: boolean; onClose: () => 
           <h2 id="explore-signup-title">{t("title")}</h2>
           <button type="button" className="modal-close" onClick={() => dialogRef.current?.close()} aria-label={t("close")}><X size={18} aria-hidden="true" /></button>
         </div>
-        <p id="explore-signup-text" className="modal-intro">{t("text")}</p>
+        <p id="explore-signup-text" className="mb-4 flex items-center gap-2 text-sm font-semibold text-(color:--ink)">
+          <Gift size={16} className="shrink-0" aria-hidden="true" />{tExplore("trial")}
+        </p>
         <div className="grid gap-2.5">
           <Link href="/register" className="inline-flex min-h-11 items-center justify-center rounded-lg bg-(--lime) px-5 text-sm font-semibold text-(color:--ink) hover:bg-(--lime-dark) focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(color:--ink)">{t("create")}</Link>
           <a href={`/api/auth/google?locale=${locale}`} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-(color:--line) bg-(--paper) px-5 text-sm font-semibold text-(color:--ink) hover:bg-(--ash-50) focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(color:--ink)">
