@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { EXPLORE_TOKEN_COOKIE } from "@/lib/explore/types";
 import { getRun, updateRun } from "@/lib/server/explore/store";
 import { canonicalCountry } from "@/lib/server/explore/research";
+import { editRateLimited } from "@/lib/server/explore/guard";
 
 /** GET /api/explore: the visitor's run (from the token cookie) without the token, or 404. */
 export async function GET(request: NextRequest) {
@@ -22,7 +23,7 @@ export async function GET(request: NextRequest) {
 const SUMMARY_MAX = 400;
 const LOCATION_MAX = 120;
 
-/** PATCH /api/explore: the visitor corrects the step 1 card by hand (summary and location). */
+/** PATCH /api/explore: the visitor corrects the step 1 card by hand (summary and location). A real change clears steps 2-5 so the page regenerates them. */
 export async function PATCH(request: NextRequest) {
   const token = request.cookies.get(EXPLORE_TOKEN_COOKIE)?.value ?? "";
   if (!token || token.length > 200) return NextResponse.json({ error: "not_found" }, { status: 404 });
@@ -35,11 +36,13 @@ export async function PATCH(request: NextRequest) {
   try {
     const run = await getRun(token);
     if (!run?.product) return NextResponse.json({ error: "not_found" }, { status: 404 });
+    if (summary === run.product.summary && location === run.product.location) return NextResponse.json({ product: run.product, reset: false });
+    if (editRateLimited(request)) return NextResponse.json({ error: "rate_limited" }, { status: 429 });
     // Si la ubicación nueva no resuelve a un país, se conserva el país anterior para la búsqueda de leads.
     const country = location === run.product.location ? run.product.country : (await canonicalCountry(location)) || run.product.country;
     const product = { ...run.product, summary, location, country };
-    await updateRun(token, { product });
-    return NextResponse.json({ product }, { headers: { "Cache-Control": "no-store" } });
+    await updateRun(token, { product, competitors: null, campaigns: null, leads: null, proposals: null, campaignId: "" });
+    return NextResponse.json({ product, reset: true }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     console.error("Explore edit failed:", error instanceof Error ? error.message : "unknown");
     return NextResponse.json({ error: "unavailable" }, { status: 503 });

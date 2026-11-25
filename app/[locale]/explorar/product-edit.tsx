@@ -8,18 +8,18 @@ import type { ExploreProduct } from "@/lib/explore/types";
 const FIELD = "w-full rounded-md border border-(color:--line) bg-(--paper) px-2 py-1.5 text-xs text-(color:--ink) outline-none focus-visible:border-(color:--ink)";
 
 /** Resumen y ubicación del paso 1 en la barra lateral, con edición manual ("¿Los datos están mal?"). */
-export function ProductSummary({ product, onSaved }: { product: ExploreProduct; onSaved: (product: ExploreProduct) => void }) {
+export function ProductSummary({ product, busy, onSaved }: { product: ExploreProduct; busy: boolean; onSaved: (product: ExploreProduct, reset: boolean) => void }) {
   const t = useTranslations("Explore");
   const [editing, setEditing] = useState(false);
   const [summary, setSummary] = useState(product.summary);
   const [location, setLocation] = useState(product.location);
   const [saving, setSaving] = useState(false);
-  const [failed, setFailed] = useState(false);
+  const [failed, setFailed] = useState<"" | "failed" | "rateLimited">("");
 
   function open() {
     setSummary(product.summary);
     setLocation(product.location);
-    setFailed(false);
+    setFailed("");
     setEditing(true);
   }
 
@@ -27,19 +27,23 @@ export function ProductSummary({ product, onSaved }: { product: ExploreProduct; 
     event.preventDefault();
     if (saving || !summary.trim()) return;
     setSaving(true);
-    setFailed(false);
+    setFailed("");
     try {
       const response = await fetch("/api/explore", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ summary, location }),
       });
-      if (!response.ok) throw new Error("save failed");
-      const data = (await response.json()) as { product: ExploreProduct };
-      onSaved(data.product);
-      setEditing(false);
+      if (response.status === 429) {
+        setFailed("rateLimited");
+      } else {
+        if (!response.ok) throw new Error("save failed");
+        const data = (await response.json()) as { product: ExploreProduct; reset: boolean };
+        onSaved(data.product, data.reset);
+        setEditing(false);
+      }
     } catch {
-      setFailed(true);
+      setFailed("failed");
     }
     setSaving(false);
   }
@@ -55,7 +59,8 @@ export function ProductSummary({ product, onSaved }: { product: ExploreProduct; 
           {t("location")}
           <input value={location} onChange={(event) => setLocation(event.target.value)} maxLength={120} className={`${FIELD} mt-1 font-normal`} />
         </label>
-        {failed ? <p role="alert" className="text-xs text-(color:--ash-800)">{t("edit.failed")}</p> : null}
+        <p className="text-[11px] leading-snug text-(color:--muted)">{t("edit.regenerate")}</p>
+        {failed ? <p role="alert" className="text-xs text-(color:--ash-800)">{t(`edit.${failed}`)}</p> : null}
         <div className="flex gap-2">
           <button type="submit" disabled={saving || !summary.trim()} className="inline-flex min-h-8 items-center gap-1.5 rounded-md bg-(--lime) px-3 text-xs font-semibold hover:bg-(--lime-dark) disabled:opacity-60 focus-visible:outline-2 focus-visible:outline-(color:--ink)">
             {saving ? <Loader2 size={13} className="animate-spin motion-reduce:animate-none" aria-hidden="true" /> : null}
@@ -73,7 +78,7 @@ export function ProductSummary({ product, onSaved }: { product: ExploreProduct; 
     <div className="mt-1 mb-2 hidden pr-2 pl-10 lg:block">
       <p className="line-clamp-3 text-xs leading-relaxed text-(color:--muted)">{product.summary}</p>
       <p className="mt-1.5 text-xs text-(color:--ash-700)">{t("location")} | {product.location || t("noLocation")}</p>
-      <button type="button" onClick={open} className="mt-1.5 rounded text-xs font-medium text-(color:--ink) underline decoration-(--ash-300) underline-offset-4 hover:decoration-(--ink) focus-visible:outline-2 focus-visible:outline-(color:--ink)">
+      <button type="button" onClick={open} disabled={busy} className="mt-1.5 disabled:cursor-not-allowed disabled:opacity-50 rounded text-xs font-medium text-(color:--ink) underline decoration-(--ash-300) underline-offset-4 hover:decoration-(--ink) focus-visible:outline-2 focus-visible:outline-(color:--ink)">
         {t("edit.open")}
       </button>
     </div>

@@ -45,7 +45,7 @@
     "stepError": "We couldn't complete this step.",
     "location": "Location",
     "noLocation": "No location",
-    "edit": { "open": "Is the data wrong?", "summary": "Description", "save": "Save", "cancel": "Cancel", "failed": "We couldn't save it. Try again." },
+    "edit": { "open": "Is the data wrong?", "summary": "Description", "save": "Save", "cancel": "Cancel", "failed": "We couldn't save it. Try again.", "rateLimited": "Too many changes in a row. Wait a few minutes.", "regenerate": "Saving regenerates steps 2 to 5." },
     "found": "Found",
     "product": "Your product",
     "buyerSearches": "How buyers search",

@@ -90,6 +90,15 @@ export function ExploreShell() {
     void runStep(pending, campaignId);
   }, [load, run, pending, pendingFailed, running, runStep, selectedCampaignId]);
 
+  // Datos del paso 1 corregidos: se vacían los pasos 2-5 y el avance automático los regenera.
+  function onProductSaved(product: ExploreProduct, reset: boolean) {
+    setRun((prev) => (prev ? { ...prev, product, ...(reset ? { competitors: null, campaigns: null, leads: null, proposals: null, campaignId: "" } : {}) } : prev));
+    if (!reset) return;
+    setErrors({});
+    setPickedCampaign("");
+    setView("competitors");
+  }
+
   function retry(step: ExploreStep) {
     setErrors((prev) => ({ ...prev, [step]: undefined }));
   }
@@ -162,7 +171,7 @@ export function ExploreShell() {
                     <span>{index + 1}. {t(`steps.${step}`)}</span>
                   </button>
                   {step === "research" && run.product ? (
-                    <ProductSummary product={run.product} onSaved={(product) => setRun((prev) => (prev ? { ...prev, product } : prev))} />
+                    <ProductSummary product={run.product} busy={Boolean(running)} onSaved={onProductSaved} />
                   ) : null}
                   {step === "campaigns" && run.campaigns ? (
                     <ul className="mt-1 mb-2 hidden space-y-0.5 pr-2 pl-8 lg:block">

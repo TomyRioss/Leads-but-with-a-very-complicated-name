@@ -12,6 +12,8 @@ const DAY_MS = 24 * 60 * 60_000;
 // In-memory, per instance: cheap first line before Turnstile/PocketBase; the daily quota is DB-backed.
 const START_RATE = { max: 6, windowMs: 10 * 60_000 } as const;
 const STEP_RATE = { max: 30, windowMs: 10 * 60_000 } as const;
+// Each step-1 edit regenerates steps 2-5 (AI + Apify).
+const EDIT_RATE = { max: 3, windowMs: 10 * 60_000 } as const;
 
 const text = (value: unknown, max: number) => {
   if (typeof value !== "string") return null;
@@ -74,6 +76,10 @@ export async function guardStart(request: Request, turnstileToken: unknown): Pro
 /** True when this IP made too many step calls recently (per instance). */
 export function stepRateLimited(request: Request) {
   return rateLimited(`explore-step:${clientIp(request)}`, STEP_RATE.max, STEP_RATE.windowMs);
+}
+
+export function editRateLimited(request: Request) {
+  return rateLimited(`explore-edit:${clientIp(request)}`, EDIT_RATE.max, EDIT_RATE.windowMs);
 }
 
 const inFlight = new Map<string, Promise<unknown>>();
