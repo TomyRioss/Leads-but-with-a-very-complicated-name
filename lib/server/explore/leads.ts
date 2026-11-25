@@ -8,7 +8,10 @@ import { splitEvenly } from "@/lib/search-random-location";
 import { exploreJson, languageRule, objectSchema, str, UNTRUSTED_RULE, type ExploreLocale } from "@/lib/server/explore/ai";
 
 const FALLBACK_COUNTRY = "Argentina";
-const FILTERS: SearchFilters = { website: "any", phone: "any", email: "any", skipClosed: true };
+// Solo negocios con teléfono (de ahí sale el WhatsApp), y se piden FETCH_FACTOR veces más: se descartan los que no quedan
+// con WhatsApp ni email, porque todo lead de /explorar tiene que poder recibir una propuesta.
+const FILTERS: SearchFilters = { website: "any", phone: "with", email: "any", skipClosed: true };
+const FETCH_FACTOR = 2;
 // The step route allows 300 s; Apify calls must finish (or be abandoned) before that.
 const BUDGET_MS = 240_000;
 const MIN_CALL_MS = 30_000;
@@ -54,6 +57,8 @@ export async function runLeads(product: ExploreProduct, campaign: ExploreCampaig
       if (countryCode && placeCountry && placeCountry !== countryCode) continue;
       const mapped = mapPlace(place);
       if (!mapped.name || leads.has(mapped.source_key)) continue;
+      const whatsapp = probableWhatsApp(mapped.phone, `${mapped.social_profiles}\n${mapped.website}`);
+      if (!whatsapp && !mapped.email) continue;
       leads.set(mapped.source_key, {
         id: createHash("sha256").update(mapped.source_key).digest("hex").slice(0, 16),
         name: mapped.name,
@@ -65,7 +70,7 @@ export async function runLeads(product: ExploreProduct, campaign: ExploreCampaig
         city: str(place.city, 80),
         district: str(place.neighborhood, 80),
         phone: mapped.phone,
-        whatsapp: probableWhatsApp(mapped.phone, `${mapped.social_profiles}\n${mapped.website}`),
+        whatsapp,
         email: mapped.email,
         website: mapped.website,
         maps_url: mapped.maps_url,
@@ -78,7 +83,7 @@ export async function runLeads(product: ExploreProduct, campaign: ExploreCampaig
     const timeoutMs = BUDGET_MS - (Date.now() - startedAt);
     if (timeoutMs < MIN_CALL_MS || limit <= 0) return { limit, places: [] as ActorPlace[] };
     try {
-      return { limit, places: await actorSearch(token, keyword, country, limit, monitorName, FILTERS, timeoutMs) };
+      return { limit, places: await actorSearch(token, keyword, country, limit * FETCH_FACTOR, monitorName, FILTERS, timeoutMs) };
     } catch (error) {
       console.error("Explore leads search failed:", error instanceof Error ? error.message : "unknown");
       return { limit, places: [] as ActorPlace[] };
@@ -90,13 +95,13 @@ export async function runLeads(product: ExploreProduct, campaign: ExploreCampaig
   const first = await Promise.all(keywords.map((keyword, index) => search(keyword, shares[index])));
   for (const { places } of first) add(places);
   const missing = EXPLORE_LEAD_COUNT - leads.size;
-  const saturated = keywords.filter((_, index) => first[index].places.length >= first[index].limit);
+  const saturated = keywords.filter((_, index) => first[index].places.length >= first[index].limit * FETCH_FACTOR);
   if (missing > 0 && saturated.length > 0) {
     const extra = splitEvenly(missing, saturated.length);
     const second = await Promise.all(saturated.map((keyword, index) => search(keyword, shares[keywords.indexOf(keyword)] + extra[index])));
     for (const { places } of second) add(places);
   }
-  if (leads.size === 0) throw new Error("leads: no results");
+  if (leads.size === 0) throw new Error("leads: no results with WhatsApp or email");
   const result = [...leads.values()];
   await describeLeads(result, locale, BUDGET_MS - (Date.now() - startedAt));
   return result;

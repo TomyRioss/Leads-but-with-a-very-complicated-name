@@ -3,11 +3,12 @@ import type { ExploreLead, ExploreProposal } from "@/lib/explore/types";
 
 export type ChannelPick = { lead: ExploreLead; channel: ExploreProposal["channel"]; to: string };
 
-const waTo = (lead: ExploreLead) => lead.whatsapp.trim() || lead.phone.trim();
+// Solo WhatsApp real (celular válido o link wa.me, ver probableWhatsApp): un teléfono fijo no recibe WhatsApp.
+const waTo = (lead: ExploreLead) => lead.whatsapp.trim();
 const mailTo = (lead: ExploreLead) => (/^\S+@\S+\.\S+$/.test(lead.email.trim()) ? lead.email.trim() : "");
 
 /**
- * Picks up to `count` distinct leads and a channel for each: WhatsApp needs whatsapp/phone, Gmail needs email.
+ * Picks up to `count` distinct leads and a channel for each: WhatsApp needs a WhatsApp number, Gmail needs email.
  * The channel most leads can use is the majority; at least `minMinority` picks (or as many leads as have it)
  * go through the other one. Deterministic: lead order decides ties; leads flagged on WhatsApp go first for WhatsApp,
  * and minority picks prefer leads that can't use the majority channel.
@@ -41,7 +42,7 @@ export function pickProposalChannels(leads: readonly ExploreLead[], count: numbe
   take([...onlyMinority, ...minorityPool.filter((lead) => can(lead, majority))], minority, minorityTarget);
 
   const majorityPool = majority === "whatsapp"
-    ? [...wa.filter((lead) => lead.whatsapp.trim()), ...wa.filter((lead) => !lead.whatsapp.trim())]
+    ? wa
     : mail;
   take(majorityPool, majority, count);
   take(minorityPool, minority, count); // not enough majority leads: fill with the minority channel

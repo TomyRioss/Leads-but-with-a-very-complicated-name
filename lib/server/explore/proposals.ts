@@ -45,7 +45,13 @@ export async function runProposals(product: ExploreProduct, campaign: ExploreCam
   ].join("\n");
   const system = draftingRules(product, locale);
   // ponytail: one small call per lead, all in parallel (max EXPLORE_PROPOSAL_COUNT). A single 10-message call ran out of tokens.
-  const proposals = await Promise.all(picks.map(async ({ lead, channel, to }): Promise<ExploreProposal> => {
+  // Each draft is retried once; a failed one is dropped instead of failing the whole step (fails only with zero drafts).
+  const settled = await Promise.allSettled(picks.map((pick) => draft(pick).catch(() => draft(pick))));
+  const proposals = settled.flatMap((item) => (item.status === "fulfilled" ? [item.value] : []));
+  if (proposals.length === 0) throw new Error("proposals: every draft failed");
+  return proposals;
+
+  async function draft({ lead, channel, to }: (typeof picks)[number]): Promise<ExploreProposal> {
     const user = `${context}\nLead: ${JSON.stringify({
       channel: channel === "gmail" ? "email" : "whatsapp",
       name: lead.name,
@@ -61,6 +67,5 @@ export async function runProposals(product: ExploreProduct, campaign: ExploreCam
     const proposal: ExploreProposal = { leadId: lead.id, channel, to, subject: channel === "gmail" ? str(result.subject, 80) : "", body };
     onItem?.(proposal);
     return proposal;
-  }));
-  return proposals;
+  }
 }

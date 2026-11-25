@@ -68,7 +68,8 @@ export async function exploreJson(opts: {
   const deadline = Date.now() + (opts.timeoutMs ?? 90_000);
   const required = Array.isArray(opts.schema.required) ? opts.schema.required as string[] : [];
   const first = await completion({ ...opts, deadline });
-  const parsed = tryParse(first, required);
+  // Sin tools el modelo respeta el esquema: se acepta el objeto tal cual (p. ej. una propuesta de WhatsApp sin subject).
+  const parsed = tryParse(first, tools.length ? required : []);
   if (parsed) return parsed;
   // ponytail: with tools on, the model often ignores json_schema and answers in prose. Second pass, no tools,
   // turns that research into the schema. Only runs on that failure, so the common path stays one call.
