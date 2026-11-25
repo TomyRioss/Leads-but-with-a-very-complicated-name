@@ -7,6 +7,12 @@ IR A LOGIN DESDE LANDING | "/" > Header > Botón "Ingresar"
 IR A REGISTRO DESDE LANDING | "/" > Header > Botón "Crear cuenta"
 CAMBIAR IDIOMA | "/" > Selector de idioma > "English" ("/en")
 LINKS LEGALES DEL FOOTER | "/" > Footer > "Términos y condiciones" / "Política de privacidad"
+DESCRIBIR PRODUCTO EN LANDING | "/" > Hero > Recuadro (toggle "Texto" / "Web") > Flecha > POST "/api/explore/start" > "/explorar"
+VENDO SERVICIOS | "/" > Hero > Link "Vendo servicios" > Popup 3 preguntas > "Generar mis campañas"
+EXPLORAR 5 PASOS | "/explorar" > Investigar > Competidores > Campañas > 50 clientes (Apify) > 10 propuestas WhatsApp/Gmail (POST "/api/explore/[step]")
+EXPLORAR SIN CORRIDA | "/explorar" sin cookie > Estado vacío > "Empezar desde el inicio"
+ENVIAR PROPUESTA BLOQUEADO | "/explorar" > Paso 5 > "Enviar" > Popup "Crea tu cuenta para enviar"
+PASAR LEADS DE EXPLORAR A LA CUENTA | Registro / Google con cookie "leadta_explore" > Lote nuevo en "/historial"
 VER PLANES Y PRECIOS | "/pricing"
 CAMBIAR MONEDA DE PRECIOS | "/pricing" > Cards de planes: ARS principal + "aprox. USD" secundario (sin toggle)
 SUSCRIBIRSE A PLAN | "/pricing" > Botón "Suscribirme" > POST "/api/subscriptions"
