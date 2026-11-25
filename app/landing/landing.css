@@ -106,25 +106,9 @@
 .lp-section-head { display: grid; max-width: 720px; gap: 16px; margin-bottom: clamp(32px, 5vw, 56px); }
 .lp-section-head { margin-inline: auto; text-align: center; justify-items: center; }
 .lp-section-head .lp-lead { margin-inline: auto; }
-.lp-split-copy > h2, .lp-split-copy > .lp-lead { margin-inline: auto; text-align: center; }
-.lp-split { display: grid; gap: clamp(32px, 5vw, 64px); align-items: start; }
-.lp-split-copy { display: grid; gap: 18px; }
-@media (min-width: 900px) {
-  .lp-split { grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); }
-  .lp-split-copy { position: sticky; top: calc(96px + var(--campaign-banner-h, 0px)); }
-}
 
 /* PricingHero (componente existente): ritmo propio dentro de la landing */
 .lp-page .pricing-hero-landing { margin-bottom: 0; }
-
-/* FAQ */
-.lp-faq-list { border-top: 1px solid var(--ash-400); }
-.lp-faq details { border-bottom: 1px solid var(--ash-400); }
-.lp-faq summary { display: flex; min-height: 64px; align-items: center; justify-content: space-between; gap: 20px; padding: 14px 0; cursor: pointer; font-size: clamp(1rem, 0.95rem + 0.3vw, 1.1875rem); font-weight: 600; letter-spacing: -0.01em; line-height: 1.35; list-style: none; }
-.lp-faq summary::-webkit-details-marker { display: none; }
-.lp-faq summary svg { flex: none; transition: transform 220ms var(--lp-ease); }
-.lp-faq details[open] summary svg { transform: rotate(45deg); }
-.lp-faq details p { max-width: 62ch; margin: 0; padding: 0 0 22px; color: var(--ash-700); font-size: 16px; line-height: 1.6; }
 
 /* CTA final */
 .lp-final { background: var(--lime); color: var(--ash-950); }
@@ -145,7 +129,7 @@
 .lp-footer-links a:hover { color: var(--ink); text-decoration: underline; }
 
 /* Anclas con header fijo */
-#how, #edge, #plans, #faq { scroll-margin-top: 88px; }
+#how, #edge, #plans { scroll-margin-top: 88px; }
 
 /* Movimiento: una entrada al cargar (copy + filas de la hoja). El contenido es visible por defecto. */
 @media (prefers-reduced-motion: no-preference) {

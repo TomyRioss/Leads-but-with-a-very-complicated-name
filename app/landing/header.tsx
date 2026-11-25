@@ -18,7 +18,6 @@ export async function LandingHeader({ current = "home" }: { current?: Current })
         <ul className="lp-header-links">
           <li>{section("how", t("how"))}</li>
           <li><Link href="/pricing" aria-current={current === "pricing" ? "page" : undefined}>{t("plans")}</Link></li>
-          <li>{section("faq", t("faq"))}</li>
           <li><Link href="/blog" aria-current={current === "blog" ? "page" : undefined}>{t("blog")}</Link></li>
         </ul>
         <div className="lp-header-actions">

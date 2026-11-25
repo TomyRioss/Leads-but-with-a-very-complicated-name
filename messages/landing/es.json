@@ -15,7 +15,6 @@
       "aria": "Navegación principal",
       "how": "Producto",
       "plans": "Pricing",
-      "faq": "Preguntas",
       "blog": "Blog",
       "login": "Ingresar",
       "signup": "Crear cuenta"
@@ -81,17 +80,6 @@
           "title": "WhatsApp y Gmail en un lugar",
           "text": "Envías y sigues las respuestas sin cambiar de app."
         }
-      ]
-    },
-    "faq": {
-      "title": "Preguntas frecuentes",
-      "items": [
-        { "q": "¿De dónde salen los negocios?", "a": "De fuentes públicas de negocios locales. Buscas por rubro y zona y Leadta trae los negocios con los datos públicos que figuran en su ficha." },
-        { "q": "¿Siempre vienen teléfono y mail?", "a": "No. Si la ficha pública o el sitio del negocio no publican un dato, la celda queda vacía. Nunca rellenamos con datos inventados." },
-        { "q": "¿Cómo se detectan los dolores?", "a": "Se analizan las reseñas guardadas de cada negocio y cada hallazgo cita la reseña que lo respalda. Sin reseñas legibles no hay hallazgos." },
-        { "q": "¿Cuántos leads rinde un plan?", "a": "Cada lead consume 2 créditos. Starter trae 350 créditos (hasta 175 leads) y Growth 1.750 créditos (hasta 875 leads). El análisis de dolores no consume créditos." },
-        { "q": "¿Puedo repetir una búsqueda en la misma zona?", "a": "Sí. Leadta recuerda los negocios que ya te trajo en esa zona para devolverte resultados nuevos en las búsquedas siguientes." },
-        { "q": "¿Mis búsquedas son privadas?", "a": "Sí. Cada cuenta tiene su propio historial y nadie más ve tus lotes ni tus leads." }
       ]
     },
     "footer": {

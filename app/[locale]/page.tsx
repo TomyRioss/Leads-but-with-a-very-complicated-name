@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { getTranslations, setRequestLocale } from "next-intl/server";
-import { Faq } from "@/app/landing/faq";
 import { LandingFooter } from "@/app/landing/footer";
 import { LandingHeader } from "@/app/landing/header";
 import { Hero } from "@/app/landing/hero";
@@ -25,10 +24,7 @@ export async function generateMetadata({ params }: { params: Promise<{ locale: s
 }
 
 async function structuredData(locale: string) {
-  const [meta, faq] = await Promise.all([
-    getTranslations({ locale, namespace: "Landing.meta" }),
-    getTranslations({ locale, namespace: "Landing.faq" }),
-  ]);
+  const meta = await getTranslations({ locale, namespace: "Landing.meta" });
   const origin = new URL(process.env.APP_URL?.trim() || "https://leadta.app").origin;
   const url = locale === "es" ? `${origin}/` : `${origin}/${locale}`;
   const organization = { "@type": "Organization", "@id": `${origin}/#organization`, name: "Leadta", url: `${origin}/`, logo: `${origin}/favicon.ico` };
@@ -47,12 +43,7 @@ async function structuredData(locale: string) {
         inLanguage: locale,
         publisher: { "@id": organization["@id"] },
         offers: { "@type": "Offer", price: "15", priceCurrency: "USD", url: `${origin}${locale === "es" ? "" : "/en"}/pricing` },
-      },
-      {
-        "@type": "FAQPage",
-        inLanguage: locale,
-        mainEntity: (faq.raw("items") as { q: string; a: string }[]).map((item) => ({ "@type": "Question", name: item.q, acceptedAnswer: { "@type": "Answer", text: item.a } })),
-      },
+      }
     ],
   };
 }
@@ -70,7 +61,6 @@ export default async function LandingPage({ params }: { params: Promise<{ locale
         <Hero />
         <HowItWorks />
         <ThreeThings />
-        <Faq />
       </main>
       <LandingFooter />
       <SignupPopup />
