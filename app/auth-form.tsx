@@ -17,7 +17,8 @@ import "./auth-layout.css";
 import { invalidateSession } from "@/lib/client/session";
 
 /** `paths`: switching login/register also swaps the URL (no reload). */
-type AuthFormProps = { onAuthenticated: () => void; initialMode?: "login" | "register"; paths?: Record<"login" | "register", string> };
+/** `embedded`: solo el formulario (sin panel de marca ni título), para usarlo dentro de un modal. */
+type AuthFormProps = { onAuthenticated: () => void; initialMode?: "login" | "register"; paths?: Record<"login" | "register", string>; embedded?: boolean };
 type VerifyStepState = { email: string; sent: boolean; fromLogin: boolean };
 
 const resendCooldownSeconds = 60;
@@ -451,7 +452,7 @@ function useQueryParam(name: string) {
   return useSyncExternalStore(noSubscribe, () => new URLSearchParams(window.location.search).get(name), () => null);
 }
 
-export function AuthForm({ onAuthenticated, initialMode = "login", paths }: AuthFormProps) {
+export function AuthForm({ onAuthenticated, initialMode = "login", paths, embedded = false }: AuthFormProps) {
   const t = useTranslations("Auth");
   const locale = useLocale();
   const localizedError = (message: string) => {
@@ -580,19 +581,8 @@ export function AuthForm({ onAuthenticated, initialMode = "login", paths }: Auth
     requestAnimationFrame(() => document.getElementById("auth-title")?.focus());
   }
 
-  return (
-    <main className="app-shell auth-shell auth-bare">
-      <aside className="auth-aside">
-        <Link className="auth-brand-link" href="/" aria-label={t("goHome")}><BrandMark className="auth-brand-mark" /></Link>
-        <div className="auth-aside-copy">
-          <p className="auth-aside-eyebrow">{t("asideEyebrow")}</p>
-          <p className="auth-aside-title">{t("asideTitle")}</p>
-          <p className="auth-aside-text">{t("asideText")}</p>
-        </div>
-      </aside>
-      <div className="auth-workspace">
-        <section className="search-panel auth-panel" aria-labelledby="auth-title">
-          {phoneStep ? (
+  const content = (
+          phoneStep ? (
             <PhoneStep onDone={(role) => {
               if (role === "owner") window.location.assign(window.location.pathname.startsWith("/en/") ? "/en/owner" : "/owner");
               else {
@@ -606,8 +596,8 @@ export function AuthForm({ onAuthenticated, initialMode = "login", paths }: Auth
             <ForgotPasswordStep initialEmail={email} onBack={() => backToForm("login")} />
           ) : (
           <>
-          <h1 id="auth-title" tabIndex={-1}>{mode === "register" ? t("registerTitle") : t("loginTitle")}<span className="brand-dot" aria-hidden="true">.</span></h1>
-          <p className="auth-intro">{mode === "register" && t("registerIntro")}{t("privateIntro")}</p>
+          {!embedded && <h1 id="auth-title" tabIndex={-1}>{mode === "register" ? t("registerTitle") : t("loginTitle")}<span className="brand-dot" aria-hidden="true">.</span></h1>}
+          {!embedded && <p className="auth-intro">{mode === "register" && t("registerIntro")}{t("privateIntro")}</p>}
           <a className="google-auth-button" href={`/api/auth/google?locale=${locale}`} onClick={(event) => {
             // The default navigation then follows the updated href.
             if (nextPath.current) event.currentTarget.href = `/api/auth/google?locale=${locale}&next=${encodeURIComponent(nextPath.current)}`;
@@ -703,7 +693,23 @@ export function AuthForm({ onAuthenticated, initialMode = "login", paths }: Auth
             </button>
           </p>
           </>
-          )}
+          )
+  );
+
+  if (embedded) return <div className="[&_.google-auth-button]:mt-0! [&_.google-auth-button]:gap-2.5! [&_.auth-fields]:mt-4! [&_.auth-fields]:gap-3.5! [&_.auth-switch]:mt-3!">{content}</div>;
+  return (
+    <main className="app-shell auth-shell auth-bare">
+      <aside className="auth-aside">
+        <Link className="auth-brand-link" href="/" aria-label={t("goHome")}><BrandMark className="auth-brand-mark" /></Link>
+        <div className="auth-aside-copy">
+          <p className="auth-aside-eyebrow">{t("asideEyebrow")}</p>
+          <p className="auth-aside-title">{t("asideTitle")}</p>
+          <p className="auth-aside-text">{t("asideText")}</p>
+        </div>
+      </aside>
+      <div className="auth-workspace">
+        <section className="search-panel auth-panel" aria-labelledby="auth-title">
+          {content}
         </section>
       </div>
     </main>

@@ -39,7 +39,7 @@ PROGRAMAR MENSAJES | "/lead-suite" > Diálogo "Programar" > "/api/scheduled"
 VER MIS NEGOCIOS | Sidebar > "Mis negocios" ("/negocios") > GET "/api/businesses" (ficha + competidores; vacío > "Explorar un negocio" > "/")
 CREAR NEGOCIO (ONBOARDING) | Sidebar > Selector de negocio > "+ Nuevo negocio" o "/negocios" > "Nuevo negocio" > "/onboarding?new=1" > Sitio web o descripción > POST "/api/onboarding"
 COMPLETAR ONBOARDING DE UN NEGOCIO | "/onboarding?business=<id>" > Pasos 1-6 (empresa, clientes, confirmación, plan, canales, capacidad) > PATCH "/api/onboarding/<id>" por paso > "Empezar" > "/leadtita"
-IR AL ONBOARDING DESPUÉS DE /explorar | "/explorar" > "Crear cuenta Gratis" > registro o Google > al entrar, negocio activo sin terminar > GET "/api/onboarding/pending" > "/onboarding?business=<id>" (paso 3) > "Empezar" > "/propuestas?business=<id>"
+IR AL ONBOARDING DESPUÉS DE /explorar | "/explorar" > "Crear cuenta Gratis" > modal con registro completo (Google arriba, email, teléfono, contraseña) > al entrar, negocio activo sin terminar > GET "/api/onboarding/pending" > "/onboarding?business=<id>" (paso 3) > "Empezar" > "/propuestas?business=<id>"
 CAMBIAR NEGOCIO ACTIVO | Sidebar > Selector de negocio > Elegir negocio > PATCH "/api/businesses/active" (Leadtita y análisis usan el negocio activo)
 NEGOCIO DESDE PERFIL COMERCIAL | Sidebar > Selector de negocio (GET "/api/businesses") > Cuenta sin negocios con perfil comercial > Se crea el negocio desde el perfil y queda activo (una vez)
 VER CAMPAÑAS DE UN NEGOCIO | "/negocios" > Botón "Ver campañas" > "/campanas?business=<id>" (chip "Quitar filtro")

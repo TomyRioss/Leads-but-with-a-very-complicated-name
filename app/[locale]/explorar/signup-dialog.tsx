@@ -3,8 +3,8 @@
 import { useEffect, useRef } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { Gift, Lock, X } from "lucide-react";
-import { FcGoogle } from "react-icons/fc";
-import { Link } from "@/i18n/navigation";
+import { AuthForm } from "@/app/auth-form";
+import { afterAuthPath } from "@/app/auth-page";
 import "@/app/modal-dialog.css";
 
 /** Se abre al intentar enviar una propuesta: el envío exige cuenta. */
@@ -30,7 +30,7 @@ export function SignupDialog({ open, onClose }: { open: boolean; onClose: () => 
   return (
     <dialog
       ref={dialogRef}
-      className="modal-dialog"
+      className="modal-dialog w-[min(460px,calc(100vw-32px))]!"
       aria-labelledby="explore-signup-title"
       aria-describedby="explore-signup-text"
       onClose={onClose}
@@ -46,12 +46,8 @@ export function SignupDialog({ open, onClose }: { open: boolean; onClose: () => 
         <p id="explore-signup-text" className="mb-4 flex items-center gap-2 text-sm font-semibold text-(color:--ink)">
           <Gift size={16} className="shrink-0" aria-hidden="true" />{tExplore("trial")}
         </p>
-        <div className="grid gap-2.5">
-          <Link href="/register" className="inline-flex min-h-11 items-center justify-center rounded-lg bg-(--lime) px-5 text-sm font-semibold text-(color:--ink) hover:bg-(--lime-dark) focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(color:--ink)">{t("create")}</Link>
-          <a href={`/api/auth/google?locale=${locale}`} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-(color:--line) bg-(--paper) px-5 text-sm font-semibold text-(color:--ink) hover:bg-(--ash-50) focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(color:--ink)">
-            <FcGoogle size={18} aria-hidden="true" />{t("google")}
-          </a>
-        </div>
+        {/* Registro completo acá mismo: Google arriba, después email, teléfono y contraseña. Solo se monta abierto (Turnstile). */}
+        {open ? <AuthForm embedded initialMode="register" onAuthenticated={() => void afterAuthPath(locale).then((path) => window.location.assign(path))} /> : null}
       </div>
     </dialog>
   );

@@ -24,22 +24,23 @@ function safeNextPath(value: string | null): string | null {
   }
 }
 
+/** Destino tras entrar sin `?next=`: un negocio con onboarding pendiente (p. ej. recién traído de /explorar); si no, la app. */
+export async function afterAuthPath(locale: string) {
+  const pending = await fetch("/api/onboarding/pending", { cache: "no-store" }).then((r) => (r.ok ? r.json() : null)).catch(() => null) as { businessId?: unknown } | null;
+  return typeof pending?.businessId === "string" && pending.businessId
+    ? getPathname({ href: { pathname: "/onboarding", query: { business: pending.businessId } }, locale })
+    : getPathname({ href: "/leadtita", locale });
+}
+
 /** /login and /register: the same AuthForm /buscar shows as its gate, with a real URL per mode. */
 export function AuthPage({ mode }: { mode: "login" | "register" }) {
   const locale = useLocale();
-  const app = getPathname({ href: "/leadtita", locale });
   const paths = { login: getPathname({ href: "/login", locale }), register: getPathname({ href: "/register", locale }) };
   // Read once on mount: switching login/register rewrites the URL and drops the query.
   const next = useRef<string | null>(null);
 
   // Destino al entrar: ?next= manda; si no, un negocio con onboarding pendiente (p. ej. recién traído de /explorar); si no, la app.
-  const home = useCallback(async () => {
-    if (next.current) return next.current;
-    const pending = await fetch("/api/onboarding/pending", { cache: "no-store" }).then((r) => (r.ok ? r.json() : null)).catch(() => null) as { businessId?: unknown } | null;
-    return typeof pending?.businessId === "string" && pending.businessId
-      ? getPathname({ href: { pathname: "/onboarding", query: { business: pending.businessId } }, locale })
-      : app;
-  }, [app, locale]);
+  const home = useCallback(async () => next.current ?? afterAuthPath(locale), [locale]);
 
   // Already signed in: straight to the app (or the requested return path).
   useEffect(() => {
