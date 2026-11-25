@@ -10,18 +10,18 @@ export async function ThreeThings() {
   const items = t.raw("items") as Item[];
   return (
     <section className="lp-section" id="edge" aria-labelledby="lp-edge-title">
-      <div className="lp-wrap">
-        <div className="lp-section-head">
-          <h2 id="lp-edge-title" className="font-medium!">{t("title")}</h2>
-        </div>
-        <ul className="m-0 grid list-none gap-5 p-0 md:grid-cols-3 md:gap-6">
+      <div className="lp-wrap grid items-center gap-10 lg:grid-cols-[minmax(0,5fr)_minmax(0,6fr)] lg:gap-16">
+        <h2 id="lp-edge-title" className="text-left font-medium! text-[clamp(2rem,1.3rem+2.6vw,3.5rem)]! leading-[1.05]!">
+          {t.rich("title", { mark: (chunks) => <mark className="whitespace-nowrap decoration-[0.16em]!">{chunks}</mark> })}
+        </h2>
+        <ul className="m-0 grid list-none gap-5 p-0">
           {items.map((item, index) => (
             <li
               key={item.title}
-              className={`flex min-h-[176px] flex-col justify-between gap-8 rounded-[22px] bg-white px-7 pt-7 pb-6 shadow-[0_1px_2px_color-mix(in_srgb,var(--ash-950)_6%,transparent),0_18px_40px_-24px_color-mix(in_srgb,var(--ash-950)_35%,transparent)] transition-[rotate,translate,box-shadow] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-1 hover:rotate-0 motion-reduce:transition-none md:min-h-[244px] ${TILTS[index % TILTS.length]}`}
+              className={`flex min-h-[150px] flex-col justify-center gap-3 rounded-[22px] bg-white px-7 py-7 shadow-[0_1px_2px_color-mix(in_srgb,var(--ash-950)_6%,transparent),0_18px_40px_-24px_color-mix(in_srgb,var(--ash-950)_35%,transparent)] transition-[rotate,translate,box-shadow] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-1 hover:rotate-0 motion-reduce:transition-none ${TILTS[index % TILTS.length]}`}
             >
               <h3 className="m-0 text-[clamp(1.75rem,1.2rem+1.4vw,2.35rem)]! leading-[1.1]! font-medium! tracking-[-0.03em]! text-(color:--ink)">{item.title}</h3>
-              <p className="m-0 max-w-[32ch] text-[15px] leading-normal text-(color:--muted)">{item.text}</p>
+              <p className="m-0 max-w-[48ch] text-[15px] leading-normal text-(color:--muted)">{item.text}</p>
             </li>
           ))}
         </ul>
