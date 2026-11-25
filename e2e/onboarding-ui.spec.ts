@@ -228,3 +228,25 @@ test("ONBOARDING DESDE EXPLORAR: rubros de sus campañas y mercado con bandera",
   await expect(page.locator('img[src="https://flagcdn.com/w40/co.png"]').first()).toBeVisible();
   if (process.env.SHOT_DIR) await page.screenshot({ path: `${process.env.SHOT_DIR}/onb-step2.png`, fullPage: true });
 });
+
+test("SELECTOR DE NEGOCIO: navegar no lo recarga", async ({ page }) => {
+  await mockApi(page, { businesses: [makeBusiness("biz-1", "Loruppa", "loruppa.com", "done")], activeId: "biz-1" });
+  let gets = 0;
+  page.on("request", (request) => { if (request.method() === "GET" && new URL(request.url()).pathname === "/api/businesses") gets += 1; });
+  const switcher = page.getByRole("button", { name: /Negocio activo: Loruppa/ });
+  // Clic por JS: en dev el overlay de errores de Next puede tapar el sidebar.
+  const go = (path: string) => page.locator(`nav a[href$="${path}"]`).first().evaluate((link: HTMLElement) => link.click());
+  await page.goto("/propuestas");
+  await expect(switcher).toBeVisible();
+  await go("/negocios"); // esta página pide su propia lista (1 GET)
+  await expect(page).toHaveURL(/\/negocios/);
+  await expect(switcher).toBeVisible();
+  await go("/propuestas");
+  await expect(page).toHaveURL(/\/propuestas/);
+  await expect(switcher).toBeVisible();
+  expect(gets).toBe(2); // 1 del selector al cargar + 1 de la página Mis negocios
+  // Recargar muestra la copia guardada y vuelve a pedir la lista una vez.
+  await page.reload();
+  await expect(switcher).toBeVisible();
+  await expect.poll(() => gets).toBe(3);
+});

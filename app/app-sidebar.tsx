@@ -62,31 +62,52 @@ type BusinessList = { businesses: Business[]; activeId: string };
 // Ítems propios (no .side-nav-item): el menú vive dentro del nav y el modo colapsado ocultaría sus textos.
 const SWITCHER_ITEM = "flex min-h-11 w-full min-w-0 items-center gap-2.5 rounded-lg px-3 text-left text-sm font-[560] text-(color:--ink) hover:bg-(--ash-50) disabled:cursor-wait focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-(color:--ink)";
 
+// Lista de negocios compartida entre montajes del sidebar: navegar no la vuelve a pedir ni muestra el esqueleto.
+// Se pide una vez por carga de página (antes se pinta la copia de sessionStorage) y otra solo con ACTIVE_BUSINESS_EVENT.
+const BUSINESSES_KEY = "leadta.businesses";
+let businessCache: BusinessList | null = null;
+let businessesFetched = false;
+const businessListeners = new Set<() => void>();
+function readBusinessCache() {
+  if (!businessCache) {
+    try { businessCache = JSON.parse(sessionStorage.getItem(BUSINESSES_KEY) ?? "null") as BusinessList | null; } catch { /* storage bloqueado o dato roto */ }
+  }
+  return businessCache;
+}
+function writeBusinessCache(list: BusinessList | null) {
+  businessCache = list;
+  try { if (list) sessionStorage.setItem(BUSINESSES_KEY, JSON.stringify(list)); else sessionStorage.removeItem(BUSINESSES_KEY); } catch { /* storage bloqueado */ }
+  businessListeners.forEach((listener) => listener());
+}
+/** GET /api/businesses a la caché compartida; false si falló. */
+function loadBusinesses() {
+  return fetch("/api/businesses", { cache: "no-store" })
+    .then((response) => (response.ok ? response.json() : Promise.reject(new Error(String(response.status)))))
+    .then((payload: Partial<BusinessList>) => { writeBusinessCache({ businesses: payload.businesses ?? [], activeId: payload.activeId ?? "" }); return true; })
+    .catch(() => false);
+}
+function subscribeBusinesses(listener: () => void) {
+  businessListeners.add(listener);
+  return () => { businessListeners.delete(listener); };
+}
+
 /** Selector del negocio activo: lista de GET /api/businesses, cambia con PATCH /api/businesses/active. */
 function BusinessSwitcher({ tip, onNavigate }: { tip: (label: string) => string | undefined; onNavigate: () => void }) {
   const t = useTranslations("BusinessSwitcher");
   const router = useRouter();
   const menu = usePopover({ menu: true });
   const closeMenu = menu.close;
-  const [list, setList] = useState<BusinessList | null>(null);
+  const list = useSyncExternalStore(subscribeBusinesses, readBusinessCache, () => null);
   const [failed, setFailed] = useState(false);
   const [switching, setSwitching] = useState("");
   const [error, setError] = useState("");
 
   useEffect(() => {
-    let controller: AbortController | null = null;
-    const load = () => {
-      controller?.abort();
-      const current = new AbortController();
-      controller = current;
-      fetch("/api/businesses", { cache: "no-store", signal: current.signal })
-        .then((response) => (response.ok ? response.json() : Promise.reject(new Error(String(response.status)))))
-        .then((payload: Partial<BusinessList>) => { setList({ businesses: payload.businesses ?? [], activeId: payload.activeId ?? "" }); setFailed(false); })
-        .catch((cause: unknown) => { if (!current.signal.aborted && !(cause instanceof DOMException)) setFailed(true); });
-    };
-    load();
+    // Sin abortar: el pedido llena la caché compartida aunque este montaje ya no exista (modo estricto, navegación).
+    const load = () => { void loadBusinesses().then((ok) => setFailed(!ok && !readBusinessCache())); };
+    if (!businessesFetched) { businessesFetched = true; load(); }
     window.addEventListener(ACTIVE_BUSINESS_EVENT, load);
-    return () => { controller?.abort(); window.removeEventListener(ACTIVE_BUSINESS_EVENT, load); };
+    return () => window.removeEventListener(ACTIVE_BUSINESS_EVENT, load);
   }, []);
 
   async function select(id: string) {
@@ -98,7 +119,7 @@ function BusinessSwitcher({ tip, onNavigate }: { tip: (label: string) => string 
       const response = await fetch("/api/businesses/active", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ businessId: id }) });
       if (!response.ok) throw new Error(String(response.status));
       const payload = await response.json().catch(() => ({})) as { activeId?: string };
-      setList((prev) => (prev ? { ...prev, activeId: payload.activeId || id } : prev));
+      writeBusinessCache({ ...list, activeId: payload.activeId || id });
       closeMenu();
       router.refresh();
       window.dispatchEvent(new Event(ACTIVE_BUSINESS_EVENT));
@@ -279,7 +300,7 @@ export function AppSidebar({ active, user, onSignOut }: AppSidebarProps) {
           </button>
         </div>
         <div className="side-nav-panel" id="side-nav-panel">
-          {user ? <BusinessSwitcher tip={tip} onNavigate={close} /> : <span className="side-nav-item side-nav-skeleton" aria-hidden="true" />}
+          <BusinessSwitcher tip={tip} onNavigate={close} />
           <div className="side-nav-account">
             {user ? (
               <button {...account.triggerProps} type="button" className="side-nav-account-trigger" aria-haspopup="menu" title={user.email}>
@@ -353,7 +374,7 @@ export function AppSidebar({ active, user, onSignOut }: AppSidebarProps) {
             </button>
             <div className="side-nav-foot">
               <LanguageSwitcher placement="top-start" />
-              <button type="button" title={tip(t("t_f394d0254e"))} className="side-nav-item side-nav-signout" onClick={() => { close(); void onSignOut(); }}>
+              <button type="button" title={tip(t("t_f394d0254e"))} className="side-nav-item side-nav-signout" onClick={() => { close(); writeBusinessCache(null); void onSignOut(); }}>
                 <LogOut className="menu-icon signout-icon" size={18} strokeWidth={1.8} aria-hidden="true" />
                 <span>{t("t_f394d0254e")}</span>
               </button>
