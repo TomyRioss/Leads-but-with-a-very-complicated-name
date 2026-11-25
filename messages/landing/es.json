@@ -22,6 +22,7 @@
     },
     "hero": {
       "title": "<green>45 clientes potenciales</green> en 24 horas, <lime>GRATIS</lime>.",
+      "badges": ["$10 USD en créditos gratis.", "Sin información de pago requerida."],
       "explore": {
         "modeLabel": "Tipo de entrada",
         "modeText": "Texto",
