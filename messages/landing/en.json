@@ -50,7 +50,7 @@
       }
     },
     "how": {
-      "title": "<green>Vibeselling</green> has begun",
+      "title": "<green>Vibeselling</green> has begun.",
       "intro": "Leadta removes the repetitive tasks in sales, leaving you in charge of only what truly matters.",
       "steps": [
         { "title": "Enter your business.", "text": "Paste your website or describe what you sell." },
@@ -66,7 +66,7 @@
       }
     },
     "edge": {
-      "title": "Three things <mark>only Leadta</mark> does for you",
+      "title": "Three things <mark>only Leadta</mark> does for you.",
       "items": [
         {
           "title": "Unbeatable Price",
@@ -82,7 +82,7 @@
         }
       ]
     },
-    "closing": {"title": "This one actually works", "button": "Get US$10 in credits to try it"},
+    "closing": {"title": "This one actually works.", "button": "Get US$10 in credits to try it"},
     "footer": {
       "aria": "Leadta links",
       "tagline": "Find. Organize. Move forward.",
