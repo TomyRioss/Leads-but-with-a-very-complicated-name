@@ -174,12 +174,12 @@ export function ExploreShell() {
                     <ProductSummary product={run.product} busy={Boolean(running)} onSaved={onProductSaved} />
                   ) : null}
                   {step === "campaigns" && run.campaigns ? (
-                    <ul className="mt-1 mb-2 hidden space-y-0.5 pr-2 pl-8 lg:block">
+                    <ul className="mt-1.5 mb-2 hidden flex-col items-start gap-1 pr-2 pl-9 lg:flex">
                       {run.campaigns.map((campaign) => (
-                        <li key={campaign.id}>
-                          <button type="button" onClick={() => { setPickedCampaign(campaign.id); setView("campaigns"); }} aria-pressed={selectedCampaignId === campaign.id} className={`flex w-full items-center justify-between gap-2 rounded-md px-2 py-1 text-xs focus-visible:outline-2 focus-visible:outline-(color:--ink) ${selectedCampaignId === campaign.id ? "font-semibold text-(color:--ink)" : "text-(color:--muted) hover:text-(color:--ink)"}`}>
+                        <li key={campaign.id} className="max-w-full">
+                          <button type="button" onClick={() => { setPickedCampaign(campaign.id); setView("campaigns"); }} aria-pressed={selectedCampaignId === campaign.id} className={`flex max-w-full items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs transition-colors focus-visible:outline-2 focus-visible:outline-(color:--ink) ${selectedCampaignId === campaign.id ? "border-(color:--ash-300) bg-(--paper) font-semibold text-(color:--ink)" : "border-transparent bg-(--ash-100) text-(color:--ash-700) hover:border-(color:--line) hover:text-(color:--ink)"}`}>
                             <span className="truncate">{campaign.name}</span>
-                            <span className="tabular-nums">{campaign.fit}%</span>
+                            <span className="text-(color:--muted) tabular-nums">{campaign.fit}%</span>
                           </button>
                         </li>
                       ))}
