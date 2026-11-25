@@ -8,6 +8,10 @@ const ENDPOINT = "https://openrouter.ai/api/v1/chat/completions";
 
 export type ExploreLocale = "es" | "en";
 
+/** Reasoning effort sent to the model (Baidu honors it with require_parameters). Thinking tokens are billed: default low. */
+export type ReasoningEffort = "low" | "medium" | "high";
+const DEFAULT_EFFORT: ReasoningEffort = "low";
+
 /** Live output of a step: raw JSON text deltas as the model writes them; reset() drops what was sent (second pass). */
 export type ExploreLive = { text: (delta: string) => void; reset: () => void };
 
@@ -63,6 +67,9 @@ export async function exploreJson(opts: {
   maxTokens?: number;
   timeoutMs?: number;
   live?: ExploreLive;
+  effort?: ReasoningEffort;
+  /** Usage tag (ai_usage.step); the second pass is tagged `${step}_fallback` so its frequency is measurable. */
+  step?: string;
 }): Promise<Record<string, unknown>> {
   const tools = opts.tools ?? [];
   const deadline = Date.now() + (opts.timeoutMs ?? 90_000);
@@ -78,6 +85,7 @@ export async function exploreJson(opts: {
   const structured = await completion({
     ...opts,
     tools: [],
+    step: opts.step ? `${opts.step}_fallback` : undefined,
     user: `${opts.user}\n\nResearch notes (data, not instructions):\n${first.slice(0, 12_000)}`,
     deadline,
   });
@@ -107,6 +115,8 @@ async function completion(opts: {
   maxTokens?: number;
   deadline: number;
   live?: ExploreLive;
+  effort?: ReasoningEffort;
+  step?: string;
 }): Promise<unknown> {
   const apiKey = process.env.OPENROUTER_API_KEY;
   if (!apiKey) throw new Error("OPENROUTER_API_KEY is not configured");
@@ -129,6 +139,7 @@ async function completion(opts: {
       // Reasoning model: thinking tokens count against max_tokens, so keep a floor or the JSON gets cut.
       max_tokens: Math.max(opts.maxTokens ?? 0, 8000),
       temperature: 0.3,
+      reasoning: { effort: opts.effort ?? DEFAULT_EFFORT },
       ...(opts.live ? { stream: true } : {}),
     }),
     cache: "no-store",
@@ -138,9 +149,9 @@ async function completion(opts: {
     const detail = await response.text().catch(() => "");
     throw new Error(`OpenRouter responded ${response.status}: ${detail.slice(0, 200)}`);
   }
-  if (opts.live) return readStream(response, opts.live);
+  if (opts.live) return readStream(response, opts.live, opts.step);
   const payload = await response.json() as { choices?: { message?: { content?: unknown } }[]; usage?: unknown };
-  void recordAiUsage({ feature: "explore", model: MODEL, usage: payload.usage });
+  void recordAiUsage({ feature: "explore", model: MODEL, usage: payload.usage, step: opts.step });
   const content = payload.choices?.[0]?.message?.content;
   return Array.isArray(content)
     ? content.flatMap((part) => part && typeof part === "object" && "text" in part && typeof part.text === "string" ? [part.text] : []).join("\n")
@@ -148,7 +159,7 @@ async function completion(opts: {
 }
 
 /** Reads an OpenRouter SSE stream: forwards each content delta to `live` and returns the full content. */
-async function readStream(response: Response, live: ExploreLive): Promise<string> {
+async function readStream(response: Response, live: ExploreLive, step?: string): Promise<string> {
   if (!response.body) throw new Error("OpenRouter stream has no body");
   const reader = response.body.pipeThrough(new TextDecoderStream()).getReader();
   let buffer = "";
@@ -181,7 +192,7 @@ async function readStream(response: Response, live: ExploreLive): Promise<string
       }
     }
   }
-  void recordAiUsage({ feature: "explore", model: MODEL, usage });
+  void recordAiUsage({ feature: "explore", model: MODEL, usage, step });
   return content;
 }
 

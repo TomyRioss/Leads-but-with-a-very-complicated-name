@@ -5,7 +5,7 @@ import { EXPLORE_LEAD_COUNT, type ExploreCampaign, type ExploreLead, type Explor
 import { actorSearch, mapPlace, type ActorPlace, type SearchFilters } from "@/lib/server/business-search";
 import { resolveLocation } from "@/lib/server/geography";
 import { splitEvenly } from "@/lib/search-random-location";
-import { exploreJson, languageRule, objectSchema, str, UNTRUSTED_RULE, type ExploreLocale } from "@/lib/server/explore/ai";
+import { exploreJson, languageRule, objectSchema, str, UNTRUSTED_RULE, type ExploreLocale, type ReasoningEffort } from "@/lib/server/explore/ai";
 
 const FALLBACK_COUNTRY = "Argentina";
 // Solo negocios con teléfono (de ahí sale el WhatsApp), y se piden FETCH_FACTOR veces más: se descartan los que no quedan
@@ -17,6 +17,7 @@ const BUDGET_MS = 240_000;
 const MIN_CALL_MS = 30_000;
 const DESCRIPTION_MAX = 240;
 const AI_MIN_MS = 15_000;
+const DESCRIPTIONS_EFFORT: ReasoningEffort = "low";
 
 /**
  * Cheap WhatsApp signal, no worker or paid lookup: an explicit wa.me link in the profile, else a phone that is a
@@ -126,7 +127,7 @@ async function describeLeads(leads: ExploreLead[], locale: ExploreLocale, budget
   ].join(" ");
   const user = leads.map((lead) => `${lead.id} | ${lead.name} | ${lead.category} | ${lead.address} | source: ${lead.description || "-"}`).join("\n");
   try {
-    const result = await exploreJson({ name: "explore_lead_descriptions", schema, system, user, maxTokens: 60 * leads.length + 200, timeoutMs: Math.min(budgetMs, 60_000) });
+    const result = await exploreJson({ name: "explore_lead_descriptions", schema, system, user, maxTokens: 60 * leads.length + 200, timeoutMs: Math.min(budgetMs, 60_000), effort: DESCRIPTIONS_EFFORT, step: "lead_descriptions" });
     const byId = new Map(leads.map((lead) => [lead.id, lead]));
     for (const item of Array.isArray(result.items) ? result.items : []) {
       const record = item && typeof item === "object" ? item as Record<string, unknown> : {};

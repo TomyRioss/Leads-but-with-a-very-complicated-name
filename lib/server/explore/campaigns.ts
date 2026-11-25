@@ -1,9 +1,10 @@
 import "server-only";
 import type { ExploreCampaign, ExploreCompetitors, ExploreProduct } from "@/lib/explore/types";
-import { exploreJson, languageRule, objectSchema, str, strList, UNTRUSTED_RULE, type ExploreLive, type ExploreLocale } from "@/lib/server/explore/ai";
+import { exploreJson, languageRule, objectSchema, str, strList, UNTRUSTED_RULE, type ExploreLive, type ExploreLocale, type ReasoningEffort } from "@/lib/server/explore/ai";
 
 const ICONS: readonly ExploreCampaign["icon"][] = ["store", "utensils", "graduation", "map-pin", "briefcase", "heart-pulse", "wrench", "building", "shopping-cart", "sparkles"];
 const MAX_CAMPAIGNS = 6;
+const EFFORT: ReasoningEffort = "low";
 
 const schema = objectSchema({
   campaigns: {
@@ -48,7 +49,7 @@ export async function runCampaigns(product: ExploreProduct, competitors: Explore
     `Value propositions: ${competitors.valueProps.join("; ")}`,
     `Market: ${product.location || product.country || "(unknown)"}`,
   ].join("\n");
-  const result = await exploreJson({ name: "explore_campaigns", schema, system, user, maxTokens: 3000, live });
+  const result = await exploreJson({ name: "explore_campaigns", schema, system, user, maxTokens: 3000, live, effort: EFFORT, step: "campaigns" });
 
   const ids = new Set<string>();
   const campaigns = (Array.isArray(result.campaigns) ? result.campaigns : []).flatMap((item): ExploreCampaign[] => {

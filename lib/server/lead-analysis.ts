@@ -13,6 +13,8 @@ import { getSocialProfileUrl, type AnalysisDetail, type AnalysisEvidence, type L
 import { isValidEmail, normalizePhone, scrapeWebsite, socialNetworkOf } from "@/lib/server/contact-scrape";
 import { getTranslator, type Locale, type Translator } from "@/lib/server/locale";
 import { hasPainResult, isPainAnalysisCurrent, normalizeTags, parsePainContent, resolveFindings } from "@/lib/analysis-format";
+import { readAiCache, writeAiCache } from "@/lib/server/ai-cache";
+import { enrichmentCacheKey, painCacheKey, selectPainReviews } from "@/lib/server/lead-analysis-input";
 
 const showDiagnostics = isDevOnlyEnabled("analysis_diagnostics");
 
@@ -44,6 +46,12 @@ class OpenRouterResponseError extends Error {
 
 const ENRICHMENT_LEADS_PER_ACCOUNT = 250;
 const models: Record<AnalysisKind, string> = { pain_points: "deepseek/deepseek-v4.1-flash", enrichment: "deepseek/deepseek-v4.1-flash" };
+// Reasoning effort per call: "medium" only where the model writes the A/B sales messages; the rest is extraction.
+const REASONING = { pain: "medium", pain_repair: "low", enrichment: "low", enrichment_repair: "low" } as const;
+// Cross-user cache of public results (no user focus, no user-specific data), shared between accounts.
+const AI_CACHE_TTL_DAYS = 30;
+type PainCacheValue = Pick<AnalysisDetail, "summary" | "tags" | "report" | "findings" | "proposals" | "limitations">;
+type EnrichmentCacheValue = { contactData: ModelContact[]; socialProfiles: ModelSocialProfile[] };
 
 function noDataDetail(reason: string): AnalysisDetail {
   return { summary: "", findings: [], limitations: reason, status: "no_data" };
@@ -73,10 +81,7 @@ function createSources(t: Translator, lead: Lead, kind: AnalysisKind, socialNetw
   if (kind === "pain_points") {
     const websiteUrl = text(lead.website, 2000);
     const websiteSource: Source[] = /^https?:\/\//i.test(websiteUrl) ? [{ id: "WEB", label: t("evidenceWeb"), text: "", url: websiteUrl }] : [];
-    const reviews = safeReviews(lead.source_reviews).sort((a, b) => {
-      const priority = (rating: number | null) => rating !== null && rating <= 3 ? 0 : 1;
-      return priority(a.rating) - priority(b.rating);
-    });
+    const reviews = selectPainReviews(safeReviews(lead.source_reviews));
     return [
       ...reviews.map((review, index) => ({
       id: `R${index + 1}`,
@@ -211,7 +216,7 @@ async function callModel(kind: AnalysisKind, lead: Lead, sources: Source[], soci
   }
   // Enriquecimiento: búsqueda abierta (directorios, registros, prensa); la validación de URLs y datos se hace al recibir la respuesta.
   const tools = kind === "pain_points" ? [
-    { type: "openrouter:web_fetch", parameters: { engine: "openrouter", max_uses: 2, max_content_tokens: 30000, allowed_domains: websiteHost ? [websiteHost] : [] } },
+    { type: "openrouter:web_fetch", parameters: { engine: "openrouter", max_uses: 1, max_content_tokens: 8000, allowed_domains: websiteHost ? [websiteHost] : [] } },
   ] : [
     // Exa cobra por búsqueda con hasta 10 resultados incluidos: más resultados por búsqueda, menos búsquedas.
     { type: "openrouter:web_search", parameters: { engine: "auto", max_results: 10, max_uses: 2 } },
@@ -310,12 +315,15 @@ async function callModel(kind: AnalysisKind, lead: Lead, sources: Source[], soci
   };
 
   const responseFormat = { type: "json_schema", json_schema: { name: kind === "pain_points" ? "lead_pain_analysis" : "lead_analysis", strict: true, schema } };
+  // The first call (with tools) is the main one; the call without tools only repairs its JSON.
+  const step = (includeTools: boolean) => kind === "pain_points" ? (includeTools ? "pain" : "pain_repair") : (includeTools ? "enrichment" : "enrichment_repair");
   const requestModel = (messages: { role: "system" | "user"; content: string }[], includeTools: boolean) => fetch("https://openrouter.ai/api/v1/chat/completions", {
     method: "POST",
     headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
     body: JSON.stringify({
       model: models[kind],
       provider: { require_parameters: true, sort: "price" },
+      reasoning: { effort: REASONING[step(includeTools)] },
       ...(includeTools ? { max_tool_calls: kind === "enrichment" ? 8 : 5 } : {}),
       ...(includeTools ? { tools } : {}),
       ...(includeTools && kind === "pain_points" && websiteHost ? { tool_choice: "required" } : {}),
@@ -328,7 +336,7 @@ async function callModel(kind: AnalysisKind, lead: Lead, sources: Source[], soci
     cache: "no-store",
     signal: AbortSignal.timeout(kind === "pain_points" ? 75_000 : 90_000),
   });
-  const readContent = async (response: Response) => {
+  const readContent = async (response: Response, usageStep: string) => {
     if (!response.ok) {
       const detail = await response.text();
       throw new Error(`OpenRouter responded ${response.status}: ${detail.slice(0, 220)}`);
@@ -340,7 +348,7 @@ async function callModel(kind: AnalysisKind, lead: Lead, sources: Source[], soci
         server_tool_use_details?: { web_search_requests?: number; web_fetch_requests?: number; tool_calls_executed?: number };
       };
     };
-    void recordAiUsage({ feature: "lead_analysis", model: models[kind], userId, usage: payload.usage });
+    void recordAiUsage({ feature: "lead_analysis", model: models[kind], userId, usage: payload.usage, step: usageStep });
     const choice = payload.choices?.[0];
     const message = choice?.message;
     const usage = payload.usage?.server_tool_use_details ?? payload.usage?.server_tool_use;
@@ -420,7 +428,7 @@ async function callModel(kind: AnalysisKind, lead: Lead, sources: Source[], soci
       sources,
       ...(kind === "pain_points" ? { instruction: `Analiza las resenas adjuntas, priorizando calificaciones bajas. Si lead.website existe, usa web_fetch para revisar su contenido visible e identificar problemas concretos de claridad, contacto o experiencia. No afirmes metricas no medidas. Cita IDs R para resenas y WEB para observaciones del sitio. Cada finding incluye tag: la etiqueta exacta de tags que respalda. No uses Google Maps como fuente de texto ni infieras por rubro, promedio o nombre. Enfoque: ${painFocus || "dolores concretos expresados por clientes"}. Si no hay evidencia, devuelve tags, report y findings vacios y explica la limitacion. Devuelve solo JSON valido, sin Markdown, con tags (1 a 4 etiquetas de 2 a 5 palabras), report (3 a 6 oraciones con evidencia y angulo comercial), findings, limitations y ${PROPOSALS_INSTRUCTION}` } : {}),
     }) },
-  ], true));
+  ], true), step(true));
   if (kind === "enrichment" && firstResponse.webSearchRequests < 1) {
     throw new OpenRouterResponseError(
       "OpenRouter ran no social search; the enrichment was not saved.",
@@ -442,7 +450,7 @@ async function callModel(kind: AnalysisKind, lead: Lead, sources: Source[], soci
           role: "user",
           content: JSON.stringify({ allowed_source_ids: sources.map((source) => source.id), response_to_normalize: firstResponse.content.slice(0, 12000) }),
         },
-      ], false));
+      ], false), step(false));
       painOutput = parsePainContent(recoveryResponse.content);
       if (!painOutput) {
         throw new Error(`OpenRouter could not return a response matching the required JSON (finish: ${recoveryResponse.finishReason}). The analysis was not saved.`);
@@ -478,7 +486,7 @@ async function callModel(kind: AnalysisKind, lead: Lead, sources: Source[], soci
         role: "user",
         content: JSON.stringify({ allowed_source_ids: sources.map((source) => source.id), response_to_normalize: firstResponse.content.slice(0, 12000) }),
       },
-    ], false));
+    ], false), step(false));
     parsed = parseResult(recoveryResponse.content);
     if (!parsed) {
       throw new Error(`OpenRouter could not return a response matching the required JSON (finish: ${recoveryResponse.finishReason}). The analysis was not saved.`);
@@ -543,8 +551,29 @@ async function enrichLead(t: Translator, lead: Lead, baseSources: Source[], soci
       text: candidates.filter((candidate) => candidate.source_url === url).map((candidate) => `${candidate.field}: ${candidate.value}`).join("\n"),
       url,
     }));
+    // Public business contacts only (never people): shared across accounts by place/domain + networks + fields asked.
+    const cacheKey = lead.kind === "person" ? "" : enrichmentCacheKey({ mapsUrl: lead.maps_url || "", website: lead.website || "", networks: socialNetworks, missing });
+    const cached = cacheKey ? await readAiCache<EnrichmentCacheValue>("enrichment", cacheKey) : null;
     try {
-      model = await callModel("enrichment", lead, [...baseSources, ...siteSources], socialNetworks, "", locale, missing, userId);
+      if (cached && Array.isArray(cached.contactData) && Array.isArray(cached.socialProfiles)) {
+        // Re-validated like a model answer: the cache row is data, not trusted output.
+        model = {
+          summary: "",
+          findings: [],
+          limitations: "",
+          debugResponse: "(shared cache hit: no model call)",
+          webSearchRequests: 0,
+          toolCallsExecuted: 0,
+          socialProfiles: validatedSocialProfiles(cached.socialProfiles, socialNetworks),
+          contactData: cached.contactData.flatMap((item) => validatedContact(item) ?? []),
+        };
+      } else {
+        model = await callModel("enrichment", lead, [...baseSources, ...siteSources], socialNetworks, "", locale, missing, userId);
+        // Empty answers are not shared: a blocked page today should not hide the business from other accounts for a month.
+        if (cacheKey && (model.contactData.length || model.socialProfiles.length)) {
+          await writeAiCache("enrichment", cacheKey, { contactData: model.contactData, socialProfiles: model.socialProfiles } satisfies EnrichmentCacheValue, AI_CACHE_TTL_DAYS);
+        }
+      }
     } catch (error) {
       // Lo leído del sitio no se pierde si la búsqueda falla.
       if (!candidates.length) throw error;
@@ -620,12 +649,14 @@ export async function runLeadAnalysis(user: Pick<AppUser, "id" | "role">, rawBod
   const limited = await aiRequestLimit(user, t, { daily: false });
   if (limited) return apiResultFrom(limited);
 
-  const body = rawBody as { batchId?: unknown; action?: unknown; leadId?: unknown; socialNetworks?: unknown; focus?: unknown; reuseExistingPain?: unknown };
+  const body = rawBody as { batchId?: unknown; action?: unknown; leadId?: unknown; socialNetworks?: unknown; focus?: unknown; reuseExistingPain?: unknown; force?: unknown };
   const batchId = typeof body.batchId === "string" ? body.batchId : "";
   const action = body.action;
   const leadId = typeof body.leadId === "string" ? body.leadId : "";
   let painFocus = typeof body.focus === "string" ? text(body.focus, 300) : "";
   const reuseExistingPain = body.reuseExistingPain === true;
+  // Only an explicit re-analyze pays again for a row that already has a completed analysis with the same focus.
+  const force = body.force === true;
   // Without an explicit focus, analyze pains against the service the user sells (their commercial profile).
   if (!painFocus && action === "pain_points") painFocus = await activeServiceOffering(user.id);
   const requestedNetworks = Array.isArray(body.socialNetworks)
@@ -660,9 +691,9 @@ export async function runLeadAnalysis(user: Pick<AppUser, "id" | "role">, rawBod
     if (leadId && targets.length === 0) return { status: 404, body: { error: t("rowNotInBatch") } };
     // Las fuentes se calculan una sola vez por lead y se reutilizan para el cobro y el análisis.
     const sourcesByLead = new Map(targets.map((lead) => [lead.id, createSources(t, lead, action, socialNetworks)]));
-    // En lote no se repite un análisis ya completado con el mismo foco; en una fila el usuario lo pide explícitamente.
+    // En lote no se repite un análisis ya completado con el mismo foco; en una fila tampoco, salvo `force: true` (reanalizar).
     // El enriquecimiento se saltea si ya cubrió todas las redes pedidas; los fallidos (sin social_networks) se reintentan.
-    const alreadyAnalyzed = new Set(leadId ? [] : targets.filter((lead) => action === "pain_points"
+    const alreadyAnalyzed = new Set(leadId ? (action === "pain_points" && !force ? targets.filter((lead) => isPainAnalysisCurrent(lead.pain_points_detail, painFocus)).map((lead) => lead.id) : []) : targets.filter((lead) => action === "pain_points"
       ? reuseExistingPain
         ? Boolean(lead.pain_points_detail?.status === "completed" || (lead.pain_points_detail?.status === "no_data" && !(sourcesByLead.get(lead.id)?.length ?? 0)))
         : isPainAnalysisCurrent(lead.pain_points_detail, painFocus) || Boolean(lead.pain_points_detail?.status === "no_data" && !(sourcesByLead.get(lead.id)?.length ?? 0))
@@ -793,7 +824,17 @@ export async function runLeadAnalysis(user: Pick<AppUser, "id" | "role">, rawBod
         return;
       }
       try {
-        const result = await callModel(action, lead, sources, socialNetworks, painFocus, locale, [], user.id);
+        // No user focus: the result only depends on the place and language, so it is shared across accounts.
+        // A hit still saves to this lead and charges like a fresh analysis; it only skips the model call.
+        const sharedKey = painCacheKey({ mapsUrl: lead.maps_url || "", focus: painFocus, locale });
+        const cached = sharedKey ? await readAiCache<PainCacheValue>("pain", sharedKey) : null;
+        const result: ModelCallResult = cached && typeof cached.summary === "string" && Array.isArray(cached.findings)
+          ? { ...cached, debugResponse: "(shared cache hit: no model call)", webSearchRequests: 0, toolCallsExecuted: 0, socialProfiles: [], contactData: [] }
+          : await callModel(action, lead, sources, socialNetworks, painFocus, locale, [], user.id);
+        if (sharedKey && !cached && hasPainResult(result)) {
+          const { summary, tags, report, findings, proposals, limitations } = result;
+          await writeAiCache("pain", sharedKey, { summary, tags, report, findings, proposals, limitations } satisfies PainCacheValue, AI_CACHE_TTL_DAYS);
+        }
         // Se descartan socialProfiles/contactData (solo enriquecimiento) para no guardarlos en pain_points_detail.
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const { debugResponse, socialProfiles, contactData, ...detail } = result;

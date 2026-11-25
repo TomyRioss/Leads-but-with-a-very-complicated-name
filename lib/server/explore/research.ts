@@ -1,7 +1,11 @@
 import "server-only";
 import type { ExploreInput, ExploreProduct } from "@/lib/explore/types";
 import { resolveLocation } from "@/lib/server/geography";
-import { exploreJson, hostOf, languageRule, objectSchema, str, UNTRUSTED_RULE, webFetchTool, webSearchTool, type ExploreLive, type ExploreLocale } from "@/lib/server/explore/ai";
+import { readAiCache, writeAiCache } from "@/lib/server/ai-cache";
+import { exploreJson, hostOf, languageRule, objectSchema, str, UNTRUSTED_RULE, webFetchTool, webSearchTool, type ExploreLive, type ExploreLocale, type ReasoningEffort } from "@/lib/server/explore/ai";
+import { EXPLORE_CACHE_TTL_DAYS, researchCacheKey } from "@/lib/server/explore/dedupe";
+
+const EFFORT: ReasoningEffort = "low";
 
 const schema = objectSchema({
   name: { type: "string", maxLength: 80 },
@@ -27,10 +31,25 @@ export async function canonicalCountry(value: string) {
   }
 }
 
-/** Step 1: product card. Web mode reads the site (web_fetch) and searches the web; text/services derive it from the visitor's words. */
+const isProduct = (value: unknown): value is ExploreProduct => {
+  const record = value && typeof value === "object" ? value as Record<string, unknown> : null;
+  return Boolean(record && typeof record.name === "string" && record.name && typeof record.summary === "string" && record.summary
+    && typeof record.domain === "string" && typeof record.location === "string" && typeof record.country === "string");
+};
+
+/**
+ * Step 1: product card. Web mode reads the site (web_fetch) and searches the web; text/services derive it from the visitor's words.
+ * Cached across users for EXPLORE_CACHE_TTL_DAYS (same domain, or same visitor text, and locale): a hit skips the model.
+ */
 export async function runResearch(input: ExploreInput, locale: ExploreLocale, live?: ExploreLive): Promise<ExploreProduct> {
   const domain = input.mode === "web" ? hostOf(input.url) : "";
   const web = input.mode === "web" && Boolean(domain);
+  const cacheKey = researchCacheKey(input, domain, locale);
+  const cached = await readAiCache<ExploreProduct>("research", cacheKey);
+  if (isProduct(cached)) {
+    live?.text(JSON.stringify(cached)); // One chunk so the card renders like a live answer.
+    return cached;
+  }
   const system = [
     "You profile a product or service so a sales tool can find its customers.",
     web
@@ -52,15 +71,19 @@ export async function runResearch(input: ExploreInput, locale: ExploreLocale, li
     maxToolCalls: 3,
     maxTokens: 1200,
     live,
+    effort: EFFORT,
+    step: "research",
   });
   const name = str(result.name, 80);
   const summary = str(result.summary, 400);
   if (!name || !summary) throw new Error("research: empty product");
-  return {
+  const product: ExploreProduct = {
     name,
     domain,
     summary,
     location: str(result.location, 80),
     country: await canonicalCountry(str(result.country, 60)),
   };
+  await writeAiCache("research", cacheKey, product, EXPLORE_CACHE_TTL_DAYS);
+  return product;
 }

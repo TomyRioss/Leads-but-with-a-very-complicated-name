@@ -19,7 +19,13 @@ type RunRecord = {
   leads?: ExploreRun["leads"];
   proposals?: ExploreRun["proposals"];
   claimed_by?: string;
+  // Step lease (optional fields: absent until the migration is applied; PocketBase ignores them on write then).
+  running_step?: string;
+  running_since?: string;
 };
+
+/** Step currently being computed for the run, if any (may be stale: check with hasLiveLease). */
+export type RunLease = { running_step?: string; running_since?: string };
 
 type List<T> = { items: T[]; totalItems?: number };
 
@@ -47,8 +53,17 @@ export async function createRun(input: ExploreInput, ipHash: string): Promise<{ 
 }
 
 export async function getRun(token: string): Promise<ExploreRun | null> {
+  return (await getRunState(token))?.run ?? null;
+}
+
+/** Run plus its record id and step lease, in one read. */
+export async function getRunState(token: string): Promise<{ id: string; run: ExploreRun; lease: RunLease } | null> {
   const record = await findRecord(token);
   if (!record) return null;
+  return { id: record.id, run: toRun(token, record), lease: { running_step: record.running_step, running_since: record.running_since } };
+}
+
+function toRun(token: string, record: RunRecord): ExploreRun {
   return {
     token,
     input: record.input,
@@ -61,14 +76,28 @@ export async function getRun(token: string): Promise<ExploreRun | null> {
   };
 }
 
-export async function updateRun(token: string, patch: Partial<Omit<ExploreRun, "token" | "input">>): Promise<void> {
-  const record = await findRecord(token);
-  if (!record) throw new Error("Explore run not found.");
+const recordPath = (id: string) => `/api/collections/${COLLECTION}/records/${encodeURIComponent(id)}`;
+const NO_LEASE = { running_step: "", running_since: "" };
+
+/** Saves step outputs. `recordId` skips the lookup; `clearLease` releases the step lease in the same write. */
+export async function updateRun(token: string, patch: Partial<Omit<ExploreRun, "token" | "input">>, options: { recordId?: string; clearLease?: boolean } = {}): Promise<void> {
+  const id = options.recordId ?? (await findRecord(token))?.id;
+  if (!id) throw new Error("Explore run not found.");
   const { campaignId, ...rest } = patch;
-  const body: Record<string, unknown> = { ...rest };
+  const body: Record<string, unknown> = { ...rest, ...(options.clearLease ? NO_LEASE : {}) };
   if (campaignId !== undefined) body.campaign_id = campaignId;
   if (Object.keys(body).length === 0) return;
-  await pocketBaseFetch(`/api/collections/${COLLECTION}/records/${encodeURIComponent(record.id)}`, { method: "PATCH", body: JSON.stringify(body) });
+  await pocketBaseFetch(recordPath(id), { method: "PATCH", body: JSON.stringify(body) });
+}
+
+/** Marks `step` as running now (lease). Not atomic: two instances racing in the same instant may both take it. */
+export async function takeLease(recordId: string, step: string): Promise<void> {
+  await pocketBaseFetch(recordPath(recordId), { method: "PATCH", body: JSON.stringify({ running_step: step.slice(0, 20), running_since: new Date().toISOString() }) });
+}
+
+/** Releases the lease after a failure. Best effort: a stale lease expires on its own. */
+export async function releaseLease(recordId: string): Promise<void> {
+  await pocketBaseFetch(recordPath(recordId), { method: "PATCH", body: JSON.stringify(NO_LEASE) }).catch(() => {});
 }
 
 export async function countRunsByIp(ipHash: string, sinceIso: string): Promise<number> {

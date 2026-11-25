@@ -8,6 +8,8 @@ export type Verdict = "person" | "reject" | "unsure";
 
 const MODEL = "deepseek/deepseek-v4.1-flash";
 const MODEL_TIMEOUT_MS = 45_000;
+// Reasoning effort: person/company verdicts are a simple classification, low is enough.
+const REASONING = { people_classify: "low" } as const;
 const MAX_MODEL_ITEMS = 40;
 const MODEL_BATCH_SIZE = 20;
 // Palabras que aparecen en razones sociales con forma de nombre ("Realty Plus Argentina", "KDK Argentina").
@@ -130,6 +132,7 @@ async function askModel(unsure: PersonCandidate[], role: string, signal?: AbortS
     body: JSON.stringify({
       model: MODEL,
       provider: { require_parameters: true, sort: "price" },
+      reasoning: { effort: REASONING.people_classify },
       response_format: { type: "json_schema", json_schema: { name: "person_verdicts", strict: true, schema } },
       plugins: [{ id: "response-healing" }],
       messages: [
@@ -144,7 +147,7 @@ async function askModel(unsure: PersonCandidate[], role: string, signal?: AbortS
   });
   if (!response.ok) throw new Error(`OpenRouter responded ${response.status}`);
   const payload = await response.json() as { choices?: { message?: { content?: unknown; reasoning?: unknown } }[]; usage?: unknown };
-  void recordAiUsage({ feature: "people_classify", model: MODEL, userId, usage: payload.usage });
+  void recordAiUsage({ feature: "people_classify", model: MODEL, userId, usage: payload.usage, step: "people_classify" });
   return parseModelVerdicts(messageText(payload.choices?.[0]?.message), unsure.length);
 }
 

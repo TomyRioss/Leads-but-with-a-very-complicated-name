@@ -1,8 +1,10 @@
+import { setTimeout as sleep } from "node:timers/promises";
 import { NextResponse, type NextRequest } from "next/server";
 import { EXPLORE_STEPS, EXPLORE_TOKEN_COOKIE, type ExploreProposal, type ExploreRun, type ExploreStep } from "@/lib/explore/types";
 import type { ExploreLive, ExploreLocale } from "@/lib/server/explore/ai";
 import { once, stepRateLimited } from "@/lib/server/explore/guard";
-import { getRun, updateRun } from "@/lib/server/explore/store";
+import { getRunState, releaseLease, takeLease, updateRun } from "@/lib/server/explore/store";
+import { hasLiveLease } from "@/lib/server/explore/dedupe";
 import { runResearch } from "@/lib/server/explore/research";
 import { runCompetitors } from "@/lib/server/explore/competitors";
 import { runCampaigns } from "@/lib/server/explore/campaigns";
@@ -11,54 +13,94 @@ import { runProposals } from "@/lib/server/explore/proposals";
 
 export const maxDuration = 300;
 
+// A second request for a step another request is computing (other tab, reload, other instance) polls the run
+// instead of paying again. It gives up before maxDuration so the response still closes cleanly.
+const POLL_MS = 2_000;
+const WAIT_BUDGET_MS = 280_000;
+
 class PrerequisiteError extends Error {}
+class StepFailedError extends Error {}
 
 const fail = (error: string, status: number) => NextResponse.json({ error }, { status });
 
 type Live = ExploreLive & { item: (proposal: ExploreProposal) => void };
+type RunPatch = Parameters<typeof updateRun>[1];
 
-/** Runs one step from the run's previous outputs, saves it and returns it. Idempotent: a filled step is returned as is. */
+const OUTPUT_FIELD = { research: "product", competitors: "competitors", campaigns: "campaigns", leads: "leads", proposals: "proposals" } as const satisfies Record<ExploreStep, keyof ExploreRun>;
+const savedOutput = (run: ExploreRun, step: ExploreStep): unknown => run[OUTPUT_FIELD[step]] ?? null;
+
+/**
+ * Runs one step from the run's previous outputs, saves it and returns it. Idempotent: a filled step is returned as is.
+ * While it runs the run holds a lease (running_step/running_since); a concurrent request waits for the saved result.
+ */
 async function runStep(token: string, step: ExploreStep, campaignId: string, locale: ExploreLocale, live: Live): Promise<unknown> {
-  const run: ExploreRun | null = await getRun(token);
-  if (!run) throw new PrerequisiteError("not_found");
+  const state = await getRunState(token);
+  if (!state) throw new PrerequisiteError("not_found");
+  const { id, run } = state;
+  const saved = savedOutput(run, step);
+  if (saved) return saved;
+  if (hasLiveLease(state.lease, step, Date.now())) return waitForStep(token, step);
+
   const need = <T,>(value: T | null | undefined): T => {
     if (value === null || value === undefined) throw new PrerequisiteError("prerequisite");
     return value;
   };
+  // Prerequisites are checked before taking the lease; `work` is the paid part.
+  let work: () => Promise<RunPatch>;
   switch (step) {
-    case "research": {
-      if (run.product) return run.product;
-      const product = await runResearch(run.input, locale, live);
-      await updateRun(token, { product });
-      return product;
-    }
+    case "research":
+      work = async () => ({ product: await runResearch(run.input, locale, live) });
+      break;
     case "competitors": {
-      if (run.competitors) return run.competitors;
-      const competitors = await runCompetitors(need(run.product), locale, live);
-      await updateRun(token, { competitors });
-      return competitors;
+      const product = need(run.product);
+      work = async () => ({ competitors: await runCompetitors(product, locale, live) });
+      break;
     }
     case "campaigns": {
-      if (run.campaigns) return run.campaigns;
-      const campaigns = await runCampaigns(need(run.product), need(run.competitors), locale, live);
-      await updateRun(token, { campaigns });
-      return campaigns;
+      const product = need(run.product);
+      const competitors = need(run.competitors);
+      work = async () => ({ campaigns: await runCampaigns(product, competitors, locale, live) });
+      break;
     }
     case "leads": {
-      if (run.leads) return run.leads;
+      const product = need(run.product);
       const campaign = need(need(run.campaigns).find((item) => item.id === campaignId));
-      const leads = await runLeads(need(run.product), campaign, locale);
-      await updateRun(token, { campaignId: campaign.id, leads });
-      return leads;
+      work = async () => ({ campaignId: campaign.id, leads: await runLeads(product, campaign, locale) });
+      break;
     }
     case "proposals": {
-      if (run.proposals) return run.proposals;
+      const product = need(run.product);
       const campaign = need(need(run.campaigns).find((item) => item.id === run.campaignId));
-      const proposals = await runProposals(need(run.product), campaign, need(run.leads), locale, live.item);
-      await updateRun(token, { proposals });
-      return proposals;
+      const leads = need(run.leads);
+      work = async () => ({ proposals: await runProposals(product, campaign, leads, locale, live.item) });
+      break;
     }
   }
+
+  await takeLease(id, step);
+  try {
+    const patch = await work();
+    await updateRun(token, patch, { recordId: id, clearLease: true });
+    return patch[OUTPUT_FIELD[step]];
+  } catch (error) {
+    await releaseLease(id);
+    throw error;
+  }
+}
+
+/** Polls the run until the lease holder saves the step. Lease released or stale without output → step_failed. */
+async function waitForStep(token: string, step: ExploreStep): Promise<unknown> {
+  const deadline = Date.now() + WAIT_BUDGET_MS;
+  while (Date.now() + POLL_MS < deadline) {
+    await sleep(POLL_MS);
+    const state = await getRunState(token).catch(() => undefined); // Transient read error: try again next tick.
+    if (state === undefined) continue;
+    if (!state) throw new PrerequisiteError("not_found");
+    const saved = savedOutput(state.run, step);
+    if (saved) return saved;
+    if (!hasLiveLease(state.lease, step, Date.now())) throw new StepFailedError("lease released or stale without output");
+  }
+  throw new StepFailedError("wait budget exhausted");
 }
 
 /**
@@ -97,7 +139,7 @@ export async function POST(request: NextRequest, ctx: { params: Promise<{ step: 
       };
       const live: Live = { text: (t) => send({ t }), reset: () => send({ reset: true }), item: (item) => send({ item }) };
       try {
-        // A duplicate call while the step runs gets only the final result, not the live text.
+        // A duplicate call while the step runs (same instance via once(), other instances via the lease) gets only the final result.
         const data = await once(`${token}:${step}`, () => runStep(token, step as ExploreStep, campaignId, locale, live));
         send({ data });
       } catch (error) {

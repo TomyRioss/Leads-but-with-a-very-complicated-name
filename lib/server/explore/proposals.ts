@@ -1,7 +1,11 @@
 import "server-only";
 import { EXPLORE_MIN_MINORITY_CHANNEL, EXPLORE_PROPOSAL_COUNT, type ExploreCampaign, type ExploreLead, type ExploreProduct, type ExploreProposal } from "@/lib/explore/types";
-import { exploreJson, objectSchema, str, type ExploreLocale } from "@/lib/server/explore/ai";
+import { exploreJson, objectSchema, str, type ExploreLocale, type ReasoningEffort } from "@/lib/server/explore/ai";
 import { pickProposalChannels } from "@/lib/server/explore/channel-mix";
+
+// Emails are longer and carry a subject: more reasoning. WhatsApp drafts are short: low.
+const EMAIL_EFFORT: ReasoningEffort = "medium";
+const WHATSAPP_EFFORT: ReasoningEffort = "low";
 
 const schema = objectSchema({
   subject: { type: "string", maxLength: 80 },
@@ -61,7 +65,7 @@ export async function runProposals(product: ExploreProduct, campaign: ExploreCam
       reviews: lead.review_count,
       website: lead.website ? "yes" : "no",
     })}`;
-    const result = await exploreJson({ name: "explore_proposal", schema, system, user, timeoutMs: 120_000 });
+    const result = await exploreJson({ name: "explore_proposal", schema, system, user, timeoutMs: 120_000, effort: channel === "gmail" ? EMAIL_EFFORT : WHATSAPP_EFFORT, step: "proposal" });
     const body = typeof result.body === "string" ? result.body.trim().slice(0, 1200) : "";
     if (!body) throw new Error("proposals: empty body");
     const proposal: ExploreProposal = { leadId: lead.id, channel, to, subject: channel === "gmail" ? str(result.subject, 80) : "", body };

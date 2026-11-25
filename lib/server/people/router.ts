@@ -4,6 +4,8 @@ import { recordAiUsage } from "@/lib/server/ai-usage";
 
 // Jev (OpenRouter) solo enruta: lee la intención que interpretó DeepSeek y elige qué scrapers correr.
 const MODEL = "typesafe/jev-router";
+// Reasoning effort (the model lists `reasoning` among its supported parameters): picking sources is a short choice.
+const REASONING = { people_route: "low" } as const;
 const TIMEOUT_MS = 15_000;
 const MAX_SOURCES = 5;
 
@@ -79,6 +81,7 @@ export async function routeSources(plan: PeopleSearchPlan, signal?: AbortSignal,
       headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
       body: JSON.stringify({
         model: MODEL,
+        reasoning: { effort: REASONING.people_route },
         response_format: { type: "json_schema", json_schema: { name: "people_search_sources", strict: true, schema } },
         messages: [{ role: "user", content: prompt(plan) }],
         max_tokens: 1024,
@@ -89,7 +92,7 @@ export async function routeSources(plan: PeopleSearchPlan, signal?: AbortSignal,
     });
     if (!response.ok) throw new Error(`OpenRouter responded ${response.status}`);
     const payload = await response.json() as { choices?: { message?: { content?: unknown; reasoning?: unknown } }[]; usage?: unknown };
-    void recordAiUsage({ feature: "people_router", model: MODEL, userId, usage: payload.usage });
+    void recordAiUsage({ feature: "people_router", model: MODEL, userId, usage: payload.usage, step: "people_route" });
     const raw = extractJsonObject(messageText(payload.choices?.[0]?.message));
     const sources = sanitizeSources(raw?.sources, plan);
     // Solo Google no es una decisión: Jev no eligió nada válido.

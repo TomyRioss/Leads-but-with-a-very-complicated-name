@@ -3,6 +3,8 @@ import { recordAiUsage } from "@/lib/server/ai-usage";
 
 const MODEL = "deepseek/deepseek-v4.1-flash";
 const MODEL_TIMEOUT_MS = 30_000;
+// Reasoning effort: planning a search is structured extraction, low is enough.
+const REASONING = { people_plan: "low" } as const;
 const PROFILE_TYPES: ProfileType[] = ["trade", "commercial", "technical", "professional", "freelance"];
 
 export class SensitiveSegmentError extends Error {
@@ -182,6 +184,7 @@ export async function planPeopleSearch(query: string, location: string, locale: 
       body: JSON.stringify({
         model: MODEL,
         provider: { require_parameters: true, sort: "price" },
+        reasoning: { effort: REASONING.people_plan },
         response_format: format === "json_schema" ? { type: "json_schema", json_schema: { name: "people_search_plan", strict: true, schema } } : { type: "json_object" },
         plugins: [{ id: "response-healing" }],
         messages,
@@ -194,7 +197,7 @@ export async function planPeopleSearch(query: string, location: string, locale: 
     });
     if (!response.ok) throw new Error(`OpenRouter responded ${response.status}: ${(await response.text()).slice(0, 220)}`);
     const payload = await response.json() as { choices?: { finish_reason?: string | null; message?: { content?: unknown; reasoning?: unknown } }[]; usage?: unknown };
-    void recordAiUsage({ feature: "people_planner", model: MODEL, userId, usage: payload.usage });
+    void recordAiUsage({ feature: "people_planner", model: MODEL, userId, usage: payload.usage, step: "people_plan" });
     return { text: messageText(payload.choices?.[0]?.message), finish: payload.choices?.[0]?.finish_reason ?? "unknown" };
   };
 
