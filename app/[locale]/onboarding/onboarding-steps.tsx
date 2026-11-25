@@ -4,12 +4,13 @@ import { useEffect, useId, useState, type FormEvent, type ReactNode } from "reac
 import { useFormatter, useTranslations } from "next-intl";
 import { ArrowLeft, ArrowRight, Check, CircleAlert, Clock, CreditCard, Loader2, MapPin, Pencil, Plus, Sparkles, X } from "lucide-react";
 import { SiGmail, SiWhatsapp } from "react-icons/si";
-import { Link } from "@/i18n/navigation";
 import { Favicon } from "@/app/[locale]/explorar/explore-steps";
 import { WhatsAppConnectCard } from "@/app/whatsapp-connect";
 import { GoogleFeatureConnectButton } from "@/app/google-drive-connect";
 import { FREE_LIMITS, UNKNOWN_PLAN_LIMITS, getSubscriptionPlan, type PlanLimits } from "@/lib/plans";
 import { TRIAL_DAYS } from "@/lib/trial";
+import { countryCode, flagUrl } from "@/lib/country-flag";
+import { PlanPicker } from "./plan-picker";
 import type { Business, BusinessMarket, ProposalChannel } from "@/lib/workspace/types";
 import type { SessionUser } from "@/lib/client/session";
 
@@ -228,6 +229,15 @@ export function marketLabel(market: BusinessMarket, whole: string) {
   return market.region ? `${market.region}, ${market.country}` : `${market.country} · ${whole}`;
 }
 
+/** Bandera del país del mercado; pin neutro si el nombre no es un país conocido. */
+function MarketIcon({ country }: { country: string }) {
+  const url = flagUrl(countryCode(country));
+  return url
+    // eslint-disable-next-line @next/next/no-img-element -- bandera raster chica (mismo origen que la tabla de leads)
+    ? <img src={url} alt="" width={20} height={14} loading="lazy" className="h-3.5 w-5 shrink-0 rounded-[3px] object-cover" />
+    : <MapPin size={14} className="shrink-0 text-(color:--muted)" aria-hidden="true" />;
+}
+
 export function CustomersStep({ business, nav, onSubmit }: { business: Business; nav: StepNav; onSubmit: (data: { markets: BusinessMarket[]; businessTypes: string[] }) => void }) {
   const t = useTranslations("BusinessOnboarding.customers");
   const tRoot = useTranslations("BusinessOnboarding");
@@ -235,6 +245,19 @@ export function CustomersStep({ business, nav, onSubmit }: { business: Business;
   const regionId = useId();
   const [markets, setMarkets] = useState<BusinessMarket[]>(() => business.markets?.length ? business.markets : business.country ? [{ country: business.country, region: "" }] : []);
   const [types, setTypes] = useState<string[]>(business.businessTypes ?? []);
+  // Negocios de /explorar creados antes de guardar rubros: se proponen los de sus campañas (mayor afinidad primero).
+  useEffect(() => {
+    if (business.businessTypes?.length) return;
+    let ignore = false;
+    fetch(`/api/sales-campaigns?business=${encodeURIComponent(business.id)}`, { cache: "no-store" })
+      .then((response) => (response.ok ? response.json() : null))
+      .then((payload: { campaigns?: { name: string }[] } | null) => {
+        const names = [...new Set((payload?.campaigns ?? []).map((campaign) => campaign.name.trim()).filter(Boolean))].slice(0, 12);
+        if (!ignore && names.length) setTypes((current) => (current.length ? current : names));
+      })
+      .catch(() => {});
+    return () => { ignore = true; };
+  }, [business.id, business.businessTypes]);
   const [country, setCountry] = useState("");
   const [region, setRegion] = useState("");
   const [missing, setMissing] = useState(false);
@@ -267,7 +290,7 @@ export function CustomersStep({ business, nav, onSubmit }: { business: Business;
                 const text = marketLabel(market, t("wholeCountry"));
                 return (
                   <Chip key={`${market.country}|${market.region}`} onRemove={() => setMarkets((list) => list.filter((m) => m !== market))} removeLabel={t("remove", { name: text })}>
-                    <MapPin size={14} className="shrink-0 text-(color:--muted)" aria-hidden="true" /><span className="truncate">{text}</span>
+                    <MarketIcon country={market.country} /><span className="truncate">{text}</span>
                   </Chip>
                 );
               })}
@@ -365,7 +388,7 @@ export function ConfirmStep({ business, nav, onSubmit, onEdit }: { business: Bus
             <ul className="flex flex-wrap gap-2">
               {(business.markets ?? []).map((market) => (
                 <Chip key={`${market.country}|${market.region}`}>
-                  <MapPin size={14} className="shrink-0 text-(color:--muted)" aria-hidden="true" /><span className="truncate">{marketLabel(market, tc("wholeCountry"))}</span>
+                  <MarketIcon country={market.country} /><span className="truncate">{marketLabel(market, tc("wholeCountry"))}</span>
                 </Chip>
               ))}
             </ul>
@@ -432,12 +455,12 @@ export function PlanStep({ user, nav, onSubmit }: { user: SessionUser | null; na
                 <p className="text-lg font-semibold tracking-tight">{expired ? t("expiredTitle") : t("trialTitle", { days: TRIAL_DAYS })}</p>
                 <p className="mt-1 text-sm leading-relaxed text-(color:--ash-700)">{expired ? t("expiredText") : t("trialText", { days: TRIAL_DAYS })}</p>
                 {!expired && endsAt ? <p className="mt-2 text-sm font-semibold">{t("trialEnds", { date: format.dateTime(new Date(endsAt), { day: "numeric", month: "long" }) })}</p> : null}
-                <Link href="/pricing" className={`${expired ? PRIMARY : SECONDARY} mt-4`}>{t("seePlans")}<ArrowRight size={16} aria-hidden="true" /></Link>
               </div>
             </div>
             {state === "error" ? <p className="mt-4 text-sm text-(color:--muted)">{t("error")}</p> : null}
           </div>
         )}
+        {state !== null && !active ? <PlanPicker currentPlanId={undefined} /> : null}
       </StepBody>
       <StepFooter nav={nav} label={tRoot("continue")} onContinue={onSubmit} />
     </>
@@ -552,14 +575,22 @@ export function CapacityStep({ business, nav, onSubmit }: { business: Business; 
   const u = usage && usage !== "error" ? usage : null;
   const n = (value: number) => format.number(value);
   const capOrUnlimited = (value: number) => (Number.isFinite(value) ? t("limitOnly", { limit: n(value) }) : t("unlimited"));
-  const rows: { key: string; label: string; value: string; used?: number; limit?: number }[] = [
-    { key: "plan", label: t("plan"), value: active?.planName ?? t("planFree") },
-    u ? { key: "wa", label: t("whatsappMonthly"), value: t("usage", { used: n(u.whatsapp.used), limit: n(u.whatsapp.limit) }), used: u.whatsapp.used, limit: u.whatsapp.limit }
-      : { key: "wa", label: t("whatsappMonthly"), value: capOrUnlimited(limits.whatsappMonthly) },
-    ...(u ? [{ key: "gmail", label: t("gmailDaily"), value: t("usage", { used: n(u.gmail.used), limit: n(u.gmail.limit) }), used: u.gmail.used, limit: u.gmail.limit }] : []),
-    { key: "email", label: t("emailMonthly"), value: capOrUnlimited(limits.emailMonthly) },
-    { key: "scheduled", label: t("scheduledMonthly"), value: capOrUnlimited(limits.scheduledMonthly) },
-    ...(u ? [u.ai ? { key: "ai", label: t("aiDaily"), value: t("usage", { used: n(u.ai.used), limit: n(u.ai.limit) }), used: u.ai.used, limit: u.ai.limit } : { key: "ai", label: t("aiDaily"), value: t("unlimited") }] : []),
+  // Agrupado por canal: cada límite es una fila (etiqueta, valor, barra si hay consumo).
+  type Meter = { key: string; label: string; value: string; used?: number; limit?: number };
+  const meter = (key: string, label: string, count: { used: number; limit: number } | null | undefined, cap: number): Meter =>
+    count ? { key, label, value: t("usageShort", { used: n(count.used), limit: n(count.limit) }), used: count.used, limit: count.limit } : { key, label, value: capOrUnlimited(cap) };
+  const groups: { key: string; title: string; icon: ReactNode; meters: Meter[] }[] = [
+    { key: "whatsapp", title: tc("whatsapp"), icon: <SiWhatsapp size={18} color={WHATSAPP_GREEN} aria-hidden="true" />, meters: [
+      meter("wa", t("perMonth"), u?.whatsapp, limits.whatsappMonthly),
+      { key: "scheduled", label: t("scheduled"), value: capOrUnlimited(limits.scheduledMonthly) },
+    ] },
+    { key: "gmail", title: tc("gmail"), icon: <SiGmail size={18} color={GMAIL_RED} aria-hidden="true" />, meters: [
+      ...(u ? [meter("gmail", t("perDay"), u.gmail, Infinity)] : []),
+      { key: "email", label: t("perMonth"), value: capOrUnlimited(limits.emailMonthly) },
+    ] },
+    { key: "ai", title: t("aiTitle"), icon: <Sparkles size={18} className="text-(color:--ink)" aria-hidden="true" />, meters: [
+      u?.ai ? meter("ai", t("perDay"), u.ai, Infinity) : { key: "ai", label: t("perDay"), value: t("unlimited") },
+    ] },
   ];
   const connected: Record<ProposalChannel, boolean | null> = {
     whatsapp: whatsapp === null ? null : whatsapp !== "error" && whatsapp.status === "connected",
@@ -575,19 +606,35 @@ export function CapacityStep({ business, nav, onSubmit }: { business: Business; 
         ) : (
           <>
             {subscription === "error" || usage === "error" ? <p className="text-sm text-(color:--muted)">{t("error")}</p> : null}
-            <dl className="grid gap-3 sm:grid-cols-2">
-              {rows.map((row) => (
-                <div key={row.key} className="rounded-xl border border-(color:--line) bg-(--ash-50) p-4">
-                  <dt className={LABEL}>{row.label}</dt>
-                  <dd className="mt-1.5 text-lg font-semibold tracking-tight tabular-nums">{row.value}</dd>
-                  {row.limit ? (
-                    <dd className="mt-2 h-1.5 overflow-hidden rounded-full bg-(--ash-200)" aria-hidden="true">
-                      <span className="block h-full rounded-full bg-(--lime-dark)" style={{ width: `${Math.min(100, Math.round(((row.used ?? 0) / row.limit) * 100))}%` }} />
-                    </dd>
-                  ) : null}
-                </div>
+            <div className="flex items-center gap-3 rounded-xl border border-(color:--line) bg-(--ash-50) px-4 py-3.5">
+              <span className="grid size-10 shrink-0 place-items-center rounded-full bg-(--ash-950) text-(color:--lime)" aria-hidden="true">{active ? <CreditCard size={18} /> : <Sparkles size={18} />}</span>
+              <div className="min-w-0 flex-1">
+                <p className={LABEL}>{t("plan")}</p>
+                <p className="text-lg leading-tight font-semibold tracking-tight">{active?.planName ?? t("planFree")}</p>
+              </div>
+            </div>
+            <div className="divide-y divide-(--line) overflow-hidden rounded-xl border border-(color:--line) bg-(--paper)">
+              {groups.map((group) => (
+                <section key={group.key} aria-labelledby={`cap-${group.key}`} className="grid gap-3 px-4 py-4 sm:grid-cols-[150px_minmax(0,1fr)] sm:gap-6">
+                  <h3 id={`cap-${group.key}`} className="m-0 flex items-center gap-2 text-sm font-semibold">{group.icon}{group.title}</h3>
+                  <dl className="m-0 grid gap-3">
+                    {group.meters.map((row) => (
+                      <div key={row.key}>
+                        <div className="flex items-baseline justify-between gap-3 text-sm">
+                          <dt className="text-(color:--ash-700)">{row.label}</dt>
+                          <dd className="m-0 font-semibold tabular-nums">{row.value}</dd>
+                        </div>
+                        {row.limit ? (
+                          <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-(--ash-150)" aria-hidden="true">
+                            <span className="block h-full rounded-full bg-(--lime-dark)" style={{ width: `${Math.min(100, Math.round(((row.used ?? 0) / row.limit) * 100))}%` }} />
+                          </div>
+                        ) : null}
+                      </div>
+                    ))}
+                  </dl>
+                </section>
               ))}
-            </dl>
+            </div>
           </>
         )}
         <div>

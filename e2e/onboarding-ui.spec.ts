@@ -67,6 +67,7 @@ async function mockApi(page: Page, options: { businesses?: Business[]; activeId?
         return json(route, { business: updated });
       }
     }
+    if (pathname === "/api/sales-campaigns" && method === "GET") return json(route, { campaigns: [{ name: "Restaurantes" }, { name: "Panaderías" }] });
     api.unhandled.push(`${method} ${pathname}`);
     return json(route, { error: "not_found" }, 404);
   });
@@ -125,7 +126,8 @@ test("ONBOARDING NEGOCIO: paso 0 investiga y los pasos 1-6 guardan lo esperado",
   await expect(page.getByRole("heading", { name: "Tu plan" })).toBeVisible();
   expect(api.patches[2]).toEqual({ step: "confirm", data: { offerConfirmed: true, marketsConfirmed: true } });
   await expect(page.getByText("Prueba gratis de 7 días")).toBeVisible();
-  await expect(page.getByRole("link", { name: "Ver planes" })).toHaveAttribute("href", /\/pricing$/);
+  // Paso 4: todos los planes ahí mismo, para pagar sin salir del onboarding.
+  await expect(page.getByText("Elegí un plan ahora")).toBeVisible();
   await continueButton(page).click();
 
   // 5: canales
@@ -141,7 +143,7 @@ test("ONBOARDING NEGOCIO: paso 0 investiga y los pasos 1-6 guardan lo esperado",
   // 6: capacidad (solo lectura) → Empezar
   await expect(page.getByRole("heading", { name: "Tu capacidad de envío" })).toBeVisible();
   expect(api.patches[4]).toEqual({ step: "channels", data: { channels: ["gmail", "whatsapp"] } });
-  await expect(page.getByText("12 de 100 usados")).toBeVisible();
+  await expect(page.getByText("12 / 100")).toBeVisible();
   await expect(page.locator("main input, main textarea")).toHaveCount(0);
   await page.getByRole("button", { name: "Empezar" }).click();
   await expect(page).toHaveURL(/\/leadtita$/);
@@ -214,4 +216,17 @@ test("ONBOARDING NEGOCIO: con propuestas, Empezar lleva a Mis propuestas del neg
   await page.getByRole("button", { name: "Empezar" }).click();
   await expect(page).toHaveURL(/\/propuestas\?business=biz-1$/);
   expect(api.patches.at(-1)).toEqual({ step: "capacity", data: {} });
+});
+
+test("ONBOARDING DESDE EXPLORAR: rubros de sus campañas y mercado con bandera", async ({ page }) => {
+  const fromExplore = { ...makeBusiness("biz-exp", "Loruppa", "loruppa.com", "customers"), businessTypes: [] };
+  await mockApi(page, { businesses: [fromExplore], activeId: "biz-exp" });
+  await page.goto("/onboarding?business=biz-exp");
+  await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+  // Rubros: vienen de las campañas que dejó /explorar.
+  await expect(page.getByText("Restaurantes", { exact: true })).toBeVisible();
+  await expect(page.getByText("Panaderías", { exact: true })).toBeVisible();
+  // Mercado: bandera del país en vez del pin.
+  await expect(page.locator('img[src="https://flagcdn.com/w40/co.png"]').first()).toBeVisible();
+  if (process.env.SHOT_DIR) await page.screenshot({ path: `${process.env.SHOT_DIR}/onb-step2.png`, fullPage: true });
 });

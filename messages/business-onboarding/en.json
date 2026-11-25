@@ -83,7 +83,10 @@
       "expiredTitle": "Your trial ended",
       "expiredText": "Pick a plan to keep finding customers and sending proposals.",
       "seePlans": "See plans",
-      "error": "We could not check your plan. You can continue anyway."
+      "error": "We could not check your plan. You can continue anyway.",
+      "pickerTitle": "Pick a plan now",
+      "pickerText": "If you want to pay now, subscribe here. Otherwise, keep the free trial and pick later.",
+      "pickerLoading": "Loading plans…"
     },
     "channels": {
       "title": "How do we reach your customers?",
@@ -112,6 +115,11 @@
       "emailMonthly": "Emails per month",
       "scheduledMonthly": "Scheduled messages per month",
       "aiDaily": "AI usage per day",
+      "aiTitle": "AI usage",
+      "perMonth": "Per month",
+      "perDay": "Per day",
+      "scheduled": "Scheduled per month",
+      "usageShort": "{used} / {limit}",
       "unlimited": "No cap",
       "usage": "{used} of {limit} used",
       "limitOnly": "Up to {limit}",

@@ -84,10 +84,9 @@ const isStep = (value: unknown): value is OnboardingStep => value === "done" || 
 /** Posición del paso; "done" va después de todos. */
 const stepIndex = (step: OnboardingStep) => (step === "done" ? STEP_ORDER.length : STEP_ORDER.indexOf(step));
 
-/** Paso guardado si es válido; si falta: "confirm" para negocios de /explorar (ya traen ficha y competidores), si no "company". */
-function storedStep(row: Pick<BusinessRow, "onboarding_step" | "summary">): OnboardingStep {
-  if (isStep(row.onboarding_step)) return row.onboarding_step;
-  return typeof row.summary === "string" && row.summary.trim() ? "confirm" : "company";
+/** Paso guardado si es válido; si falta, el onboarding arranca desde el paso 1 (también los negocios de /explorar: revisan ficha, mercados y rubros). */
+function storedStep(row: Pick<BusinessRow, "onboarding_step">): OnboardingStep {
+  return isStep(row.onboarding_step) ? row.onboarding_step : "company";
 }
 
 const marketList = (value: unknown): BusinessMarket[] =>
@@ -282,7 +281,12 @@ export function searchKeywords(campaign: Pick<SalesCampaign, "keywords" | "name"
 
 // ---------- /explorar → registros (claimRun) ----------
 
-export function businessRecord(userId: string, runId: string, product: ExploreProduct, competitors: ExploreCompetitors | null) {
+/**
+ * Negocio desde la investigación de /explorar. Con `campaigns` (corrida reclamada) ya trae para el onboarding los rubros
+ * (nombres de las campañas, de mayor a menor afinidad) y el país como mercado; el usuario los revisa en el paso 2.
+ */
+export function businessRecord(userId: string, runId: string, product: ExploreProduct, competitors: ExploreCompetitors | null, campaigns: ExploreCampaign[] = []) {
+  const country = text(product.country, ONBOARDING_LIMITS.place).trim();
   return {
     user: userId,
     landing_run: runId,
@@ -295,12 +299,15 @@ export function businessRecord(userId: string, runId: string, product: ExplorePr
     value_props: strings(competitors?.valueProps),
     buyer_searches: strings(competitors?.buyerSearches),
     competitors: competitorList(competitors?.competitors),
+    business_types: [...campaigns].sort((a, b) => b.fit - a.fit).map((campaign) => text(campaign.name, ONBOARDING_LIMITS.businessType).trim()).filter(Boolean).slice(0, ONBOARDING_LIMITS.businessTypes),
+    markets: country ? [{ country, region: "" }] : [],
+    onboarding_step: "company" satisfies OnboardingStep,
   };
 }
 
 /** Negocio nuevo del onboarding: la investigación de IA (pasos 1-2 de /explorar) sin corrida, en el paso "company". */
 export function onboardingBusinessRecord(userId: string, product: ExploreProduct, competitors: ExploreCompetitors) {
-  return { ...businessRecord(userId, "", product, competitors), onboarding_step: "company" satisfies OnboardingStep };
+  return businessRecord(userId, "", product, competitors);
 }
 
 export function campaignRecord(userId: string, businessId: string, campaign: ExploreCampaign, batchIds: string[]) {

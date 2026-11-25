@@ -83,7 +83,10 @@
       "expiredTitle": "Tu prueba terminó",
       "expiredText": "Elegí un plan para seguir buscando clientes y enviando propuestas.",
       "seePlans": "Ver planes",
-      "error": "No pudimos revisar tu plan. Podés seguir igual."
+      "error": "No pudimos revisar tu plan. Podés seguir igual.",
+      "pickerTitle": "Elegí un plan ahora",
+      "pickerText": "Si querés pagar ya, suscribite acá. Si no, seguí con la prueba gratis y elegí después.",
+      "pickerLoading": "Cargando planes…"
     },
     "channels": {
       "title": "¿Por dónde contactamos a tus clientes?",
@@ -112,6 +115,11 @@
       "emailMonthly": "Mails por mes",
       "scheduledMonthly": "Mensajes programados por mes",
       "aiDaily": "Uso de IA por día",
+      "aiTitle": "Uso de IA",
+      "perMonth": "Por mes",
+      "perDay": "Por día",
+      "scheduled": "Programados por mes",
+      "usageShort": "{used} / {limit}",
       "unlimited": "Sin tope",
       "usage": "{used} de {limit} usados",
       "limitOnly": "Hasta {limit}",

@@ -197,7 +197,7 @@ export async function claimRun(token: string, userId: string): Promise<{ batchId
   let batchId = "";
   try {
     // Índice único en businesses.landing_run: un reintento reusa el negocio en vez de crear otro.
-    const businessId = record.product ? await createBusinessForRun(businessRecord(userId, record.id, record.product, record.competitors ?? null)) : "";
+    const businessId = record.product ? await createBusinessForRun(businessRecord(userId, record.id, record.product, record.competitors ?? null, record.campaigns ?? [])) : "";
     // Best effort: el primer negocio de la cuenta queda activo; un fallo acá no corta el claim.
     if (businessId) await ensureActiveBusiness(userId, businessId).catch(() => {});
     const batch = leads.length ? await createRunBatch(record, leads, userId, claimedAt, (id) => { batchId = id; }) : null;
