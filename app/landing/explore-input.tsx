@@ -2,7 +2,7 @@
 
 import { useRef, useState, type FocusEvent, type FormEvent, type KeyboardEvent } from "react";
 import { useLocale, useTranslations } from "next-intl";
-import { ArrowRight, ArrowUp, Loader2 } from "lucide-react";
+import { ArrowRight, ArrowUp, Globe, Loader2 } from "lucide-react";
 import { Link, useRouter } from "@/i18n/navigation";
 import type { ExploreInput as ExploreInputValue } from "@/lib/explore/types";
 import WebThreads from "./web-threads";
@@ -21,6 +21,26 @@ function toDomain(value: string) {
 }
 
 type ErrorKind = "" | "quota" | "failed";
+
+/** Favicon del dominio; globo neutro hasta que carga (montar con key={domain} para no mostrar el de otro dominio). */
+function DomainIcon({ domain }: { domain: string }) {
+  const [loaded, setLoaded] = useState(false);
+  return (
+    <span className="relative grid size-5 flex-none place-items-center">
+      {!loaded && <Globe size={16} className="text-(color:--ash-500)" aria-hidden="true" />}
+      {/* eslint-disable-next-line @next/next/no-img-element -- favicon externo de 32px */}
+      <img
+        // ponytail: gstatic directo evita el 301 de google.com/s2/favicons.
+        src={`https://t1.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=${encodeURIComponent(`https://${domain}`)}&size=32`}
+        alt=""
+        width={20}
+        height={20}
+        onLoad={() => setLoaded(true)}
+        className={`absolute inset-0 size-5 rounded ${loaded ? "" : "invisible"}`}
+      />
+    </span>
+  );
+}
 
 /** Caja del hero que arranca el flujo público /explorar (texto, web o servicios). */
 export function ExploreInput() {
@@ -162,8 +182,7 @@ export function ExploreInput() {
             onClick={() => submit()}
             className="absolute inset-x-0 top-[calc(100%+6px)] z-10 flex min-h-12 items-center gap-3 rounded-[14px] border border-(--line) bg-(--paper) px-3 text-left shadow-[0_18px_36px_-20px_color-mix(in_srgb,var(--ash-950)_40%,transparent)] outline-none hover:bg-(--ash-50) focus-visible:border-(--ink)"
           >
-            {/* eslint-disable-next-line @next/next/no-img-element -- favicon externo de 32px */}
-            <img src={`https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=32`} alt="" width={20} height={20} className="size-5 flex-none rounded" />
+            <DomainIcon key={domain} domain={domain} />
             <span className="min-w-0 flex-1 truncate text-[14px]">
               <strong className="font-semibold text-(color:--ink)">{domain}</strong>
               <span className="ml-2 text-(color:--muted)">{t("research")}</span>
