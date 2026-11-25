@@ -124,3 +124,15 @@ test("CORREGIR DATOS DEL PASO 1", async ({ request }) => {
   const res = await request.patch("/api/explore", { data: { summary: "Prueba", location: "Argentina" } });
   expect(res.status()).toBe(404);
 });
+
+test("NAVEGAR DESDE UN MODAL NO BLOQUEA LA PÁGINA", async ({ page }) => {
+  // Next deja la página anterior oculta pero montada: el modal abierto no debe seguir bloqueando los clics.
+  await page.goto("/");
+  await page.mouse.wheel(0, 400);
+  const popup = page.locator("dialog[open]");
+  await expect(popup).toBeVisible({ timeout: 15_000 });
+  await popup.locator('a[href*="terminos"]').click();
+  await expect(page).toHaveURL(/terminos/);
+  await expect(page.locator("dialog[open]")).toHaveCount(0);
+  await page.getByRole("link").first().click({ trial: true });
+});

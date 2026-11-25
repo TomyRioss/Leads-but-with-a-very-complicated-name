@@ -21,6 +21,12 @@ export function SignupDialog({ open, onClose }: { open: boolean; onClose: () => 
     if (!open && dialog.open) dialog.close();
   }, [open]);
 
+  // Next deja la página anterior montada y oculta: un modal abierto seguiría bloqueando los clics de la página nueva.
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    return () => dialog?.close();
+  }, []);
+
   return (
     <dialog
       ref={dialogRef}
@@ -28,7 +34,8 @@ export function SignupDialog({ open, onClose }: { open: boolean; onClose: () => 
       aria-labelledby="explore-signup-title"
       aria-describedby="explore-signup-text"
       onClose={onClose}
-      onClick={(event) => { if (event.target === event.currentTarget) dialogRef.current?.close(); }}
+      // Backdrop o link: un link navega y el modal no debe quedar abierto en la página oculta.
+      onClick={(event) => { if (event.target === event.currentTarget || (event.target as Element).closest("a")) dialogRef.current?.close(); }}
     >
       <div className="modal-body">
         <div className="modal-head">

@@ -71,12 +71,19 @@ export function SignupPopup() {
     if (open && dialog && !dialog.open) dialog.showModal();
   }, [open]);
 
+  // Next deja la página anterior montada y oculta: un modal abierto seguiría bloqueando los clics de la página nueva.
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    return () => dialog?.close();
+  }, []);
+
   function close() {
     dialogRef.current?.close();
   }
 
   function onBackdrop(event: MouseEvent<HTMLDialogElement>) {
-    if (event.target === event.currentTarget) close();
+    // Un link navega: el modal no debe quedar abierto en la página oculta.
+    if (event.target === event.currentTarget || (event.target as Element).closest("a")) close();
   }
 
   function submit(event: FormEvent<HTMLFormElement>) {
