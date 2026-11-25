@@ -37,7 +37,7 @@
     "searchPartial": "El lote quedó parcial.",
     "searchFailed": "No se pudo completar la búsqueda.",
     "analysisFailed": "No se pudo completar el análisis.",
-    "analyzingPains": "Buscando reseñas negativas y analizando dolores…",
+    "analyzingPains": "Analizando los dolores de cada negocio…",
     "analyzingNetworks": "OpenRouter revisando las redes seleccionadas…",
     "analysisLiveProgress": "Analizados {completed} de {total}. En curso:",
     "saveAllLeads": "Guardar todos ({count})",
@@ -49,7 +49,7 @@
     "saveLeadsPartial": "Se guardaron {saved} de {total}. Reintenta los restantes.",
     "painsDone": "{analyzed, plural, one {# lead analizado} other {# leads analizados}}; {findings} con dolores detectados.",
     "enrichDone": "{count, plural, one {# lead enriquecido.} other {# leads enriquecidos.}}",
-    "issueNoEvidencePains": "{count} sin ficha del negocio ni reseñas guardadas",
+    "issueNoEvidencePains": "{count} sin información suficiente del negocio",
     "issueNoEvidenceEnrich": "{count} sin datos guardados para enriquecer",
     "issueFailed": "{count} con error",
     "issueSkipped": "{count} sin procesar por tiempo; vuelve a analizarlas",
@@ -58,7 +58,7 @@
     "actions": {
       "pain_points": {
         "title": "Buscar dolores",
-        "description": "Prioriza reseñas negativas y resume hasta 3 dolores concretos.",
+        "description": "Prioriza las quejas de clientes y resume hasta 3 dolores concretos.",
         "cta": "Analizar dolores del lote"
       },
       "enrichment": {
@@ -78,7 +78,7 @@
       "phone": "Teléfono",
       "whatsapp": "WhatsApp",
       "email": "Mail",
-      "review_count": "Reseñas",
+      "review_count": "Clientes",
       "average_rating": "Promedio",
       "review": "Reseña {number}",
       "rating": "Reseñas {number}★",

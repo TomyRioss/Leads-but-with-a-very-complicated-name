@@ -60,7 +60,7 @@
       "searchDone": "{count, plural, =0 {No encontramos leads nuevos.} one {Agregamos # lead nuevo.} other {Agregamos # leads nuevos.}}",
       "viewProposals": "Ver propuestas",
       "buyCredits": "Comprar créditos",
-      "keywords": "Búsqueda en Google Maps: {keywords}"
+      "keywords": "Búsqueda: {keywords}"
     },
     "proposals": {
       "pageTitle": "Mis propuestas",

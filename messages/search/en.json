@@ -37,7 +37,7 @@
     "searchPartial": "The batch is partial.",
     "searchFailed": "Couldn't complete the search.",
     "analysisFailed": "Couldn't complete the analysis.",
-    "analyzingPains": "Looking for negative reviews and analyzing pain points…",
+    "analyzingPains": "Analyzing each business's pain points…",
     "analyzingNetworks": "OpenRouter is reviewing the selected networks…",
     "analysisLiveProgress": "Analyzed {completed} of {total}. In progress:",
     "saveAllLeads": "Save all ({count})",
@@ -49,7 +49,7 @@
     "saveLeadsPartial": "Saved {saved} of {total}. Retry the remaining leads.",
     "painsDone": "{analyzed, plural, one {# lead analyzed} other {# leads analyzed}}; {findings} with pain points detected.",
     "enrichDone": "{count, plural, one {# lead enriched.} other {# leads enriched.}}",
-    "issueNoEvidencePains": "{count} without a business listing or saved reviews",
+    "issueNoEvidencePains": "{count} without enough business information",
     "issueNoEvidenceEnrich": "{count} without saved data to enrich",
     "issueFailed": "{count} failed",
     "issueSkipped": "{count} not processed due to time; analyze them again",
@@ -58,7 +58,7 @@
     "actions": {
       "pain_points": {
         "title": "Find pain points",
-        "description": "Prioritizes negative reviews and summarizes up to 3 concrete pain points.",
+        "description": "Prioritizes customer complaints and summarizes up to 3 concrete pain points.",
         "cta": "Analyze pain points for the batch"
       },
       "enrichment": {
@@ -78,7 +78,7 @@
       "phone": "Phone",
       "whatsapp": "WhatsApp",
       "email": "Email",
-      "review_count": "Reviews",
+      "review_count": "Customers",
       "average_rating": "Average",
       "review": "Review {number}",
       "rating": "{number}★ reviews",

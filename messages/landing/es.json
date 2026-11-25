@@ -2,7 +2,7 @@
   "Landing": {
     "meta": {
       "title": "Leadta | Encuentra negocios para contactar",
-      "description": "Busca negocios locales por rubro y zona, con teléfono, mail, redes y dolores detectados en reseñas. Exporta cada lote a CSV o XLSX."
+      "description": "Busca negocios locales por rubro y zona, con teléfono, mail, redes y dolores detectados. Exporta cada lote a CSV o XLSX."
     },
     "whatsapp": {
       "hello": "¡Hola! 👋",

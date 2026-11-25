@@ -2,7 +2,7 @@
   "Landing": {
     "meta": {
       "title": "Leadta | Find businesses to contact",
-      "description": "Find local businesses by industry and area, with phone, email, socials and pain points detected from reviews. Export each batch to CSV or XLSX."
+      "description": "Find local businesses by industry and area, with phone, email, socials and detected pain points. Export each batch to CSV or XLSX."
     },
     "whatsapp": {
       "hello": "Hi! 👋",
