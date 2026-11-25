@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useLocale, useTranslations } from "next-intl";
-import { ChevronDown, Headset, History, LayoutDashboard, LogOut, Menu, MessageSquare, Plug, PanelLeftClose, PanelLeftOpen, Search, ShieldCheck, Sparkles, Stars, UserSearch, X } from "lucide-react";
+import { Building2, ChevronDown, Headset, History, LayoutDashboard, LogOut, Megaphone, Menu, MessageSquare, Plug, PanelLeftClose, PanelLeftOpen, Send, ShieldCheck, Sparkles, Stars, X } from "lucide-react";
 import { BrandLogo, BrandMark } from "@/app/brand-logo";
 import { LanguageSwitcher } from "@/app/language-switcher";
 import { FeedbackDialog } from "@/app/feedback-dialog";
@@ -14,11 +14,11 @@ import { Link } from "@/i18n/navigation";
 import { Popover, usePopover } from "@/app/ui/popover";
 
 type AppSidebarProps = {
-  active: "search" | "history" | "leadSuite" | "people" | "leadtita" | "integrations";
+  active: "history" | "leadSuite" | "leadtita" | "integrations" | "businesses" | "campaigns" | "proposals";
   /** null while the session loads: renders a same-size skeleton for account and credits. */
   user: { email: string; credits: number } | null;
   onSignOut: () => void | Promise<void>;
-  /** false holds the WhatsApp + Gmail announcement (e.g. /buscar until it knows the user won't be redirected). */
+  /** false holds the WhatsApp + Gmail announcement (e.g. until a page knows the user won't be redirected). */
   announce?: boolean;
 };
 
@@ -48,17 +48,12 @@ function writeCollapsed(next: boolean) {
   collapseListeners.forEach((listener) => listener());
 }
 
-type EnvFlags = { devFeatures: string[] };
-const PROD_FLAGS: EnvFlags = { devFeatures: [] };
-// ponytail: one /api/status request per page load, shared by every sidebar mount.
-let envFlagsRequest: Promise<EnvFlags> | null = null;
-function loadEnvFlags() {
-  envFlagsRequest ??= fetch("/api/status", { cache: "no-store" })
-    .then((response) => response.json())
-    .then((status) => ({ devFeatures: Array.isArray(status.devFeatures) ? status.devFeatures : [] }))
-    .catch(() => PROD_FLAGS);
-  return envFlagsRequest;
-}
+// Private workspace sections ("Mis negocios / campañas / propuestas"): what an /explorar run leaves in the account.
+const WORKSPACE_NAV = [
+  { key: "businesses", href: "/negocios", label: "navBusinesses", Icon: Building2 },
+  { key: "campaigns", href: "/campanas", label: "navCampaigns", Icon: Megaphone },
+  { key: "proposals", href: "/propuestas", label: "navProposals", Icon: Send },
+] as const;
 
 /** Sidebar único de la app con sesión: colapsa en móvil, cierra con Escape o clic fuera. */
 export function AppSidebar({ active, user, onSignOut, announce = true }: AppSidebarProps) {
@@ -85,7 +80,6 @@ export function AppSidebar({ active, user, onSignOut, announce = true }: AppSide
     return () => window.removeEventListener(OPEN_INTEGRATIONS_EVENT, onOpen);
   }, []);
   const [feedbackPrefill, setFeedbackPrefill] = useState<FeedbackPrefill | null>(null);
-  const [envFlags, setEnvFlags] = useState<EnvFlags>(PROD_FLAGS);
   // Active paid plan shown in the credits pill; stays empty without one.
   const [planName, setPlanName] = useState("");
   const signedIn = Boolean(user);
@@ -98,12 +92,6 @@ export function AppSidebar({ active, user, onSignOut, announce = true }: AppSide
       .catch(() => undefined);
     return () => controller.abort();
   }, [signedIn]);
-
-  useEffect(() => {
-    let current = true;
-    void loadEnvFlags().then((flags) => { if (current) setEnvFlags(flags); });
-    return () => { current = false; };
-  }, []);
 
   useEffect(() => {
     const onOpen = (event: Event) => {
@@ -238,18 +226,14 @@ export function AppSidebar({ active, user, onSignOut, announce = true }: AppSide
                 <span>{s("navLeadSuite")}</span>
               </Link>
             </li>
-            <li>
-              <Link title={tip(s("navSearch"))} className="side-nav-item" href="/buscar" aria-current={active === "search" ? "page" : undefined} onClick={close}>
-                <Search className="menu-icon" size={18} strokeWidth={1.8} aria-hidden="true" />
-                <span>{s("navSearch")}</span>
-              </Link>
-            </li>
-            {envFlags.devFeatures.includes("people_search") && <li>
-              <Link title={tip(s("navPeople"))} className="side-nav-item" href="/personas" aria-current={active === "people" ? "page" : undefined} onClick={close}>
-                <UserSearch className="menu-icon" size={18} strokeWidth={1.8} aria-hidden="true" />
-                <span>{s("navPeople")}</span>
-              </Link>
-            </li>}
+            {WORKSPACE_NAV.map(({ key, href, label, Icon }) => (
+              <li key={key}>
+                <Link title={tip(s(label))} className="side-nav-item" href={href} aria-current={active === key ? "page" : undefined} onClick={close}>
+                  <Icon className="menu-icon" size={18} strokeWidth={1.8} aria-hidden="true" />
+                  <span>{s(label)}</span>
+                </Link>
+              </li>
+            ))}
           </ul>
           <div className="side-nav-bottom">
             {isOwner && (

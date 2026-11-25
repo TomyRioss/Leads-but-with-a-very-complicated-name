@@ -1,7 +1,7 @@
 import type { MetadataRoute } from "next";
 
 const origin = process.env.APP_URL?.trim() || "https://leadta.app";
-const privatePaths = ["/buscar", "/historial", "/lead-suite", "/verificar", "/restablecer"];
+const privatePaths = ["/negocios", "/campanas", "/propuestas", "/historial", "/lead-suite", "/verificar", "/restablecer"];
 
 export default function robots(): MetadataRoute.Robots {
   return {

@@ -17,7 +17,7 @@ const COPY = {
     all: "Destinos",
     noMatch: "Nada coincide con eso. Estos son todos los destinos.",
     dests: [
-      { href: "/buscar", label: "Buscar leads", desc: "Encuentra negocios y prospectos", keys: "buscar leads search busqueda prospectos negocios" },
+      { href: "/negocios", label: "Mis negocios", desc: "Tus negocios, campañas y propuestas", keys: "negocios campañas propuestas buscar leads prospectos" },
       { href: "/leadtita", label: "Leadtita", desc: "Tu asistente de Leadta", keys: "leadtita asistente ia chat panel" },
       { href: "/blog", label: "Blog", desc: "Guías y novedades", keys: "blog articulos guias novedades noticias" },
       { href: "/", label: "Inicio", desc: "Volver a la página principal", keys: "inicio home principal landing leadta" },
@@ -32,7 +32,7 @@ const COPY = {
     all: "Destinations",
     noMatch: "Nothing matches that. Here are all destinations.",
     dests: [
-      { href: "/buscar", label: "Search leads", desc: "Find businesses and prospects", keys: "buscar leads search find prospects businesses" },
+      { href: "/negocios", label: "My businesses", desc: "Your businesses, campaigns and proposals", keys: "businesses campaigns proposals search leads prospects" },
       { href: "/leadtita", label: "Leadtita", desc: "Your Leadta assistant", keys: "leadtita assistant ai chat panel" },
       { href: "/blog", label: "Blog", desc: "Guides and news", keys: "blog articles guides news" },
       { href: "/", label: "Home", desc: "Back to the main page", keys: "home start main landing leadta" },

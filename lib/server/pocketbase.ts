@@ -103,14 +103,16 @@ export async function pocketBaseFetch<T>(path: string, init: RequestInit = {}) {
   return (await response.json()) as T;
 }
 
+/** Crea los leads del lote (10 en vuelo). `ids[i]` = id creado para `records[i]`, "" si falló. */
 export async function createLeadRecords(batchId: string, records: Record<string, unknown>[]) {
-  if (records.length === 0) return { created: 0, failed: 0 };
+  if (records.length === 0) return { created: 0, failed: 0, ids: [] as string[] };
 
   const token = await authenticate();
   const maxConcurrency = 10;
   let nextIndex = 0;
   let created = 0;
   let failed = 0;
+  const ids = new Array<string>(records.length).fill("");
 
   await Promise.all(Array.from({ length: Math.min(maxConcurrency, records.length) }, async () => {
     while (nextIndex < records.length) {
@@ -123,6 +125,7 @@ export async function createLeadRecords(batchId: string, records: Record<string,
           cache: "no-store",
         });
         if (!response.ok) throw new Error(`PocketBase rejected a lead with status ${response.status}.`);
+        ids[index] = ((await response.json().catch(() => null)) as { id?: string } | null)?.id ?? "";
         created++;
       } catch {
         failed++;
@@ -130,5 +133,5 @@ export async function createLeadRecords(batchId: string, records: Record<string,
     }
   }));
 
-  return { created, failed };
+  return { created, failed, ids };
 }

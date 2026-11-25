@@ -22,7 +22,7 @@ function idTokenClaims(idToken: string | undefined): { email?: string; sub?: str
 export async function GET(request: NextRequest) {
   const params = request.nextUrl.searchParams;
   const user = await requireUser(request);
-  if (!user) return finish("/buscar", "error");
+  if (!user) return finish("/login", "error");
   const state = verifyState(params.get("state") ?? "", request.cookies.get(NONCE_COOKIE)?.value ?? "", user.id);
   if (!state) return finish("/integraciones", "error");
   const returnTo = safeReturnTo(state.r);

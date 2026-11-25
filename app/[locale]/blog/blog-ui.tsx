@@ -44,7 +44,7 @@ export async function BlogCta() {
         </div>
         <div className="lp-final-actions">
           <Link className="lp-btn lp-btn-ink" href="/register">{t("ctaPrimary")} <ArrowRight size={17} aria-hidden="true" /></Link>
-          <Link className="lp-final-link" href="/buscar">{t("ctaSecondary")}</Link>
+          <Link className="lp-final-link" href="/">{t("ctaSecondary")}</Link>
         </div>
       </div>
     </section>

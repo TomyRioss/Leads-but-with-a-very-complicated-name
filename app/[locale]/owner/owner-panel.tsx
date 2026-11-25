@@ -67,7 +67,7 @@ export default function OwnerPanel() {
   const mainRef = useRef<HTMLElement>(null);
 
   // Without an owner session there is nothing to show here: send the user back to the app.
-  const leavePanel = useCallback(() => router.replace("/buscar"), [router]);
+  const leavePanel = useCallback(() => router.replace("/leadtita"), [router]);
 
   useEffect(() => {
     let active = true;

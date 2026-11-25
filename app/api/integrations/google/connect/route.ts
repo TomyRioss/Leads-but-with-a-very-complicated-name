@@ -6,7 +6,7 @@ export async function GET(request: NextRequest) {
   const origin = appOrigin();
   const returnTo = safeReturnTo(request.nextUrl.searchParams.get("returnTo"));
   const user = await requireUser(request);
-  if (!user) return noStore(NextResponse.redirect(new URL("/buscar", origin)));
+  if (!user) return noStore(NextResponse.redirect(new URL("/login", origin)));
   const features = parseGoogleFeatures(request.nextUrl.searchParams.get("features"));
   if (!isConfigured()) return redirectWithFlash(returnTo, "not_configured", features[0] ?? "drive");
 

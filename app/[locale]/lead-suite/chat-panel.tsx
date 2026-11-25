@@ -330,7 +330,7 @@ async function readAnalysisPayload<T>(response: Response, onProgress?: (event: A
 }
 
 /** Batch table for a batch id: people batches open in /personas, the rest in /historial. */
-const batchHref = (kind: PendingKind, batchId: string) => `${kind === "search_people" ? "/personas" : "/historial"}?batch=${encodeURIComponent(batchId)}`;
+const batchHref = (_kind: PendingKind, batchId: string) => `/historial?batch=${encodeURIComponent(batchId)}`;
 /** WhatsAppContact expects an international number; a wa.me link carries the digits. */
 const whatsappPhone = (lead: Pick<LeadPreview, "phone" | "whatsapp">) => lead.phone || (lead.whatsapp.match(/(\d{8,15})/)?.[1] ? `+${lead.whatsapp.match(/(\d{8,15})/)![1]}` : "");
 const RESULT_KINDS: PendingKind[] = ["search_businesses", "search_people", "import_leads", "topup_batch"];

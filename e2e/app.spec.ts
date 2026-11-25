@@ -7,8 +7,6 @@ const privateApis: [string, "GET" | "POST", string][] = [
   ["LEAD SUITE DASHBOARD", "GET", "/api/lead-suite/dashboard"],
   ["CONTACTOS DE LEAD SUITE", "GET", "/api/lead-suite/contacts"],
   ["PROGRAMAR MENSAJES", "GET", "/api/scheduled"],
-  ["BUSCAR NEGOCIOS", "POST", "/api/search"],
-  ["BUSCAR PERSONAS", "POST", "/api/people/search"],
   ["VER HISTORIAL DE LOTES", "GET", "/api/history"],
   ["PANEL OWNER", "GET", "/api/owner/me"],
   ["ENVIAR FEEDBACK", "POST", "/api/feedback"],
@@ -32,11 +30,6 @@ test("CONECTAR INTEGRACIONES (GOOGLE / WHATSAPP) exige sesión", async ({ page, 
   expect((await request.get("/api/integrations/whatsapp/status")).status()).toBe(401);
   await page.goto("/integraciones");
   await expect(page).not.toHaveURL(/\/integraciones/);
-});
-
-test("BUSCAR NEGOCIOS redirige a login sin sesión", async ({ page }) => {
-  await page.goto("/buscar");
-  await expect(page).toHaveURL(/\/login/);
 });
 
 test("CHAT LEADTITA redirige sin sesión", async ({ page }) => {
