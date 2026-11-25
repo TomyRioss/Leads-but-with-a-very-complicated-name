@@ -5,6 +5,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { ArrowRight, ArrowUp, Loader2 } from "lucide-react";
 import { Link, useRouter } from "@/i18n/navigation";
 import type { ExploreInput as ExploreInputValue } from "@/lib/explore/types";
+import WebThreads from "./web-threads";
 import { TurnstileField, type TurnstileFieldHandle } from "@/app/turnstile-field";
 import { ServicesDialog } from "./services-dialog";
 
@@ -96,7 +97,7 @@ export function ExploreInput() {
   return (
     <div ref={rootRef} className="mx-auto grid w-full max-w-[560px] justify-items-center gap-3">
       <form
-        className="relative w-full"
+        className="relative isolate w-full"
         onSubmit={submit}
         onFocus={() => setFocused(true)}
         onBlur={onBlur}
@@ -149,6 +150,10 @@ export function ExploreInput() {
               {busy ? <Loader2 className="animate-spin motion-reduce:animate-none" size={18} aria-hidden="true" /> : <ArrowUp size={18} aria-hidden="true" />}
             </button>
           </div>
+        </div>
+        {/* Fondo: el pinch (cruce) queda centrado justo bajo el borde inferior del recuadro. */}
+        <div aria-hidden="true" className="pointer-events-none absolute top-full left-1/2 -z-10 h-[440px] w-screen -translate-x-1/2 -translate-y-1/2">
+          <WebThreads colors={["#ffffff", "#2eff00"]} thickness={0.45} spread={0.23} pulses={0.3} falloff={0.5} pinch={0.5} position={0.5} lightMode />
         </div>
         {domain && focused && !busy && (
           <button
