@@ -45,6 +45,7 @@
     "stepError": "We couldn't complete this step.",
     "location": "Location",
     "noLocation": "No location",
+    "edit": { "open": "Is the data wrong?", "summary": "Description", "save": "Save", "cancel": "Cancel", "failed": "We couldn't save it. Try again." },
     "found": "Found",
     "product": "Your product",
     "buyerSearches": "How buyers search",

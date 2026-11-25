@@ -45,6 +45,7 @@
     "stepError": "No pudimos completar este paso.",
     "location": "Ubicación",
     "noLocation": "Sin ubicación",
+    "edit": { "open": "¿Los datos están mal?", "summary": "Descripción", "save": "Guardar", "cancel": "Cancelar", "failed": "No pudimos guardar. Prueba de nuevo." },
     "found": "Encontrado",
     "product": "Tu producto",
     "buyerSearches": "Cómo buscan los compradores",

@@ -7,6 +7,7 @@ import { Link } from "@/i18n/navigation";
 import { EXPLORE_STEPS, type ExploreCampaign, type ExploreRun, type ExploreStep } from "@/lib/explore/types";
 import { CampaignsStep, CompetitorsStep, LeadsStep, ProposalsStep, ResearchStep } from "./explore-steps";
 import { SignupDialog } from "./signup-dialog";
+import { ProductSummary } from "./product-edit";
 
 const FIELD = {
   research: "product",
@@ -161,10 +162,7 @@ export function ExploreShell() {
                     <span>{index + 1}. {t(`steps.${step}`)}</span>
                   </button>
                   {step === "research" && run.product ? (
-                    <div className="mt-1 mb-2 hidden pr-2 pl-10 lg:block">
-                      <p className="line-clamp-3 text-xs leading-relaxed text-(color:--muted)">{run.product.summary}</p>
-                      <p className="mt-1.5 text-xs text-(color:--ash-700)">{t("location")} | {run.product.location || t("noLocation")}</p>
-                    </div>
+                    <ProductSummary product={run.product} onSaved={(product) => setRun((prev) => (prev ? { ...prev, product } : prev))} />
                   ) : null}
                   {step === "campaigns" && run.campaigns ? (
                     <ul className="mt-1 mb-2 hidden space-y-0.5 pr-2 pl-8 lg:block">

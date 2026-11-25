@@ -117,3 +117,9 @@ test("API EXPLORAR RECHAZA SIN TURNSTILE", async ({ request }) => {
   const res = await request.post("/api/explore/start", { data: { input: { mode: "text", description: "Una app de turnos" }, turnstileToken: "" } });
   expect([400, 403]).toContain(res.status());
 });
+
+test("CORREGIR DATOS DEL PASO 1", async ({ request }) => {
+  // Sin cookie de corrida no se escribe nada (el entorno e2e usa producción).
+  const res = await request.patch("/api/explore", { data: { summary: "Prueba", location: "Argentina" } });
+  expect(res.status()).toBe(404);
+});

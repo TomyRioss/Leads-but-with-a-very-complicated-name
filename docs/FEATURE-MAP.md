@@ -11,6 +11,7 @@ DESCRIBIR PRODUCTO EN LANDING | "/" > Hero > Recuadro (toggle "Texto" / "Web") >
 VENDO SERVICIOS | "/" > Hero > Link "Vendo servicios" > Popup 3 preguntas > "Generar mis campañas"
 EXPLORAR 5 PASOS | "/explorar" > Investigar > Competidores > Campañas > 50 clientes (Apify) > 10 propuestas WhatsApp/Gmail (POST "/api/explore/[step]")
 EXPLORAR SIN CORRIDA | "/explorar" sin cookie > Estado vacío > "Empezar desde el inicio"
+CORREGIR DATOS DEL PASO 1 | "/explorar" > Barra lateral > Paso 1 > "¿Los datos están mal?" > Descripción / Ubicación > "Guardar" (PATCH "/api/explore")
 ENVIAR PROPUESTA BLOQUEADO | "/explorar" > Paso 5 > "Enviar" > Popup "Crea tu cuenta para enviar"
 PASAR LEADS DE EXPLORAR A LA CUENTA | Registro / Google con cookie "leadta_explore" > Lote nuevo en "/historial"
 VER PLANES Y PRECIOS | "/pricing"
