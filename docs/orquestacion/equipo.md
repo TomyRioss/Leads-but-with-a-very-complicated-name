@@ -1,41 +1,39 @@
 # Equipo Team Conveyor (leadta)
 
-- Fecha: 2026-11-13
-- Workspace: C:/Users/Pc/Documents/Codex/2026-11-06/amigo/leadta (main)
-- Modelo workers: claude-opus-5-5, effort low (verificado en pantalla de W01–W15)
-- Arranque de cero: las tareas previas en `tareas/` no se retoman.
+- Fecha: 2026-11-24
+- Workspace ORQ: C:/Users/Pc/Documents/Codex/2026-11-06/amigo/leadta (main), selector `current`
+- Workspace workers: C:/Users/Pc/Documents/Codex/2026-11-06/amigo/leadta-dev (dev), selector `path:C:/Users/Pc/Documents/Codex/2026-11-06/amigo/leadta-dev`
+- Dev server workers: `:3100`, terminal DEV-3100 (term_4c702cc7-6735-406a-be2a-60dc402e91d1), PocketBase de producción
+- Modelo workers: claude-sonnet-5-5, effort high (verificado en pantalla de W01–W13)
 
 ## Orquestadores
 
 | ORQ | Handle | Run | Bloque |
 |---|---|---|---|
-| ORQ-1 | term_51d37571-0fb5-48e0-9e23-9e4727ac1870 | run_69ed202e8659 | W01–W15 |
+| ORQ-1 | term_2d8e3724-541a-4031-9eae-bf4f090eca54 | run_52f67e8b2bff | W01–W13 |
 
 ## Workers
 
 | Worker | Handle | ORQ |
 |---|---|---|
-| W01 | term_5e5579d9-6ca8-4272-af2d-6a33264758af | ORQ-1 |
-| W02 | term_5e13a073-e3ec-4bbb-af64-007dae7d3e3c | ORQ-1 |
-| W03 | term_aa5fd347-8721-4ada-9a94-15c379b05552 | ORQ-1 |
-| W04 | term_c71c8cea-a8ec-4ac8-8de4-cb4e4c3b2e14 | ORQ-1 |
-| W05 | term_3ddc6ad5-2435-4406-8504-ac140b212908 | ORQ-1 |
-| W06 | term_ebaeff5b-4f20-413b-8071-8c26246837c1 | ORQ-1 |
-| W07 | term_e449fcb1-86cd-486d-946e-0fa578cba5c6 | ORQ-1 |
-| W08 | term_bf167c0b-0ed0-4fac-858f-9f31f3b2b38a | ORQ-1 |
-| W09 | term_826c39ae-9e40-4fb2-8c5c-ac21d1ea2aea | ORQ-1 |
-| W10 | term_b64b31c0-79e7-4a8a-845d-8cc2333e317b | ORQ-1 |
-| W11 | term_fbbeea3b-d703-44c2-bc30-7442cc6d9459 | ORQ-1 |
-| W12 | term_fe41e166-fca2-4c10-86f4-87ed00459992 | ORQ-1 |
-| W13 | term_aa632f5f-a483-47af-b058-b522276a2842 | ORQ-1 |
-| W14 | term_ecc7f203-f852-4f28-9e44-a1abd4b65271 | ORQ-1 |
-| W15 | term_fff618a4-1407-4429-8bbb-cb4daceef563 | ORQ-1 |
+| W01 | term_643e0a79-158c-4da1-a8af-200b0de4b197 | ORQ-1 |
+| W02 | term_c0bf81a7-2abe-4d7d-a653-4b7b887cfed4 | ORQ-1 |
+| W03 | term_84d8dd77-1842-4860-bd7a-7ff650460e70 | ORQ-1 |
+| W04 | term_f96f5969-03df-4193-9a9d-94b8a3467fb3 | ORQ-1 |
+| W05 | term_3f2630db-cbfa-41f6-9f36-408904d78212 | ORQ-1 |
+| W06 | term_b58ac830-70d2-45ef-bcff-7d45f34c045b | ORQ-1 |
+| W07 | term_ab65d0ce-ea56-4cbd-be58-5161b8a9552c | ORQ-1 |
+| W08 | term_e46d9ec3-15e9-4181-872e-c12efedf5fcf | ORQ-1 |
+| W09 | term_6c7cfef4-af60-4969-aba0-458fd700248f | ORQ-1 |
+| W10 | term_ff4eebfe-586f-4d8f-8b3f-5b705d7ad23f | ORQ-1 |
+| W11 | term_46cf3de7-6a6f-4951-b1f6-1ea8ffdfb05d | ORQ-1 |
+| W12 | term_13518598-25e8-471d-8f8a-d5714731fa2c | ORQ-1 |
+| W13 | term_17fbe51a-2455-4ee8-bd51-38b1d4fd0c74 | ORQ-1 |
 
 ## Fuera del equipo
 
-| Terminal | Handle | Motivo |
-|---|---|---|
-| next-server (dev server) | term_be24f822-739a-4e28-9777-43a96fe32fb8 | No es agente Claude |
-| cmd.exe | term_1963a69a-7dc9-4f0d-9870-e8682a033309 | Shell del usuario |
-| Claude Code | term_e866b5c1-5f47-4817-aed6-9361a121b3ce | Ocupada con trabajo propio |
-| Pill de usuario sobre créditos | term_4a8e55f1-5973-4ba6-9c05-65bfdb7b1785 | Sesión del usuario |
+- term_26671488-760d-4fe8-9bd3-feffa72eed2e (main, next-server del usuario :3000)
+- term_1d34a018-dd16-45a5-9ff9-adab4f8dc3ae (main, cmd)
+- term_558f954b-6866-4fc0-838e-e8aad74900df (main, Claude Code, no ORQ)
+- term_932526ff-2896-4e34-82ff-582e8f0e73eb (dev, cmd, dev server viejo caído)
+- term_4c702cc7-6735-406a-be2a-60dc402e91d1 (dev, DEV-3100)
