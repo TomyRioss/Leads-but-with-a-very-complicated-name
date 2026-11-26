@@ -581,10 +581,12 @@
       "to": "To",
       "subject": "Subject",
       "body": "Message",
-      "batchNote": "Sent one at a time, every {seconds} seconds, from your Gmail."
+      "batchNote": "Sent one at a time, every {seconds} seconds, from your Gmail.",
+      "skipped": "Skipped, no valid email: {names}."
     },
     "whatsappCard": {
-      "batchNote": "Sent one by one, every {min}–{max} s. They use your monthly WhatsApp quota (scheduled ones count too)."
+      "batchNote": "Sent one by one, every {min}–{max} s. They use your monthly WhatsApp quota (scheduled ones count too).",
+      "skipped": "Skipped, no valid WhatsApp number with country code: {names}."
     },
     "meetingCard": {
       "title": "Title",

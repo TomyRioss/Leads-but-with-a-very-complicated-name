@@ -1097,7 +1097,7 @@ export const googleActionTools = [
   }, ["leadRef", "start"]),
 ];
 
-export const GOOGLE_ACTIONS_PROMPT = "EMAIL & MEETINGS: when the user explicitly asks to send an email, use propose_send_email (use verified details already in context; call lead_brief only when needed details or contact history are missing; follow MESSAGES for initial sales outreach and keep the subject separate). Several leads → propose_send_email_batch. To schedule a meeting use propose_create_meeting (ask the date/time if missing; default 30 minutes). Nothing is sent or scheduled until the user confirms the card. To send LATER ('in 2 hours', 'tomorrow at 9'), pass sendAt on the send tool: the message goes to the user's 'Programados' queue and is sent at that time. If Gmail or Calendar isn't connected, say so in one line; the app shows the connect button.";
+export const GOOGLE_ACTIONS_PROMPT = "EMAIL & MEETINGS: when the user explicitly asks to send an email, use propose_send_email (use verified details already in context; call lead_brief only when needed details or contact history are missing; follow MESSAGES for initial sales outreach and keep the subject separate). Several leads → propose_send_email_batch. To schedule a meeting use propose_create_meeting (ask the date/time if missing; default 30 minutes). Nothing is sent or scheduled until the user confirms the card. To send LATER ('in 2 hours', 'tomorrow at 9'), pass sendAt on the send tool: the message goes to the user's 'Programados' queue and is sent at that time. If Gmail or Calendar isn't connected, say so in one line; the app shows the connect button. Include every lead the user asked for; if the result has skippedWithoutEmail, name each skipped lead in one line and say it has no valid email.";
 
 type GoogleHelpers = Pick<LeadtitaHelpers, "userId" | "leadByRef" | "propose" | "push" | "timeZone">;
 const emailOk = (value: string) => isValidGmailAddress(value);
@@ -1147,7 +1147,7 @@ export async function proposeGoogleAction(h: GoogleHelpers, name: string, args: 
     }
     if (!rows.length) return { error: "None of these leads has a valid email.", skipped };
     return {
-      ...(h.propose({ kind: "send_email_batch", leadId: "", leadName: "", data: {}, extra: { count: rows.length, skipped: skipped.length, preview: rows.map((row) => `${row.leadName} · ${row.subject}`).join("\n"), ...sendAtExtra(args.sendAt) }, rows }) as object),
+      ...(h.propose({ kind: "send_email_batch", leadId: "", leadName: "", data: {}, extra: { count: rows.length, skipped: skipped.length, preview: rows.map((row) => `${row.leadName} · ${row.subject}`).join("\n"), ...skippedExtra(skipped), ...sendAtExtra(args.sendAt) }, rows }) as object),
       ...(skipped.length ? { skippedWithoutEmail: skipped } : {}),
       ...(connected ? {} : { note: "Gmail isn't connected: the card shows the drafts and a connect button. Say so in one line." }),
     };
@@ -1234,6 +1234,9 @@ export function revalidateGoogleAction(payload: PendingPayload) {
   }
   return true;
 }
+
+/** Names of the leads left out of a batch card, so the card can say who was skipped and why. */
+const skippedExtra = (skipped: string[]): Record<string, string> => (skipped.length ? { skippedNames: skipped.join("\n").slice(0, 2000) } : {});
 
 const emailLog = (subject: string, body: string) => `${subject}\n\n${body}`.slice(0, 4000);
 
@@ -1330,7 +1333,7 @@ export const whatsAppTools = whatsAppEnabled ? [
 ] : [];
 
 export const WHATSAPP_PROMPT = whatsAppEnabled
-  ? "WHATSAPP: only when the user explicitly asks to send WhatsApp messages, use verified lead details already in context; call lead_brief only if required details or contact history are missing. Draft one personalized text per lead using MESSAGES, then use propose_send_whatsapp_batch (also for a single lead). Nothing is sent until the user confirms the card; then messages are queued and go out spaced out. If WhatsApp isn't linked, say so in one line; the app shows the QR to link it."
+  ? "WHATSAPP: only when the user explicitly asks to send WhatsApp messages, use verified lead details already in context; call lead_brief only if required details or contact history are missing. Draft one personalized text per lead using MESSAGES, then use propose_send_whatsapp_batch (also for a single lead). Nothing is sent until the user confirms the card; then messages are queued and go out spaced out. If WhatsApp isn't linked, say so in one line; the app shows the QR to link it. Include every lead the user asked for; if the result has skippedWithoutPhone, name each skipped lead in one line and say it has no valid WhatsApp number with country code."
   : "";
 
 const firstWords = (value: string) => (value.length > 60 ? `${value.slice(0, 60).trimEnd()}…` : value).replace(/\s+/g, " ");
@@ -1351,7 +1354,7 @@ async function proposeWhatsApp(h: LeadtitaHelpers, args: Record<string, unknown>
   }
   if (!rows.length) return { error: "None of these leads has a valid international phone number for WhatsApp.", skipped };
   return {
-    ...(h.propose({ kind: "send_whatsapp_batch", leadId: "", leadName: "", data: {}, extra: { count: rows.length, skipped: skipped.length, preview: rows.map((row) => `${row.leadName} · ${firstWords(row.text)}`).join("\n"), ...sendAtExtra(args.sendAt) }, rows }) as object),
+    ...(h.propose({ kind: "send_whatsapp_batch", leadId: "", leadName: "", data: {}, extra: { count: rows.length, skipped: skipped.length, preview: rows.map((row) => `${row.leadName} · ${firstWords(row.text)}`).join("\n"), ...skippedExtra(skipped), ...sendAtExtra(args.sendAt) }, rows }) as object),
     ...(skipped.length ? { skippedWithoutPhone: skipped } : {}),
     ...(connected ? {} : { note: "WhatsApp isn't linked: the card shows the messages and a QR to link it. Say so in one line." }),
   };

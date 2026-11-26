@@ -581,10 +581,12 @@
       "to": "Para",
       "subject": "Asunto",
       "body": "Mensaje",
-      "batchNote": "Se envían de a uno, cada {seconds} segundos, desde tu Gmail."
+      "batchNote": "Se envían de a uno, cada {seconds} segundos, desde tu Gmail.",
+      "skipped": "Omitidos por no tener un email válido: {names}."
     },
     "whatsappCard": {
-      "batchNote": "Se envían de a uno, cada {min}–{max} s. Usan tu cupo mensual de WhatsApp (los programados también cuentan)."
+      "batchNote": "Se envían de a uno, cada {min}–{max} s. Usan tu cupo mensual de WhatsApp (los programados también cuentan).",
+      "skipped": "Omitidos por no tener un WhatsApp válido con código de país: {names}."
     },
     "meetingCard": {
       "title": "Título",
