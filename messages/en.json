@@ -49,6 +49,7 @@
     "email": "Email",
     "passwordRange": "Password must be between 6 and 128 characters.",
     "captchaRequired": "Complete the security check to continue.",
+    "captchaLoading": "Checking you are human…",
     "forgotLink": "Forgot your password?",
     "forgotTitle": "Reset your password",
     "forgotIntro": "Enter your account email and we'll send you a link to choose a new password.",

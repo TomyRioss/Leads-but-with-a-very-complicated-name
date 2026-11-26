@@ -502,7 +502,7 @@ export function AuthForm({ onAuthenticated, initialMode = "login", paths, embedd
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     clearError();
-    const captcha = new FormData(event.currentTarget).get("cf-turnstile-response");
+    const formCaptcha = new FormData(event.currentTarget).get("cf-turnstile-response");
 
     if (mode === "register") {
       if (!phone || !isValidPhoneNumber(phone)) {
@@ -523,13 +523,14 @@ export function AuthForm({ onAuthenticated, initialMode = "login", paths, embedd
       }
     }
 
-    if (typeof captcha !== "string" || !captcha) {
-      setError(t("captchaRequired"));
-      return;
-    }
-
     setBusy(true);
     try {
+      // Submitted before Cloudflare finished: wait for its token instead of failing right away.
+      const captcha = (typeof formCaptcha === "string" && formCaptcha) || (await captchaRef.current?.waitForToken(10_000));
+      if (!captcha) {
+        setError(t("captchaRequired"));
+        return;
+      }
       invalidateSession();
       const response = await fetch(`/api/auth/${mode === "register" ? "register" : "login"}`, {
         method: "POST",
@@ -680,7 +681,7 @@ export function AuthForm({ onAuthenticated, initialMode = "login", paths, embedd
                 {passwordConfirm && password !== passwordConfirm && <span className="field-help auth-inline-error" id="password-confirm-error" role="status">{t("passwordMismatch")}</span>}
               </label>
             )}
-            <TurnstileField ref={captchaRef} locale={locale} />
+            <TurnstileField ref={captchaRef} locale={locale} placeholder={t("captchaLoading")} />
             {shownError && <p className="auth-error" role="alert">{shownError}</p>}
             <button className="primary-button auth-submit" type="submit" disabled={busy}>
               {busy ? t("connecting") : mode === "register" ? t("createAccount") : t("signIn")}

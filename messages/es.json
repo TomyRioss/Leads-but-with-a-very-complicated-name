@@ -49,6 +49,7 @@
     "email": "Email",
     "passwordRange": "La contraseña debe tener entre 6 y 128 caracteres.",
     "captchaRequired": "Completa la verificación de seguridad para continuar.",
+    "captchaLoading": "Verificando que eres humano…",
     "forgotLink": "¿Olvidaste tu contraseña?",
     "forgotTitle": "Restablece tu contraseña",
     "forgotIntro": "Ingresa el email de tu cuenta y te enviamos un enlace para elegir una contraseña nueva.",

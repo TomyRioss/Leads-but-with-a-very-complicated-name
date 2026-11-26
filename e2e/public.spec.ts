@@ -29,6 +29,18 @@ test("IR A REGISTRO DESDE LANDING", async ({ page }) => {
   await expect(page).toHaveURL(/\/register$/);
 });
 
+// Turnstile: el script se precarga desde el HTML y un envío temprano espera el token en vez de fallar.
+test("VERIFICACIÓN DE SEGURIDAD EN LOGIN", async ({ page }) => {
+  await page.goto("/login");
+  await expect(page.locator('link[rel="preload"][href*="challenges.cloudflare.com/turnstile"]')).toHaveCount(1);
+  await page.locator('input[type="email"]').fill("e2e-nobody@example.com");
+  await page.locator("#password").fill("wrongpass1");
+  await page.getByRole("button", { name: "Iniciar sesión", exact: true }).click();
+  const error = page.locator(".auth-error");
+  await expect(error).toHaveText("Email o contraseña incorrectos.", { timeout: 30_000 });
+  await expect(error).toHaveCSS("color", "rgb(217, 45, 32)");
+});
+
 test("CAMBIAR IDIOMA", async ({ page }) => {
   await page.goto("/");
   await page.getByRole("banner").getByRole("button", { name: /idioma|language/i }).click();
