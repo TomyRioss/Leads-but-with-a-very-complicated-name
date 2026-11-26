@@ -1008,8 +1008,8 @@ td.analysis-cell:has(.has-pain-tags) { height: auto; padding-top: 8px; padding-b
 .password-requirements { display: grid; gap: 4px; }
 .requirement { color: var(--muted); }
 .requirement.met { color: var(--ash-900); font-weight: 600; }
-.auth-inline-error { color: var(--ash-800); }
-.auth-error { margin: 0; color: var(--ash-800); font-size: 12px; line-height: 1.45; }
+.auth-inline-error { color: #d92d20; }
+.auth-error { margin: 0; color: #d92d20; font-size: 12px; line-height: 1.45; }
 .auth-submit { width: 100%; min-height: 44px; margin-top: 2px; }
 .auth-switch { margin: 20px 0 0; color: var(--muted); text-align: center; font-size: 12px; }
 .auth-switch button { display: inline-flex; align-items: center; min-height: 44px; padding: 0 6px; border: 0; background: none; color: var(--ink); font-weight: 700; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
