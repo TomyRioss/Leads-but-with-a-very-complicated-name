@@ -1,15 +1,15 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { AppSidebar } from "@/app/app-sidebar";
 import type { ComponentProps } from "react";
 import { useRouter } from "@/i18n/navigation";
-import { getSession, invalidateSession, peekSessionUser } from "@/lib/client/session";
+import { getSession, invalidateSession, useCachedSidebarUser } from "@/lib/client/session";
 
 /** AppSidebar con la sesión resuelta en el cliente vía getSession (lib/client/session.ts); lo usan Lead Suite y Leadtita (`active`). */
 export function LeadSuiteSidebar({ active = "leadSuite" }: { active?: ComponentProps<typeof AppSidebar>["active"] }) {
   const router = useRouter();
-  const [user, setUser] = useState<{ email: string; credits: number } | null>(() => { const cached = peekSessionUser(); return cached ? { email: String(cached.email), credits: Number(cached.credits) || 0 } : null; });
+  const [user, setUser] = useCachedSidebarUser();
 
   useEffect(() => {
     let current = true;
@@ -21,7 +21,7 @@ export function LeadSuiteSidebar({ active = "leadSuite" }: { active?: ComponentP
       })
       .catch(() => undefined);
     return () => { current = false; };
-  }, [router]);
+  }, [router, setUser]);
 
   async function signOut() {
     await fetch("/api/auth/logout", { method: "POST" });

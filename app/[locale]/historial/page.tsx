@@ -10,7 +10,7 @@ import { AppSidebar } from "@/app/app-sidebar";
 import { ErrorReportButton } from "@/app/feedback-dialog";
 import WhatsAppContact from "@/app/whatsapp-contact";
 import { painView } from "@/lib/analysis-format";
-import { getSession, invalidateSession, peekSessionUser, setSessionCredits } from "@/lib/client/session";
+import { getSession, invalidateSession, useCachedSidebarUser, setSessionCredits } from "@/lib/client/session";
 import { Download, History as HistoryIcon, LoaderCircle, Search } from "lucide-react";
 import "./historial.css";
 
@@ -163,7 +163,7 @@ export default function HistoryPage() {
     return Number.isNaN(date.getTime()) ? t("unknownDate") : format.dateTime(date, { dateStyle: "medium" });
   };
   const router = useRouter();
-  const [user, setUser] = useState<{ email: string; credits: number } | null>(() => { const cached = peekSessionUser(); return cached ? { email: String(cached.email), credits: Number(cached.credits) || 0 } : null; });
+  const [user, setUser] = useCachedSidebarUser();
   const [batches, setBatches] = useState<LeadBatch[]>([]);
   const [view, setView] = useState<HistoryView>("unified");
   const [activeBatchId, setActiveBatchId] = useState("");
@@ -213,7 +213,7 @@ export default function HistoryPage() {
       })
       .catch(() => undefined);
     return () => { current = false; };
-  }, [router]);
+  }, [router, setUser]);
 
   async function signOut() {
     await fetch("/api/auth/logout", { method: "POST" });

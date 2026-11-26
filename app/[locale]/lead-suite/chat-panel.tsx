@@ -2115,7 +2115,7 @@ export function LeadSuiteChat({ onActivity, variant = "panel" }: { onActivity?: 
     </div>
   );
 
-  const renderLeadRow = (lead: RowLead, batchId: string) => {
+  const renderLeadRow = (lead: RowLead, batchId: string, index: number) => {
     const phone = whatsappPhone(lead);
     const socials = SOCIAL_PILLS.flatMap(({ id, label, Icon }) => {
       const url = getSocialProfileUrl(lead.socialProfiles, id);
@@ -2128,7 +2128,7 @@ export function LeadSuiteChat({ onActivity, variant = "panel" }: { onActivity?: 
     const proposals = pains?.status === "done" ? pains.proposals ?? [] : lead.proposals;
     const analyzed = pains?.status === "done" || lead.analyzed || lead.pains.length > 0;
     return (
-      <li key={lead.id || lead.name}>
+      <li key={lead.id || `${lead.name}-${index}`}>
         <div className="ls-chat__result-row-head">
           <span className="ls-chat__result-name">
             <strong>{lead.name}</strong>
@@ -2643,7 +2643,7 @@ export function LeadSuiteChat({ onActivity, variant = "panel" }: { onActivity?: 
                       {action.kind !== "search_people" && serviceOffering ? <p className="ls-chat__result-focus">{t("filters.focus", { focus: serviceOffering })}</p> : null}
                       {rows.length ? (
                         <ul className="ls-chat__result-rows is-scroll" aria-label={t("result.preview")} tabIndex={0}>
-                          {rows.map((lead) => renderLeadRow(lead, action.batchId))}
+                          {rows.map((lead, i) => renderLeadRow(lead, action.batchId, i))}
                         </ul>
                       ) : null}
                       <div className="ls-chat__result-actions">
@@ -2881,8 +2881,8 @@ export function LeadSuiteChat({ onActivity, variant = "panel" }: { onActivity?: 
                 if (action.type === "lead_candidates" && action.candidates.length) {
                   return (
                     <div key={index} className="ls-chat__options" role="group" aria-label={t("chooseLead")}>
-                      {action.candidates.slice(0, 3).map((lead) => (
-                        <button key={lead.name} type="button" disabled={sending} onClick={() => send(t("pickReply", { name: lead.name }))}>
+                      {action.candidates.slice(0, 3).map((lead, i) => (
+                        <button key={`${lead.name}-${i}`} type="button" disabled={sending} onClick={() => send(t("pickReply", { name: lead.name }))}>
                           <span><strong>{lead.name}</strong>{[lead.category, lead.city].filter(Boolean).length ? <small>{[lead.category, lead.city].filter(Boolean).join(" · ")}</small> : null}</span>
                           <ChevronRight aria-hidden="true" size={16} />
                         </button>
@@ -2977,7 +2977,7 @@ export function LeadSuiteChat({ onActivity, variant = "panel" }: { onActivity?: 
               </div>
               {rows.length ? (
                 <ul className="ls-chat__result-rows ls-chat__batch-rows" aria-label={t("result.preview")}>
-                  {visible.map((lead) => renderLeadRow(lead, modal.batchId))}
+                  {visible.map((lead, i) => renderLeadRow(lead, modal.batchId, i))}
                   {!visible.length ? <li className="ls-chat__result-note">{t("result.noMatch")}</li> : null}
                 </ul>
               ) : <p className="ls-chat__result-note" role="status"><LoaderCircle className="ls-chat__spin" aria-hidden="true" size={15} /> {t("result.loading")}</p>}

@@ -1,5 +1,6 @@
 "use client";
 
+import { useLayoutEffect, useState } from "react";
 import { syncHistoryOwner } from "@/lib/client/leadtita-history";
 
 export type SessionUser = { id: string; email: string; credits: number; role?: string; [key: string]: unknown };
@@ -40,6 +41,20 @@ function dropIfCurrent(value: Promise<SessionResult>) {
 export function peekSessionUser(): SessionUser | null {
   if (!entry?.resolved || Date.now() - entry.at > ttlMs) return null;
   return entry.resolved.user;
+}
+
+/**
+ * Sidebar user ({ email, credits }) seeded from the cached session. The cache is read after hydration (before paint),
+ * never during render: the server renders the skeleton, so reading it in render broke hydration.
+ */
+export function useCachedSidebarUser() {
+  const state = useState<{ email: string; credits: number } | null>(null);
+  const setUser = state[1];
+  useLayoutEffect(() => {
+    const cached = peekSessionUser();
+    if (cached) setUser({ email: String(cached.email), credits: Number(cached.credits) || 0 });
+  }, [setUser]);
+  return state;
 }
 
 /** Call on login, logout, or any account change. */
