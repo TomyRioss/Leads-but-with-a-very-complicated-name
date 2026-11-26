@@ -97,6 +97,17 @@ export function ExploreShell() {
 
   useEffect(() => () => clearTimeout(holdTimer.current), []);
 
+  // Móvil: los pasos son una tira con scroll horizontal; el paso a la vista queda visible en la tira.
+  const stepsRef = useRef<HTMLOListElement>(null);
+  useEffect(() => {
+    const list = stepsRef.current;
+    const current = list?.querySelector<HTMLElement>('[aria-current="step"]');
+    if (!list || !current || list.scrollWidth <= list.clientWidth) return;
+    const box = list.getBoundingClientRect();
+    const item = current.getBoundingClientRect();
+    if (item.left < box.left || item.right > box.right) list.scrollLeft += item.left - box.left - 12;
+  }, [view, load]);
+
   useEffect(() => {
     let ignore = false;
     fetch("/api/explore", { cache: "no-store" })
@@ -264,7 +275,7 @@ export function ExploreShell() {
           ) : null}
         </div>
         <nav aria-label={t("stepsAria")} className="mt-3 pb-3 lg:mt-5 lg:pb-6">
-          <ol className="flex gap-1 overflow-x-auto px-3 lg:flex-col lg:gap-0.5 lg:overflow-visible">
+          <ol ref={stepsRef} className="flex gap-1 overflow-x-auto px-3 lg:flex-col lg:gap-0.5 lg:overflow-visible">
             {EXPLORE_STEPS.map((step, index) => {
               const status = statusOf(step);
               const reachable = status !== "pending";
@@ -275,7 +286,7 @@ export function ExploreShell() {
                     disabled={!reachable}
                     aria-current={view === step ? "step" : undefined}
                     onClick={() => setView(step)}
-                    className={`flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-[13px] font-medium whitespace-nowrap transition-colors focus-visible:outline-2 focus-visible:outline-(color:--ink) disabled:cursor-default lg:whitespace-normal ${view === step ? "bg-(--ash-150) text-(color:--ink)" : "text-(color:--ash-700) enabled:hover:bg-(--ash-100)"}`}
+                    className={`flex min-h-11 w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left lg:min-h-0 text-[13px] font-medium whitespace-nowrap transition-colors focus-visible:outline-2 focus-visible:outline-(color:--ink) disabled:cursor-default lg:whitespace-normal ${view === step ? "bg-(--ash-150) text-(color:--ink)" : "text-(color:--ash-700) enabled:hover:bg-(--ash-100)"}`}
                   >
                     <StatusIcon status={status} label={t(`status.${status}`)} />
                     <span>{index + 1}. {t(`steps.${step}`)}</span>

@@ -20,12 +20,13 @@ export const titleDot = "-ml-2 text-(color:--lime-dark)";
 export const countBadge = "rounded-full bg-(--ash-950) px-2 py-0.5 text-[11px] font-bold tracking-normal text-(color:--lime)";
 export const cardClass = "rounded-[10px] border border-(color:--line) bg-(--paper) p-4";
 export const tableWrap = "overflow-x-auto rounded-[10px] border border-(color:--line) bg-(--paper)";
-export const tableClass = "w-full border-collapse text-[13px] max-md:block max-md:[&_tbody]:block [&_tr:last-child_td]:border-b-0";
+// globals.css styles bare table/th/td for the lead tables (min-width 1160px, fixed cell height, nowrap): the max-md:…! overrides keep the card layout full width.
+export const tableClass = "w-full border-collapse text-[13px] max-md:block max-md:[&_tbody]:block max-md:min-w-0! [&_tr:last-child_td]:border-b-0";
 export const theadClass = "max-md:sr-only";
 export const thClass = "whitespace-nowrap border-b border-(color:--line) px-3.5 py-2.5 text-left text-[11px] font-semibold text-(color:--muted)";
 /** thead for tables with SortableTh: on mobile it stays visible as a row of sort chips; non-sortable headers stay screen-reader only. */
-export const sortTheadClass = "max-md:block max-md:border-b max-md:border-(color:--ash-150) max-md:[&_tr]:flex max-md:[&_tr]:flex-wrap max-md:[&_tr]:gap-1.5 max-md:[&_tr]:px-3.5 max-md:[&_tr]:py-2.5 max-md:[&_th:not([aria-sort])]:sr-only";
-export const tdClass = "border-b border-(color:--ash-150) px-3.5 py-2.5 align-middle max-md:flex max-md:justify-between max-md:gap-3 max-md:border-0 max-md:px-0 max-md:py-[3px] max-md:text-right max-md:before:text-left max-md:before:text-[11px] max-md:before:text-(color:--muted) max-md:before:content-[attr(data-label)]";
+export const sortTheadClass = "max-md:block max-md:border-b max-md:border-(color:--ash-150) max-md:[&_tr]:flex max-md:[&_tr]:flex-wrap max-md:[&_tr]:gap-1.5 max-md:[&_tr]:px-3.5 max-md:[&_tr]:py-2.5 max-md:[&_th:not([aria-sort])]:sr-only max-md:[&_th]:h-auto! max-md:[&_th]:border-0! max-md:[&_th]:bg-transparent! max-md:[&_th]:p-0!";
+export const tdClass = "border-b border-(color:--ash-150) px-3.5 py-2.5 align-middle max-md:flex max-md:justify-between max-md:gap-3 max-md:text-right max-md:before:text-left max-md:before:text-[11px] max-md:before:text-(color:--muted) max-md:before:shrink-0 max-md:before:content-[attr(data-label)] max-md:h-auto! max-md:max-w-none! max-md:overflow-visible! max-md:whitespace-normal! max-md:border-0! max-md:px-0! max-md:py-[3px]!";
 export const trClass = "hover:bg-(--ash-50) max-md:block max-md:border-b max-md:border-(color:--ash-150) max-md:px-3.5 max-md:py-2.5";
 export const rightCell = "text-right tabular-nums";
 export const hintText = "text-[11px] text-(color:--ash-700)";

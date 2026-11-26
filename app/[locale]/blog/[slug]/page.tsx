@@ -132,7 +132,8 @@ async function Article({ params }: { params: Params }) {
               <Image src={post.coverUrl} alt={post.coverAlt || ""} fill priority unoptimized sizes="(min-width: 1200px) 1100px, 100vw" />
             </figure>
           )}
-          <div className={`blog-article-layout${toc.length ? " has-toc" : ""}`}>
+          {/* minmax(0,1fr): un bloque de código o tabla ancho no ensancha la columna en móvil; .has-toc la redefine desde 1100px. */}
+          <div className={`blog-article-layout grid-cols-[minmax(0,1fr)]${toc.length ? " has-toc" : ""}`}>
             {toc.length > 0 && (
               <nav className="blog-toc" aria-labelledby="blog-toc-title">
                 <p id="blog-toc-title">{t("toc")}</p>

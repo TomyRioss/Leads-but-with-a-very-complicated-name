@@ -21,5 +21,6 @@
 .wa-card .gdrive-link:disabled { cursor: not-allowed; opacity: 0.55; }
 
 @media (max-width: 480px) {
-  .wa-pair { flex-direction: column; }
+  /* nowrap: en columna, flex-basis 100% del aviso de vencimiento lo mandaba a una segunda columna fuera de la tarjeta. */
+  .wa-pair { flex-direction: column; flex-wrap: nowrap; }
 }

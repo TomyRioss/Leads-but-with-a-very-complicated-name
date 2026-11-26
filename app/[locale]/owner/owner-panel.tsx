@@ -133,7 +133,7 @@ export default function OwnerPanel() {
   return (
     <div className={`min-h-dvh bg-(--ash-100) text-(color:--ink) md:grid md:grid-cols-[224px_minmax(0,1fr)] ${staffActive ? "max-md:flex max-md:h-dvh max-md:flex-col" : ""}`}>
       <header className="sticky top-0 z-30 flex items-center gap-3 border-b border-(color:--line) bg-(--paper) px-4 py-3 md:hidden">
-        <button ref={menuButtonRef} className={iconButton} type="button" onClick={() => setMenuOpen(true)} aria-label={t("shell.openMenu")} aria-expanded={menuOpen} aria-controls="owner-sidebar"><Menu size={18} aria-hidden="true" /></button>
+        <button ref={menuButtonRef} className={`${iconButton} shrink-0`} type="button" onClick={() => setMenuOpen(true)} aria-label={t("shell.openMenu")} aria-expanded={menuOpen} aria-controls="owner-sidebar"><Menu size={18} aria-hidden="true" /></button>
         <span className="text-sm font-semibold">{t(`shell.${current.label}`)}</span>
         <LanguageSwitcher />
         <span className="ml-auto rounded-full bg-(--ash-950) px-2 py-[3px] text-[10px] font-bold uppercase tracking-wider text-(color:--lime)">{t("shell.badge")}</span>

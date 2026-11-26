@@ -11,7 +11,7 @@ const initials = (name: string) => name.split(/\s+/).slice(0, 2).map((word) => w
 /** Miniatura de lo que pasa en cada paso: decorativa, el texto del paso dice lo mismo. */
 function PreviewFrame({ children }: { children: ReactNode }) {
   return (
-    <div aria-hidden="true" className="grid h-40 content-center rounded-2xl text-left border border-(color:--line) bg-(--paper) p-4 shadow-[0_18px_40px_-28px_color-mix(in_srgb,var(--ash-950)_45%,transparent)]">
+    <div aria-hidden="true" className="grid h-40 grid-cols-[minmax(0,1fr)] content-center rounded-2xl text-left border border-(color:--line) bg-(--paper) p-4 shadow-[0_18px_40px_-28px_color-mix(in_srgb,var(--ash-950)_45%,transparent)]">
       {children}
     </div>
   );
@@ -33,15 +33,15 @@ function LeadsPreview({ preview }: { preview: Preview }) {
   return (
     <PreviewFrame>
       <p className="m-0 mb-2 text-xs font-semibold text-(color:--muted)">{preview.found}</p>
-      <ul className="m-0 grid list-none gap-1.5 p-0">
+      <ul className="m-0 grid list-none grid-cols-[minmax(0,1fr)] gap-1.5 p-0">
         {preview.leads.map((name, index) => (
           <li key={name} className="flex items-center gap-2.5 rounded-lg bg-(--ash-50) px-2 py-1.5">
             <span className="grid size-6 shrink-0 place-items-center rounded-full bg-(--ash-950) text-[10px] font-semibold text-(color:--lime)">{initials(name)}</span>
             <span className="min-w-0 flex-1 truncate text-[13px] font-medium text-(color:--ink)">{name}</span>
             {preview.contacts[index] ? (
-              <span className="inline-flex min-w-0 items-center gap-1 truncate text-[11px] text-(color:--ash-700) tabular-nums">
+              <span className="inline-flex max-w-[45%] min-w-0 items-center gap-1 text-[11px] text-(color:--ash-700) tabular-nums">
                 {preview.contacts[index].includes("@") ? <Mail size={11} aria-hidden="true" className="shrink-0" /> : <Phone size={11} aria-hidden="true" className="shrink-0" />}
-                {preview.contacts[index]}
+                <span className="min-w-0 truncate">{preview.contacts[index]}</span>
               </span>
             ) : null}
           </li>

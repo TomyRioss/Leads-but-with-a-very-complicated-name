@@ -149,7 +149,7 @@ export function ProposalsView() {
   const activeNotice = notice && active && notice.id === active.id ? notice : null;
 
   return (
-    <section aria-labelledby="proposals-title">
+    <section aria-labelledby="proposals-title" className="@container">
       <PageHeader id="proposals-title" title={t("title")} intro={t("intro")} count={proposals ? t("count", { count: proposals.length }) : undefined}>
         {filtered ? <FilterChip label={campaignName ? t("filteredBy", { name: campaignName }) : t("filteredGeneric")} clearHref="/propuestas" /> : null}
       </PageHeader>
@@ -162,8 +162,8 @@ export function ProposalsView() {
       ) : null}
 
       {proposals?.length && active ? (
-        <div className="grid overflow-hidden rounded-xl border border-(color:--line) bg-(--paper) md:grid-cols-[300px_minmax(0,1fr)]">
-          <ul aria-label={t("listAria")} className="max-h-72 overflow-y-auto border-b border-(color:--line) md:max-h-[640px] md:border-r md:border-b-0">
+        <div className="grid overflow-hidden rounded-xl border border-(color:--line) bg-(--paper) @2xl:grid-cols-[300px_minmax(0,1fr)]">
+          <ul aria-label={t("listAria")} className="max-h-72 overflow-y-auto border-b border-(color:--line) @2xl:max-h-[640px] @2xl:border-r @2xl:border-b-0">
             {proposals.map((item) => {
               const current = item.id === active.id;
               return (

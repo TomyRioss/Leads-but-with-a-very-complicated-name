@@ -2,11 +2,14 @@
 
 /* Los contadores pasan a dos filas: medidores arriba, "Programados" abajo; el log deja lugar para ambas. */
 .ls-chat__quotas { flex-wrap: wrap; row-gap: 8px; }
-.ls-chat.has-quotas .ls-chat__log { padding-top: 96px; }
-.leadtita-main .ls-chat.has-quotas .ls-chat__log { padding-top: 96px; }
+.ls-chat.has-quotas .ls-chat__log { padding-top: 12px; }
+.leadtita-main .ls-chat.has-quotas .ls-chat__log { padding-top: 16px; }
 
 .ls-scheduled-button { display: inline-flex; min-height: 28px; flex-basis: auto; align-items: center; gap: 6px; padding: 0 10px; border: 1px solid var(--line); border-radius: 999px; background: var(--paper); color: var(--ash-800); font: inherit; font-size: 12px; font-weight: 650; cursor: pointer; }
 .ls-scheduled-row { display: flex; flex-basis: 100%; } /* own row under the meters */
+/* Área táctil de 42-44px sin agrandar el chip visible. */
+.ls-scheduled-button { position: relative; }
+.ls-scheduled-button::after { content: ""; position: absolute; inset: -8px -2px; }
 .ls-scheduled-button:hover { border-color: var(--ash-300); background: var(--ash-50); color: var(--ink); }
 .ls-scheduled-button:focus-visible { outline: 2px solid var(--ash-950); outline-offset: 2px; }
 .ls-scheduled-button__count { min-width: 18px; padding: 0 5px; border-radius: 999px; background: var(--lime); color: var(--ash-950); font-size: 11px; font-weight: 700; line-height: 18px; text-align: center; font-variant-numeric: tabular-nums; }

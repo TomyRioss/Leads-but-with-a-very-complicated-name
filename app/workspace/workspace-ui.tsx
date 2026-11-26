@@ -113,7 +113,7 @@ export function FilterChip({ label, clearHref }: { label: string; clearHref: str
   return (
     <span className="inline-flex items-center gap-2 rounded-full bg-(--ash-950) py-1 pr-1 pl-3 text-xs font-semibold text-(color:--paper)">
       <span className="max-w-56 truncate">{label}</span>
-      <Link href={clearHref} className={`rounded-full bg-(--ash-800) px-2 py-0.5 text-(color:--ash-200) hover:text-(color:--paper) ${FOCUS}`}>{t("clearFilter")}</Link>
+      <Link href={clearHref} className={`relative rounded-full bg-(--ash-800) px-2 py-0.5 after:absolute after:-inset-y-2.5 after:inset-x-0 text-(color:--ash-200) hover:text-(color:--paper) ${FOCUS}`}>{t("clearFilter")}</Link>
     </span>
   );
 }

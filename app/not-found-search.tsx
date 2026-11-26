@@ -67,7 +67,7 @@ export function NotFoundSearch() {
   const hasBest = list[0].score > 0;
 
   return (
-    <div className="grid gap-5">
+    <div className="grid grid-cols-[minmax(0,1fr)] gap-5">
       <form
         role="search"
         className="flex h-16 items-center gap-3 rounded-2xl bg-(--ash-950) pr-3 pl-5 focus-within:outline-3 focus-within:outline-offset-3 focus-within:outline-(--lime-dark) max-[420px]:h-14 max-[420px]:pl-4"
@@ -99,7 +99,7 @@ export function NotFoundSearch() {
         </span>
       </form>
 
-      <div className="grid gap-2.5">
+      <div className="grid grid-cols-[minmax(0,1fr)] gap-2.5">
         <p className="m-0 text-sm font-bold text-(color:--ash-700)">
           {noMatch ? t.noMatch : untouched && hasBest ? t.didYouMean : t.all}
         </p>
@@ -110,7 +110,7 @@ export function NotFoundSearch() {
               <li key={d.href}>
                 <Link
                   href={d.href}
-                  className={`group grid min-h-16 grid-cols-[1fr_auto] items-center gap-3 rounded-xl border px-4 py-3 text-(color:--ink) no-underline transition-colors duration-150 ${ring} ${
+                  className={`group grid min-h-16 grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-xl border px-4 py-3 text-(color:--ink) no-underline transition-colors duration-150 ${ring} ${
                     best
                       ? "border-(color:--lime-dark) bg-(--lime) hover:bg-(--lime-dark)"
                       : "border-(color:--line) bg-(--paper) hover:border-(color:--ash-950) hover:bg-(--ash-50)"

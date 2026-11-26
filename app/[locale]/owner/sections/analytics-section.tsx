@@ -167,7 +167,7 @@ export default function AnalyticsSection({ onUnauthorized }: { onUnauthorized: (
         <div className={`grid gap-3.5 transition-opacity ${loading ? "opacity-60" : ""}`}>
           <dl className="m-0 grid grid-cols-[repeat(auto-fill,minmax(170px,1fr))] gap-3">
             {kpis.map(([label, value]) => (
-              <div className={cardClass} key={label}><dt className="text-[11px] font-semibold text-(color:--muted)">{label}</dt><dd className="m-0 mt-1.5 text-[28px] font-[680] tracking-[-0.03em] tabular-nums">{value}</dd></div>
+              <div className={`${cardClass} @container`} key={label}><dt className="text-[11px] font-semibold text-(color:--muted)">{label}</dt><dd className="m-0 mt-1.5 text-[length:min(28px,14cqi)] font-[680] tracking-[-0.03em] tabular-nums [overflow-wrap:anywhere]">{value}</dd></div>
             ))}
           </dl>
 
@@ -177,7 +177,7 @@ export default function AnalyticsSection({ onUnauthorized }: { onUnauthorized: (
               <p className="sr-only">{trafficSeries.map((point) => t("trafficPointSr", { day: point.label, visitors: point.visitors, pageviews: point.pageviews })).join("; ")}</p>
               <div aria-hidden="true">
                 <ResponsiveContainer width="100%" height={240}>
-                  <AreaChart data={trafficSeries} margin={{ top: 8, right: 8, bottom: 0, left: -16 }}>
+                  <AreaChart data={trafficSeries} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
                     <CartesianGrid stroke={SERIES.grid} vertical={false} />
                     <XAxis dataKey="label" tick={AXIS_TICK} tickLine={false} axisLine={{ stroke: SERIES.grid }} minTickGap={16} />
                     <YAxis allowDecimals={false} tick={AXIS_TICK} tickLine={false} axisLine={false} width={44} />
@@ -195,7 +195,7 @@ export default function AnalyticsSection({ onUnauthorized }: { onUnauthorized: (
           </Card>
 
           {trafficReady && (
-            <div className="grid gap-3.5 md:grid-cols-2">
+            <div className="grid gap-3.5 lg:grid-cols-2">
               <Card title={t("topPages")}>
                 {trafficReady.topPages.length === 0 ? <p className={mutedText}>{t("trafficEmpty")}</p> : (
                   <ol className="m-0 grid list-none gap-2 p-0">
@@ -277,10 +277,10 @@ export default function AnalyticsSection({ onUnauthorized }: { onUnauthorized: (
           </Card>
 
           {ai && hasAiData && (
-            <div className="grid gap-3.5 md:grid-cols-2">
+            <div className="grid gap-3.5 lg:grid-cols-2">
               <SpendTable title={t("aiByFeature")} nameLabel={t("colFeature")} rows={ai.byFeature.map((row) => ({ key: row.feature, name: featureLabel(`ai.${row.feature}`), usd: row.usd, calls: row.calls }))} usd={format.usd} number={formatNumber} usdLabel={t("colUsd")} callsLabel={t("colCalls")} />
               <SpendTable title={t("aiByModel")} nameLabel={t("colModel")} rows={ai.byModel.map((row) => ({ key: row.model, name: row.model, usd: row.usd, calls: row.calls }))} usd={format.usd} number={formatNumber} usdLabel={t("colUsd")} callsLabel={t("colCalls")} />
-              <div className="md:col-span-2">
+              <div className="lg:col-span-2">
                 <SpendTable title={t("aiTopUsers")} nameLabel={t("colUser")} rows={ai.topUsers.map((row) => ({ key: row.userId, name: row.email || row.userId, usd: row.usd, calls: row.calls }))} usd={format.usd} number={formatNumber} usdLabel={t("colUsd")} callsLabel={t("colCalls")} empty={t("aiNoUsers")} />
               </div>
             </div>
@@ -317,7 +317,7 @@ function SpendTable({ title, nameLabel, usdLabel, callsLabel, rows, usd, number,
       <h2 className="m-0 text-[13px] font-semibold">{title}</h2>
       {rows.length === 0 ? <p className={`${cardClass} ${mutedText}`}>{empty}</p> : (
         <div className={tableWrap}>
-          <table className={tableClass}>
+          <table className={`${tableClass} min-w-0!`}>
             <thead className={sortTheadClass}>
               <tr>
                 <SortableTh {...sorting} column="name" label={nameLabel} />
@@ -328,7 +328,7 @@ function SpendTable({ title, nameLabel, usdLabel, callsLabel, rows, usd, number,
             <tbody>
               {sorted.map((row) => (
                 <tr className={trClass} key={row.key}>
-                  <td className={`${tdClass} break-all font-medium`} data-label={nameLabel}>{row.name}</td>
+                  <td className={`${tdClass} break-all font-medium whitespace-normal!`} data-label={nameLabel}>{row.name}</td>
                   <td className={`${tdClass} ${rightCell}`} data-label={usdLabel}>{usd(row.usd)}</td>
                   <td className={`${tdClass} ${rightCell}`} data-label={callsLabel}>{number(row.calls)}</td>
                 </tr>

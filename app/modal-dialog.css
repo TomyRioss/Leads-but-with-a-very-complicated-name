@@ -5,7 +5,7 @@
 .modal-head h2 { flex: 1; margin: 0; color: var(--ink); font-size: 21px; font-weight: 650; line-height: 1.15; letter-spacing: -0.03em; }
 .modal-head .brand-dot { color: var(--lime-dark); }
 .modal-icon { display: grid; flex: none; place-items: center; width: 40px; height: 40px; border-radius: 10px; background: var(--lime); color: var(--ink); }
-.modal-close { display: grid; flex: none; place-items: center; width: 36px; height: 36px; border: 0; border-radius: 8px; background: none; color: var(--muted); cursor: pointer; }
+.modal-close { display: grid; flex: none; place-items: center; width: 40px; height: 40px; border: 0; border-radius: 8px; background: none; color: var(--muted); cursor: pointer; }
 .modal-close:hover { background: var(--ash-100); color: var(--ink); }
 .modal-intro { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.5; }
 .modal-label { color: var(--ash-800); font-size: 12px; font-weight: 650; }

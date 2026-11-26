@@ -26,3 +26,9 @@ a.primary-button.auth-submit { text-decoration: none; }
 .requirement svg { flex: none; color: var(--ash-400); }
 .requirement.met svg { color: var(--lime-dark); }
 .auth-forgot { margin: -8px 0 0; text-align: right; }
+/* Responsive: la topbar fija (verificar, restablecer, oauth) no tapa el panel en pantallas bajas. */
+.auth-shell > .topbar + .auth-workspace { padding-top: 82px; }
+/* Táctil (también en el modal de /explorar): objetivos de 40px y el texto de la contraseña no queda debajo del botón "Mostrar contraseña". */
+.password-control .password-toggle { min-height: 40px; }
+.auth-fields .password-control input { padding-right: 140px; }
+.auth-panel .auth-switch-link { min-height: 40px; }

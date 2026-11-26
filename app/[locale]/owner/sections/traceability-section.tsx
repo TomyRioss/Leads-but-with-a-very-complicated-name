@@ -110,8 +110,8 @@ export default function TraceabilitySection({ onUnauthorized }: { onUnauthorized
         <button className={ghostButton} type="button" onClick={() => refetch(() => setReloadKey((key) => key + 1))}><RefreshCw size={15} aria-hidden="true" /> {common("refresh")}</button>
       </div>
 
-      <div className="mb-3.5 grid gap-3 rounded-[10px] border border-(color:--line) bg-(--paper) p-3.5">
-        <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto_auto] sm:items-end">
+      <div className="@container mb-3.5 grid gap-3 rounded-[10px] border border-(color:--line) bg-(--paper) p-3.5">
+        <div className="grid gap-2 @xl:grid-cols-[minmax(0,1fr)_auto_auto] @xl:items-end">
           <label className="relative flex items-center">
             <Search className="pointer-events-none absolute left-3 text-(color:--ash-600)" size={15} aria-hidden="true" />
             <span className="sr-only">{t("clientLabel")}</span>

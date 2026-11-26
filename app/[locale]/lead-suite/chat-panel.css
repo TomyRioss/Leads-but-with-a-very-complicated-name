@@ -164,6 +164,7 @@ a.ls-chat__error-primary:focus-visible { outline: 2px solid var(--ink); outline-
 .ls-chat__form { padding: 10px 16px 16px; background: var(--ash-50); }
 .ls-chat__composer {
   position: relative;
+  container: ls-composer / inline-size;
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -359,8 +360,12 @@ a.ls-chat__error-primary:focus-visible { outline: 2px solid var(--ink); outline-
 .ls-chat__sales-needs { margin: 10px 0 0; padding: 8px 10px; border: 1px solid var(--ash-300); border-radius: 8px; background: var(--ash-50); color: var(--ash-900); font-size: 12px; line-height: 1.45; }
 .ls-chat__sales-clear { margin-top: 9px; padding: 5px 2px; border: 0; background: transparent; color: var(--ash-600); font-size: 11px; text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }
 .ls-chat__sales-clear:hover { color: var(--ink); }
-@media (max-width: 400px) {
-  .ls-chat__control-wrap:last-child .ls-chat__control-current { display: none; }
+/* Según el ancho del compositor (panel lateral angosto incluido): "Permisos" queda en icono + chevron; el nombre sigue para lectores. */
+@container ls-composer (max-width: 520px) {
+  .ls-chat__control--permission > span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+}
+@container ls-composer (max-width: 400px) {
+  .ls-chat__toolbar { gap: 6px; }
   .ls-chat__control { gap: 4px; padding-right: 8px; padding-left: 8px; font-size: 11px; }
 }
 .ls-chat__attach, .ls-chat__send {
@@ -435,6 +440,8 @@ a.ls-chat__error-primary:focus-visible { outline: 2px solid var(--ink); outline-
 .ls-chat__md ul li::marker { color: var(--lime-dark); }
 .ls-chat__md ol li::marker { color: var(--muted); font-variant-numeric: tabular-nums; font-weight: 600; }
 .ls-chat__md strong { font-weight: 650; color: var(--ink); }
+/* Tablas de markdown: anula las reglas globales de la tabla de leads (min-width 1160px, celdas nowrap/240px) y deja las utilidades de lib/markdown. */
+.ls-chat__md :is(table, thead, th, td) { all: revert-layer; }
 .ls-chat__md a { color: var(--ink); font-weight: 560; text-decoration: underline; text-decoration-color: var(--lime-dark); text-decoration-thickness: 2px; text-underline-offset: 3px; }
 .ls-chat__md a:hover { text-decoration-color: var(--ink); }
 .ls-chat__md code { padding: 1px 5px; border-radius: 5px; background: var(--ash-150); font-size: 0.9em; }
@@ -595,7 +602,7 @@ a.ls-chat__error-primary:focus-visible { outline: 2px solid var(--ink); outline-
 @keyframes ls-chat-progress { from { transform: translateX(-100%); } to { transform: translateX(250%); } }
 
 /* ───────── Borradores sugeridos ───────── */
-.ls-chat__drafts { display: flex; flex-direction: column; gap: 10px; max-width: 700px; }
+.ls-chat__drafts { display: flex; flex-direction: column; gap: 10px; max-width: 700px; container-type: inline-size; }
 .ls-chat__model-choice { display: grid; gap: 12px; max-width: 560px; padding: 16px; border: 1px solid var(--line); border-radius: 14px; background: var(--paper); }
 .ls-chat__model-choice h3 { margin: 0; font-size: 15px; }
 .ls-chat__model-choice label { display: grid; gap: 6px; font-size: 13px; }
@@ -635,8 +642,10 @@ a.ls-chat__error-primary:focus-visible { outline: 2px solid var(--ink); outline-
 .ls-chat__draft-regenerate { display: grid; gap: 8px; padding: 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--ash-50); }
 .ls-chat__draft-regenerate .ls-chat__draft-editor textarea { min-height: 58px; }
 .ls-chat__draft-regenerate-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
-@media (max-width: 520px) { .ls-chat__draft header { flex-wrap: wrap; } .ls-chat__draft-header-actions { flex-wrap: wrap; justify-content: flex-end; } }
-@media (max-width: 520px) { .ls-chat__draft-row { grid-template-columns: minmax(0, 1fr); } .ls-chat__draft-sources { justify-self: end; margin-top: 0; } }
+/* Por ancho del bloque (máx. 700px; el panel lateral de Lead Suite es angosto): fuentes debajo del borrador, sin aplastarlo.
+   Prefijo .ls-chat__drafts: gana a la grilla 1.4fr/1fr de las tarjetas de reunión (más abajo), que también usa .ls-chat__draft-row. */
+@container (max-width: 640px) { .ls-chat__draft header { flex-wrap: wrap; } .ls-chat__draft-header-actions { flex-wrap: wrap; justify-content: flex-end; } }
+@container (max-width: 720px) { .ls-chat__drafts .ls-chat__draft-row { grid-template-columns: minmax(0, 1fr); } .ls-chat__draft-sources { width: auto; max-width: 100%; justify-self: end; margin-top: 0; } }
 .ls-chat__draft-send-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-top: 2px; }
 .ls-chat__draft-send { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 36px; padding: 0 14px; border: 1px solid transparent; border-radius: 999px; background: var(--lime); color: var(--ink); font-size: 13px; font-weight: 700; cursor: pointer; transition: background-color 160ms ease, border-color 160ms ease, transform 160ms ease; }
 .ls-chat__draft-send.is-whatsapp { border-color: color-mix(in srgb, #128c52 30%, var(--line)); }
@@ -807,7 +816,10 @@ a.ls-chat__error-primary:focus-visible { outline: 2px solid var(--ink); outline-
 
 /* ───────── Rincón superior derecho: Nuevo chat + historial ───────── */
 .ls-chat { position: relative; }
-.ls-chat__quotas { position: absolute; z-index: 3; top: 19px; left: 16px; display: flex; align-items: flex-start; gap: 12px; width: min(380px, calc(100% - 180px)); }
+.ls-chat__quotas { position: relative; z-index: 3; display: flex; flex: none; align-items: flex-start; gap: 12px; box-sizing: border-box; width: 100%; padding: 19px max(var(--ls-chat-corner), calc(100% - 396px)) 10px 16px; }
+/* Franja en el flujo (no absoluta): el log empieza debajo y nada pasa por detrás de los contadores. --ls-chat-corner reserva el rincón de botones. */
+.ls-chat { --ls-chat-corner: 234px; }
+.ls-chat--panel { --ls-chat-corner: 187px; }
 .ls-chat__quota-meter { display: flex; min-width: 0; flex: 1 1 120px; flex-direction: column; gap: 5px; color: var(--ash-700); }
 .ls-chat__quota-meter.is-whatsapp { --quota-accent: #25d366; }
 .ls-chat__quota-meter.is-gmail { --quota-accent: #ea4335; }
@@ -831,7 +843,7 @@ a.ls-chat__error-primary:focus-visible { outline: 2px solid var(--ink); outline-
 .ls-chat__quota-meter.is-low:not(.is-compact) { border-color: var(--ash-400); }
 .ls-chat__quota-meter.is-empty:not(.is-compact) { border-color: var(--ash-500); background: var(--ash-150); }
 .ls-chat__quota-meter.is-empty:not(.is-compact) .ls-chat__quota-label strong { color: var(--ink); font-weight: 700; }
-.ls-chat.has-quotas .ls-chat__log { padding-top: 68px; }
+.ls-chat.has-quotas .ls-chat__log { padding-top: 12px; }
 .ls-chat__corner { position: absolute; z-index: 3; top: 12px; right: 16px; display: flex; align-items: center; gap: 4px; }
 .ls-chat--panel .ls-chat__corner { right: 64px; }
 .ls-chat__new, .ls-chat__corner-icon {
@@ -872,7 +884,6 @@ a.ls-chat__error-primary:focus-visible { outline: 2px solid var(--ink); outline-
 .ls-chat__history-select-all:hover:not(:disabled) { background: var(--ash-100); color: var(--ink); }
 .ls-chat__history-select-all:disabled { color: var(--ash-400); cursor: default; }
 @media (max-width: 520px) {
-  .ls-chat__quotas { width: calc(100% - 165px); gap: 8px; }
   .ls-chat__quotas .ls-chat__quota-label span { display: none; }
 }
 .ls-chat__history-bulk { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin: 0 2px 7px; padding: 7px; border-radius: 9px; background: var(--ash-100); color: var(--ash-800); font-size: 12px; font-weight: 600; }
@@ -913,10 +924,18 @@ a.ls-chat__error-primary:focus-visible { outline: 2px solid var(--ink); outline-
 /* Lugar para el rincón sobre el primer mensaje. */
 .ls-chat--page .ls-chat__log, .ls-chat--panel .ls-chat__log { padding-top: 64px; }
 @media (max-width: 1024px) {
+  .ls-chat--panel { --ls-chat-corner: 182px; }
   .ls-chat--panel .ls-chat__corner { right: 12px; }
   .ls-chat--panel .ls-chat__history-toggle { display: inline-flex; }
 }
 @media (max-width: 640px) {
+  /* Móvil: "Programados" junto a los iconos del rincón y los tres medidores en una fila a todo el ancho. */
+  .ls-chat { --ls-chat-corner: 160px; }
+  .ls-chat--panel { --ls-chat-corner: 112px; }
+  .ls-chat__quotas { gap: 8px; padding: 8px 12px; }
+  .ls-chat__quotas .ls-scheduled-row { order: -1; box-sizing: border-box; min-height: 44px; align-items: center; padding-right: var(--ls-chat-corner); }
+  .ls-chat__quotas .ls-chat__quota-stack { display: contents; }
+  .ls-chat__quotas .ls-chat__quota-meter { flex: 1 1 0; max-width: none; }
   .ls-chat__corner { top: 8px; right: 8px; }
   .ls-chat--panel .ls-chat__form { padding-bottom: max(12px, env(safe-area-inset-bottom)); }
   .ls-chat--panel .ls-chat__log { overscroll-behavior: contain; }

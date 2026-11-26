@@ -73,7 +73,7 @@ export function LeadsTable({ leads, loading }: { leads: ExploreLead[] | null; lo
 
   return (
     <div className="max-h-[calc(100dvh-6.5rem)] overflow-auto rounded-2xl [scrollbar-color:var(--ash-300)_transparent] [scrollbar-width:thin] border border-(color:--line) bg-white" tabIndex={0} aria-label={t("leadsTableAria")}>
-      <table className="w-full! min-w-[1040px]! table-fixed border-collapse text-[13px]">
+      <table className="w-full! min-w-[900px]! table-fixed border-collapse text-[13px]">
         <thead>
           <tr>{columns.map((label, index) => <th key={label} scope="col" className={`${TH} ${WIDTHS[index]}`}>{label}</th>)}</tr>
         </thead>

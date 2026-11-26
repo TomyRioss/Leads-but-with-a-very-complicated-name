@@ -103,7 +103,7 @@ function Chip({ children, onRemove, removeLabel }: { children: ReactNode; onRemo
     <li className="inline-flex max-w-full items-center gap-1.5 rounded-full border border-(color:--line) bg-(--ash-50) py-1 pr-1 pl-3 text-sm text-(color:--ash-800)">
       <span className="flex min-w-0 items-center gap-1.5 truncate">{children}</span>
       {onRemove ? (
-        <button type="button" onClick={onRemove} aria-label={removeLabel} className={`grid size-7 shrink-0 place-items-center rounded-full text-(color:--ash-600) hover:bg-(--ash-150) hover:text-(color:--ink) ${FOCUS}`}>
+        <button type="button" onClick={onRemove} aria-label={removeLabel} className={`relative grid size-7 shrink-0 place-items-center rounded-full text-(color:--ash-600) before:absolute before:-inset-1.5 hover:bg-(--ash-150) hover:text-(color:--ink) ${FOCUS}`}>
           <X size={14} aria-hidden="true" />
         </button>
       ) : <span className="w-2" />}
@@ -296,7 +296,7 @@ export function CustomersStep({ business, nav, onSubmit }: { business: Business;
               })}
             </ul>
           ) : null}
-          <div className="mt-3 grid gap-2 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
+          <div className="mt-3 grid gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] sm:items-end">
             <div>
               <label htmlFor={countryId} className="mb-1 block text-xs font-semibold text-(color:--ash-700)">{t("country")}</label>
               <input id={countryId} className={INPUT} value={country} placeholder={t("countryPlaceholder")} maxLength={80} autoComplete="country-name"
@@ -348,7 +348,7 @@ function ConfirmCard({ title, children, checked, onToggle, checkLabel, onEdit, a
     <section aria-labelledby={titleId} data-attention={attention && !checked ? "true" : undefined} className={`rounded-xl border p-4 transition-shadow sm:p-5 ${tone}`}>
       <div className="flex items-center justify-between gap-3">
         <h2 id={titleId} className="text-base font-semibold tracking-tight">{title}</h2>
-        <button type="button" onClick={onEdit} className={`inline-flex min-h-9 shrink-0 items-center gap-1.5 rounded-md px-2 text-sm font-semibold text-(color:--ash-700) hover:bg-(--ash-150) hover:text-(color:--ink) ${FOCUS}`}>
+        <button type="button" onClick={onEdit} className={`inline-flex min-h-10 shrink-0 items-center gap-1.5 rounded-md px-2 text-sm font-semibold text-(color:--ash-700) hover:bg-(--ash-150) hover:text-(color:--ink) ${FOCUS}`}>
           <Pencil size={14} aria-hidden="true" />{t("edit")}
         </button>
       </div>

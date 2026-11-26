@@ -76,8 +76,8 @@ export function ResearchStep({ product, live = false }: { product: ExploreProduc
     <section className={CARD} aria-labelledby="explore-product-name">
       <div className="flex flex-wrap items-center gap-4">
         <Favicon domain={product.domain} size={48} />
-        <div className="min-w-0 flex-1">
-          <h2 id="explore-product-name" className="truncate text-lg font-semibold tracking-tight">{product.name}</h2>
+        <div className="min-w-0 flex-1 basis-40">
+          <h2 id="explore-product-name" className="text-lg font-semibold tracking-tight break-words">{product.name}</h2>
           {product.domain ? <p className="truncate text-sm text-(color:--muted)">{cleanDomain(product.domain)}</p> : null}
         </div>
         {live ? null : <span className="inline-flex items-center gap-1 rounded-full bg-(--lime) px-2.5 py-1 text-xs font-semibold text-(color:--ink)"><Check size={13} aria-hidden="true" />{t("found")}</span>}
@@ -122,7 +122,7 @@ export function CompetitorsStep({ data }: { data: ExploreCompetitors }) {
           <h2 className={LABEL}>{t("competitorsLabel")}</h2>
           <span className="rounded-full bg-(--ash-150) px-2 py-0.5 text-[11px] font-semibold text-(color:--ash-700)">{t("competitorsFound", { count: data.competitors.length })}</span>
         </div>
-        <ul className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <ul className="mt-3 grid grid-cols-[repeat(auto-fill,minmax(min(12rem,100%),1fr))] gap-3">
           {data.competitors.map((item) => (
             <li key={item.domain || item.name} className="flex min-w-0 items-center gap-3 rounded-lg border border-(color:--line) bg-(--ash-50) p-3">
               <Favicon domain={item.domain} size={32} />
@@ -142,7 +142,7 @@ export function CompetitorsStep({ data }: { data: ExploreCompetitors }) {
 export function CampaignsStep({ campaigns, selectedId, onSelect, extra }: { campaigns: ExploreCampaign[]; selectedId: string; onSelect: (id: string) => void; extra?: (campaign: ExploreCampaign) => ReactNode }) {
   const t = useTranslations("Explore");
   return (
-    <ul className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+    <ul className="grid grid-cols-[repeat(auto-fill,minmax(min(20rem,100%),1fr))] gap-4">
       {campaigns.map((campaign) => {
         const Icon = CAMPAIGN_ICONS[campaign.icon] ?? Sparkles;
         const selected = campaign.id === selectedId;
@@ -238,15 +238,15 @@ export function ProposalsStep({ proposals, leads, onSend }: { proposals: Explore
   const body = edits[active.leadId] ?? active.body;
 
   return (
-    <section aria-label={t("titles.proposals")}>
+    <section aria-label={t("titles.proposals")} className="@container">
       <ul className="mb-4 flex flex-wrap gap-2 text-xs">
         <li className="inline-flex items-center gap-1.5 rounded-full border border-(color:--line) bg-(--paper) px-3 py-1.5 font-medium">
           <FaWhatsapp aria-hidden="true" className="text-(color:--ash-700)" /><Mail size={13} aria-hidden="true" className="text-(color:--ash-700)" />
           {t("proposalsSummary", { whatsapp, gmail: proposals.length - whatsapp })}
         </li>
       </ul>
-      <div className="mb-4 grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto]">
-        <div className="flex flex-col gap-4 rounded-xl border border-(color:--line) bg-(--paper) p-5 sm:flex-row sm:items-center">
+      <div className="mb-4 grid gap-3 @4xl:grid-cols-[minmax(0,1fr)_minmax(0,22rem)]">
+        <div className="flex flex-col gap-4 rounded-xl border border-(color:--line) bg-(--paper) p-5 @lg:flex-row @lg:items-center">
           <Gift size={26} aria-hidden="true" className="shrink-0 text-(color:--lime-dark)" />
           <div className="min-w-0 flex-1">
             <p className="text-base font-semibold tracking-tight">{t("trialOffer.title", { days: TRIAL_DAYS })}</p>
@@ -266,14 +266,14 @@ export function ProposalsStep({ proposals, leads, onSend }: { proposals: Explore
             {NEXT_STEPS.map(({ key, Icon }) => (
               <li key={key} className="flex items-center gap-2.5 text-sm leading-tight font-medium">
                 <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-(--ash-100) text-(color:--ink)" aria-hidden="true"><Icon size={16} /></span>
-                <span className="lg:max-w-[5.5rem]">{t(`trialOffer.steps.${key}`)}</span>
+                <span>{t(`trialOffer.steps.${key}`)}</span>
               </li>
             ))}
           </ol>
         </div>
       </div>
-      <div className="grid overflow-hidden rounded-xl border border-(color:--line) bg-(--paper) md:grid-cols-[300px_minmax(0,1fr)]">
-        <ul aria-label={t("proposalsListAria")} className="max-h-[560px] overflow-y-auto border-b border-(color:--line) md:border-r md:border-b-0">
+      <div className="grid overflow-hidden rounded-xl border border-(color:--line) bg-(--paper) @2xl:grid-cols-[300px_minmax(0,1fr)]">
+        <ul aria-label={t("proposalsListAria")} className="max-h-80 overflow-y-auto border-b border-(color:--line) @2xl:max-h-[560px] @2xl:border-r @2xl:border-b-0">
           {proposals.map((item) => {
             const name = names.get(item.leadId) ?? item.to;
             const current = item.leadId === active.leadId;

@@ -35,6 +35,8 @@
 .blog-tags { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; padding: 0; list-style: none; }
 .blog-tags a { display: inline-flex; min-height: 28px; align-items: center; padding: 0 10px; border-radius: 6px; background: var(--ash-150); color: var(--ash-700); font-size: 12px; font-weight: 600; text-decoration: none; }
 .blog-tags a:hover { background: var(--ash-200); color: var(--ink); }
+/* Área táctil ≥40px en pantallas táctiles sin agrandar el chip. */
+@media (pointer: coarse) { .blog-tags a { position: relative; } .blog-tags a::after { position: absolute; inset: -6px 0; content: ""; } }
 
 .blog-section { display: grid; gap: 28px; }
 .blog-section-title { font-size: clamp(1.375rem, 1.1rem + 1vw, 1.75rem) !important; }

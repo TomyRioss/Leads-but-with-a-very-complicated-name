@@ -137,7 +137,7 @@ export default function OverviewSection({ onUnauthorized, onOpenAudit }: { onUna
         <>
           <dl className="m-0 grid grid-cols-[repeat(auto-fill,minmax(190px,1fr))] gap-3">
             {cards.map(([label, value]) => (
-              <div className={cardClass} key={label}><dt className="text-[11px] font-semibold text-(color:--muted)">{label}</dt><dd className="m-0 mt-1.5 text-[28px] font-[680] tracking-[-0.03em] tabular-nums">{value}</dd></div>
+              <div className={`${cardClass} @container`} key={label}><dt className="text-[11px] font-semibold text-(color:--muted)">{label}</dt><dd className="m-0 mt-1.5 text-[length:min(28px,14cqi)] font-[680] tracking-[-0.03em] tabular-nums [overflow-wrap:anywhere]">{value}</dd></div>
             ))}
           </dl>
           <div className={`${cardClass} mt-3.5`}>
@@ -167,12 +167,12 @@ export default function OverviewSection({ onUnauthorized, onOpenAudit }: { onUna
           {activityError && <p className={mutedText} role="status">{activityError}</p>}
           {activity && activity.length === 0 && <p className={mutedText}>{t("noActivity")}</p>}
           {activity && activity.length > 0 && (
-            <ul className="m-0 grid list-none gap-2 p-0">
+            <ul className="@container m-0 grid list-none gap-2 p-0">
               {activity.map((entry) => (
                 <li className="border-t border-(color:--ash-150) pt-2 first:border-t-0 first:pt-0" key={entry.id}>
                   <button
                     type="button"
-                    className={`${rowButton} md:grid-cols-[1fr_auto] md:gap-3`}
+                    className={`${rowButton} @lg:grid-cols-[minmax(0,1fr)_auto] @lg:gap-3`}
                     onClick={(event) => openDetail(event.currentTarget, {
                       title: actionLabel(entry.action),
                       subtitle: formatDateTime(entry.created),

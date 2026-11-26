@@ -1160,7 +1160,7 @@ td.analysis-cell:has(.has-pain-tags) { height: auto; padding-top: 8px; padding-b
 .side-nav ~ .workspace { padding-top: 24px; }
 
 .side-nav-collapse, .side-nav-mark, .side-nav-avatar { display: none; }
-.side-nav-mark { text-decoration: none; border-radius: 8px; }
+.side-nav-mark { min-width: 40px; min-height: 40px; align-items: center; justify-content: center; text-decoration: none; border-radius: 8px; }
 .side-nav-mark .brand-mark { min-height: 0; font-size: 24px; }
 .side-nav-mark:focus-visible { outline: 2px solid var(--ash-950); outline-offset: 3px; }
 .side-nav-avatar { width: 28px; height: 28px; place-items: center; border-radius: 50%; background: var(--lime); color: var(--ash-950); font-size: 13px; font-weight: 700; }
@@ -1175,7 +1175,7 @@ td.analysis-cell:has(.has-pain-tags) { height: auto; padding-top: 8px; padding-b
   .app-shell:has(> .side-nav) { transition: padding-left 200ms ease; }
   .side-nav { transition: width 200ms ease; }
   .side-nav-head { gap: 8px; }
-  .side-nav-collapse { display: inline-flex; width: 36px; height: 36px; flex: none; align-items: center; justify-content: center; border: 1px solid transparent; border-radius: 9px; background: transparent; color: var(--muted); cursor: pointer; }
+  .side-nav-collapse { display: inline-flex; width: 40px; height: 40px; flex: none; align-items: center; justify-content: center; border: 1px solid transparent; border-radius: 9px; background: transparent; color: var(--muted); cursor: pointer; }
   .side-nav-collapse:hover { border-color: var(--line); background: var(--ash-50); color: var(--ink); }
   .side-nav-collapse:focus-visible { outline: 2px solid var(--ash-950); outline-offset: 2px; }
 

@@ -162,7 +162,7 @@ function BusinessSwitcher({ tip, onNavigate }: { tip: (label: string) => string 
               </button>
               {incomplete ? (
                 <Link role="menuitem" href={`/onboarding?business=${encodeURIComponent(item.id)}`} aria-label={t("completeAria", { name: item.name })} onClick={() => { closeMenu(); onNavigate(); }}
-                  className="shrink-0 rounded-full bg-(--lime) px-2.5 py-1 text-xs font-semibold text-(color:--ink) hover:bg-(--lime-dark) focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(color:--ink)">
+                  className="relative shrink-0 rounded-full bg-(--lime) px-2.5 py-1 text-xs font-semibold after:absolute after:-inset-y-2 after:inset-x-0 text-(color:--ink) hover:bg-(--lime-dark) focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(color:--ink)">
                   {t("complete")}
                 </Link>
               ) : null}

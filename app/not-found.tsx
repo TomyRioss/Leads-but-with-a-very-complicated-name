@@ -13,7 +13,7 @@ const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 export default function NotFound() {
   return (
     <main className={`${geistSans.variable} grid min-h-dvh content-center bg-(--ash-100) px-4 py-8 text-(color:--ink) [font-family:var(--font-geist-sans),Arial,sans-serif]`}>
-      <div className="mx-auto grid w-full max-w-[760px] gap-7">
+      <div className="mx-auto grid w-full max-w-[760px] grid-cols-[minmax(0,1fr)] gap-7">
         <div className="justify-self-start"><BrandLogo /></div>
         <div className="grid gap-4">
           <p className="m-0 w-fit rounded-full bg-(--ash-950) px-2.5 py-1 text-xs font-bold tracking-[0.06em] tabular-nums text-(color:--lime)">404</p>

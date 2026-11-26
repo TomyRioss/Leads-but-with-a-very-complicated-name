@@ -16,7 +16,7 @@ function BusinessCard({ business }: { business: Business }) {
   const t = useTranslations("Workspace.businesses");
   const titleId = `business-${business.id}`;
   return (
-    <article className={CARD} aria-labelledby={titleId}>
+    <article className={`${CARD} @container`} aria-labelledby={titleId}>
       <div className="flex flex-wrap items-center gap-4">
         <Favicon domain={business.domain} size={48} />
         <div className="min-w-0 flex-1">
@@ -32,14 +32,14 @@ function BusinessCard({ business }: { business: Business }) {
         <MapPin size={13} aria-hidden="true" />{t("location")}: {business.location || t("noLocation")}
       </p>
 
-      <div className="mt-6 grid gap-6 border-t border-(color:--line) pt-5 lg:grid-cols-2">
+      <div className="mt-6 grid grid-cols-1 gap-6 border-t border-(color:--line) pt-5 @xl:grid-cols-2">
         {business.headline || business.valueProps.length ? (
           <div>
             <h3 className={LABEL}>{t("valueProps")}</h3>
             {business.headline ? <p className="mt-2 font-semibold tracking-tight">{business.headline}</p> : null}
             <ul className="mt-2 space-y-1.5">
               {business.valueProps.map((item) => (
-                <li key={item} className="flex items-start gap-2 text-sm text-(color:--ash-800)">
+                <li key={item} className="flex min-w-0 items-start gap-2 text-sm wrap-anywhere text-(color:--ash-800)">
                   <Check size={16} className="mt-0.5 shrink-0 text-(color:--lime-dark)" aria-hidden="true" />{item}
                 </li>
               ))}
@@ -51,7 +51,7 @@ function BusinessCard({ business }: { business: Business }) {
             <h3 className={LABEL}>{t("buyerSearches")}</h3>
             <ul className="mt-3 flex flex-wrap gap-2">
               {business.buyerSearches.map((item) => (
-                <li key={item} className="inline-flex items-center gap-1.5 rounded-full border border-(color:--line) bg-(--ash-50) px-3 py-1.5 text-xs text-(color:--ash-800)">
+                <li key={item} className="inline-flex max-w-full min-w-0 items-center gap-1.5 rounded-full wrap-anywhere border border-(color:--line) bg-(--ash-50) px-3 py-1.5 text-xs text-(color:--ash-800)">
                   <Search size={13} className="text-(color:--muted)" aria-hidden="true" />{item}
                 </li>
               ))}
@@ -66,7 +66,7 @@ function BusinessCard({ business }: { business: Business }) {
           <span className="rounded-full bg-(--ash-150) px-2 py-0.5 text-[11px] font-semibold text-(color:--ash-700)">{t("competitorsCount", { count: business.competitors.length })}</span>
         </div>
         {business.competitors.length ? (
-          <ul className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <ul className="mt-3 grid grid-cols-1 gap-3 @md:grid-cols-2 @4xl:grid-cols-4">
             {business.competitors.map((item) => (
               <li key={item.domain || item.name} className="flex min-w-0 items-center gap-3 rounded-lg border border-(color:--line) bg-(--ash-50) p-3">
                 <Favicon domain={item.domain} size={32} />

@@ -15,3 +15,5 @@
 .history-empty h2 { font-weight: 700; letter-spacing: -0.02em; }
 .history-empty-icon { display: inline-grid; width: 44px; height: 44px; margin-bottom: 10px; place-items: center; border-radius: 999px; background: var(--lime); color: var(--ink); box-shadow: inset 0 0 0 1px var(--lime-dark); }
 .history-search-link { display: inline-flex; align-items: center; gap: 8px; }
+/* Área táctil mínima de 40px (vista y paginación). */
+.history-view-switch button, .history-pagination button { min-height: 40px; }

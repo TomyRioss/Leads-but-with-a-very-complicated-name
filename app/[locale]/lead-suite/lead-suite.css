@@ -48,6 +48,9 @@
 .ls-list li { padding: 10px 0; border-top: 1px solid var(--line); display: flex; flex-direction: column; gap: 3px; font-size: 13px; }
 .ls-list li:first-child { border-top: 0; padding-top: 0; }
 .ls-list-head { display: flex; justify-content: space-between; gap: 8px; align-items: center; }
+/* El chip (nowrap) no aplasta el nombre: se recorta con elipsis a partir del 45% del ancho. */
+.ls-list-head > strong { min-width: 0; overflow-wrap: anywhere; }
+.ls-list-head > .ls-chip { flex: none; max-width: 45%; overflow: hidden; text-overflow: ellipsis; }
 .ls-chip { font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 999px; background: var(--ash-150); color: var(--ash-700); white-space: nowrap; }
 /* Estado con intención: el lime marca avance (respondió → reunión → ganado); perdido baja a ash oscuro. */
 .ls-chip[data-status="contacted"] { background: var(--paper); color: var(--ash-800); box-shadow: inset 0 0 0 1px var(--line); }
@@ -63,15 +66,16 @@
 .ls-leads-search:focus-within { border-color: var(--ash-700); }
 .ls-leads-filters { flex-wrap: wrap; }
 .ls-leads-loading { display: flex; align-items: center; gap: 8px; }
-.ls-leads { list-style: none; margin: 0; padding: 0; }
+/* Contenedor: la fila se apila según el ancho real de la tarjeta (sidebar + chat la angostan en desktop), no del viewport. */
+.ls-leads { list-style: none; margin: 0; padding: 0; container-type: inline-size; }
 .ls-leads > li { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 10px; align-items: center; padding: 10px 0; border-top: 1px solid var(--line); font-size: 13px; }
 .ls-leads > li { padding: 7px 0; }
 .ls-leads > li:first-child { border-top: 0; padding-top: 0; }
-.ls-leads-actions .ls-button { min-height: 34px; padding: 0 12px; font-size: 13px; }
+.ls-leads-actions .ls-button { min-height: 34px; padding: 0 12px; font-size: 13px; white-space: nowrap; }
 .ls-leads-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .ls-leads-info strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ls-leads-pager { display: flex; align-items: center; justify-content: center; gap: 12px; margin-top: 12px; }
-@media (max-width: 640px) { .ls-leads > li { grid-template-columns: minmax(0, 1fr) auto; } }
+@container (max-width: 720px) { .ls-leads > li { grid-template-columns: minmax(0, 1fr) auto; } }
 .ls-report p, .ls-report li { font-size: 14px; line-height: 1.55; color: var(--ash-800); }
 .ls-report h3 { font-size: 13px; margin: 12px 0 4px; }
 .ls-report ul { margin: 0; padding-left: 18px; }
@@ -132,7 +136,8 @@
 .ls-panel { display: flex; flex-direction: column; gap: 20px; min-width: 0; }
 .ls-panel[hidden] { display: none; }
 .ls-empty-action { align-self: flex-start; margin-top: 4px; }
-@media (max-width: 640px) { .ls-tabs { width: 100%; } }
+/* En móvil las pestañas pasan a dos filas: sin scroll oculto que corte "Reporte semanal" y "Leadtita". */
+@media (max-width: 640px) { .ls-tabs { width: 100%; flex-wrap: wrap; } }
 /* Si el estado inicial del chat no entra en alto, que no se recorte arriba al centrarlo. */
 .ls-chat-slot .ls-chat__log--empty { justify-content: safe center; }
 
@@ -171,7 +176,8 @@
 .ls-history-chevron { transition: transform 140ms ease; }
 .ls-history-toggle.is-open .ls-history-chevron { transform: rotate(180deg); }
 .ls-leads > li > .ls-history { grid-column: 1 / -1; margin-top: 4px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--paper); }
-@media (max-width: 640px) { .ls-leads-actions { grid-column: 1 / -1; justify-content: stretch; } .ls-leads-actions > * { flex: 1; justify-content: center; } }
+@container (max-width: 720px) { .ls-leads-actions { grid-column: 1 / -1; justify-content: flex-start; } }
+@container (max-width: 440px) { .ls-leads-actions { justify-content: stretch; } .ls-leads-actions > * { flex: 1; justify-content: center; } .ls-leads-actions .ls-button { min-height: 40px; padding: 0 8px; } }
 @media (prefers-reduced-motion: reduce) { .ls-history-chevron { transition: none; } }
 
 /* "Modificar con IA": la IA solo rellena; los campos que cambió quedan resaltados hasta guardar. */

@@ -130,7 +130,7 @@ export function ExploreInput() {
     : error === "failed" ? t("failed") : null;
 
   const toggleClass = (on: boolean) =>
-    `min-h-7 rounded-[7px] px-2.5 text-[13px] font-semibold transition-colors outline-none focus-visible:shadow-[0_0_0_3px_color-mix(in_srgb,var(--lime)_55%,transparent)] ${on ? "bg-(--paper) text-(color:--ink) shadow-[0_1px_2px_color-mix(in_srgb,var(--ash-950)_14%,transparent)]" : "text-(color:--muted) hover:text-(color:--ink)"}`;
+    `relative min-h-7 rounded-[7px] px-2.5 text-[13px] pointer-coarse:after:absolute pointer-coarse:after:inset-x-0 pointer-coarse:after:-inset-y-1.5 pointer-coarse:after:content-[''] font-semibold transition-colors outline-none focus-visible:shadow-[0_0_0_3px_color-mix(in_srgb,var(--lime)_55%,transparent)] ${on ? "bg-(--paper) text-(color:--ink) shadow-[0_1px_2px_color-mix(in_srgb,var(--ash-950)_14%,transparent)]" : "text-(color:--muted) hover:text-(color:--ink)"}`;
 
   return (
     <div ref={rootRef} className="mx-auto mt-12 grid w-full max-w-[560px] justify-items-center gap-3">
@@ -215,7 +215,7 @@ export function ExploreInput() {
         type="button"
         onClick={() => { setError(""); setServicesOpen(true); }}
         aria-haspopup="dialog"
-        className="rounded-md px-1 text-[13px] font-medium text-(color:--muted) underline decoration-(--ash-300) underline-offset-4 transition-colors outline-none hover:text-(color:--ink) focus-visible:shadow-[0_0_0_3px_color-mix(in_srgb,var(--lime)_55%,transparent)]"
+        className="inline-flex min-h-10 items-center rounded-md px-1 text-[13px] font-medium text-(color:--muted) underline decoration-(--ash-300) underline-offset-4 transition-colors outline-none hover:text-(color:--ink) focus-visible:shadow-[0_0_0_3px_color-mix(in_srgb,var(--lime)_55%,transparent)]"
       >
         {t("services")}
       </button>

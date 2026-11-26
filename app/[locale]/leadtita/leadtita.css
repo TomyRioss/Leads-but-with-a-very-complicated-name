@@ -1,13 +1,13 @@
-.leadtita-main { display: flex; min-height: calc(100dvh - var(--campaign-banner-h, 0px)); background: var(--ash-100); }
+/* --leadtita-top: alto de la barra superior del menú (≤900px: .side-nav-head 58px + borde 1px); sin ella el compositor quedaba debajo del pliegue. */
+.leadtita-main { --leadtita-top: 0px; display: flex; min-height: calc(100dvh - var(--leadtita-top) - var(--campaign-banner-h, 0px)); background: var(--ash-100); }
+@media (max-width: 900px) { .leadtita-main { --leadtita-top: 59px; } }
 /* .app-shell asks for 100vh and the campaign banner sits above it: on Leadtita that added a page scroll the size of the banner. */
 .app-shell:has(> .leadtita-main) { min-height: 0; }
-.leadtita-main > .ls-chat { flex: 1; height: calc(100dvh - var(--campaign-banner-h, 0px)); min-height: 0; max-height: none; border: 0; border-radius: 0; }
+.leadtita-main > .ls-chat { flex: 1; height: calc(100dvh - var(--leadtita-top) - var(--campaign-banner-h, 0px)); min-height: 0; max-height: none; border: 0; border-radius: 0; }
 .leadtita-main .ls-chat__log { padding: 68px max(16px, calc((100% - 760px) / 2)) 32px; }
 .leadtita-main .ls-chat__intro { max-width: 640px; }
 .leadtita-main .ls-chat__form { padding: 12px max(16px, calc((100% - 760px) / 2)) 20px; }
 @media (max-width: 640px) {
-  /* The log scrolls inside the chat (not the page) so new messages and "jump to latest" work on mobile too. */
-  .leadtita-main > .ls-chat { height: calc(100dvh - 56px - var(--campaign-banner-h, 0px)); }
   .leadtita-main .ls-chat__log { padding: 60px 12px 24px; }
 }
 
@@ -27,7 +27,7 @@
 }
 
 /* Pantalla inicial de canales (WhatsApp + Gmail sin conectar), antes del chat. */
-.channel-setup { display: flex; min-height: calc(100dvh - var(--campaign-banner-h, 0px)); flex: 1; flex-direction: column; align-items: center; gap: 24px; padding: clamp(32px, 6vw, 72px) 16px 32px; background: var(--ash-50); }
+.channel-setup { display: flex; min-height: calc(100dvh - var(--leadtita-top, 0px) - var(--campaign-banner-h, 0px)); flex: 1; flex-direction: column; align-items: center; gap: 24px; padding: clamp(32px, 6vw, 72px) 16px 32px; background: var(--ash-50); }
 .channel-setup__head { display: grid; max-width: 560px; justify-items: center; gap: 8px; text-align: center; }
 .channel-setup__logo { min-height: 0; margin-bottom: 8px; font-size: 48px; line-height: 1; }
 .channel-setup__head h1 { margin: 0; color: var(--ink); font-size: 1.5rem; font-weight: 680; letter-spacing: -0.035em; }
@@ -39,7 +39,7 @@
 .channel-setup__footer button { margin-left: auto; }
 .channel-setup :is(button, input):focus-visible { outline: 2px solid var(--ash-950); outline-offset: 2px; }
 @media (max-width: 640px) {
-  .channel-setup { min-height: calc(100dvh - 56px); padding-top: 24px; }
+  .channel-setup { padding-top: 24px; }
   .channel-setup__logo { font-size: 40px; }
   .channel-setup__head h1 { font-size: 1.3rem; }
 }
@@ -52,6 +52,11 @@
 .leads-sidebar__tab:focus-visible { outline: 2px solid var(--ash-950); outline-offset: 2px; }
 /* Open: la pestaña no desaparece; queda pegada al borde izquierdo del cajón y se mueve con él (sirve de asa para cerrar). */
 .leads-sidebar__tab.is-open { transform: translate(calc(var(--leads-w) * -1), -50%); }
+/* Móvil: solo el icono (40×46) para no tapar botones de las tarjetas; el nombre queda en aria-label. */
+@media (max-width: 640px) {
+  .leads-sidebar__tab { gap: 0; padding: 12px 9px; border-radius: 12px 0 0 12px; }
+  .leads-sidebar__tab span { display: none; }
+}
 /* Cajón superpuesto (no empuja el chat) en todos los anchos: solo transform, sin animar layout.
    Se recorta lo que queda fuera de pantalla durante el deslizamiento: sin scroll de página. */
 .leadtita-main { --leads-ease: cubic-bezier(0.22, 1, 0.36, 1); --leads-w: 320px; position: relative; overflow: clip; }
@@ -66,9 +71,10 @@
 .leads-sidebar__section-tabs button[aria-selected="true"] { background: var(--paper); color: var(--ink); box-shadow: 0 1px 2px rgb(23 25 24 / 0.08); }
 .leads-sidebar__tab-panel { display: flex; flex: 1; min-height: 0; flex-direction: column; }
 .leads-sidebar__models { overflow: auto; padding: 0 12px 12px; }
-.leads-sidebar__model-list { display: grid; gap: 4px; margin: 0; padding: 0; list-style: none; }
+.leads-sidebar__model-list { display: grid; grid-template-columns: minmax(0, 1fr); gap: 4px; margin: 0; padding: 0; list-style: none; }
 .leads-sidebar__model { padding: 10px 8px; border-bottom: 1px solid var(--line); }
 .leads-sidebar__model-heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; color: var(--ink); font-size: 13px; }
+.leads-sidebar__model-heading strong { min-width: 0; overflow-wrap: anywhere; }
 .leads-sidebar__default { flex: none; padding: 3px 7px; border-radius: 999px; background: var(--lime); color: var(--ash-950); font-size: 10px; font-weight: 700; }
 .leads-sidebar__model-preview { display: -webkit-box; width: 100%; overflow: hidden; margin: 6px 0 8px; padding: 0; border: 0; background: transparent; color: var(--ash-600); font: inherit; font-size: 12px; line-height: 1.45; text-align: left; white-space: pre-wrap; overflow-wrap: anywhere; cursor: zoom-in; -webkit-box-orient: vertical; -webkit-line-clamp: 3; }
 .leads-sidebar__model-preview:hover { color: var(--ink); }
@@ -124,6 +130,9 @@
   /* Angosto: el cajón cubre toda la altura de la pantalla (incluida la barra superior). */
   .leadtita-main { --leads-w: min(340px, calc(100vw - 32px)); }
   .leads-sidebar { position: fixed; z-index: 40; }
+  /* Táctil: objetivos de al menos 40px. */
+  .leads-sidebar__close { width: 40px; height: 40px; }
+  .leads-sidebar__section-tabs button, .leads-sidebar__view, .leads-sidebar__search input, .leads-sidebar__model-actions button { min-height: 40px; }
 }
 @media (hover: none) { .leads-sidebar__at { opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { .leads-sidebar, .leads-sidebar.is-open, .leads-sidebar__panel, .leads-sidebar__tab, .leads-sidebar__at { transition: none; } }

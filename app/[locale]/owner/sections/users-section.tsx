@@ -468,7 +468,7 @@ function UserDrawer({ userId, initialMode, onClose, onChanged, onUnauthorized, o
                 {detail.paymentsHasMore && <p className={mutedText}>{t("showingLatest")}</p>}
                 {detail.payments.length === 0 ? <p className={mutedText}>{t("noPayments")}</p> : (
                   <div className={tableWrap}>
-                    <table className={tableClass}>
+                    <table className={`${tableClass} min-w-0!`}>
                       <thead className={theadClass}>
                         <tr>
                           <th className={thClass} scope="col">{common("date")}</th>

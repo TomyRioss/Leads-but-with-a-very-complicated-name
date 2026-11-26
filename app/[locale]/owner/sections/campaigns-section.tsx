@@ -171,7 +171,7 @@ function LiveHighlight({ campaign, others, now, formatRange }: { campaign: Campa
   const t = useTranslations("Owner.campaigns");
   const left = remaining(parseDate(campaign.endsAt), now);
   return (
-    <section aria-labelledby="campaign-live-title" className="mb-5 grid gap-4 rounded-[10px] border border-(color:--line) bg-(--paper) p-4 md:grid-cols-[minmax(0,1fr)_auto] md:items-center md:gap-6 md:p-5">
+    <section aria-labelledby="campaign-live-title" className="mb-5 grid gap-4 rounded-[10px] border border-(color:--line) bg-(--paper) p-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center lg:gap-6 md:p-5">
       <div className="grid min-w-0 gap-3">
         <div className="flex flex-wrap items-center gap-2">
           <StateChip state="live" />
@@ -186,7 +186,7 @@ function LiveHighlight({ campaign, others, now, formatRange }: { campaign: Campa
         </div>
         {others > 0 && <p className={`${mutedText} m-0`}>{t("liveMore", { count: others })}</p>}
       </div>
-      <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1 md:grid md:justify-items-end md:text-right">
+      <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1 lg:grid lg:justify-items-end lg:text-right">
         <span className="whitespace-nowrap text-4xl font-[680] leading-none tracking-[-0.03em] tabular-nums">{t("percentOff", { value: campaign.discountPercent })}</span>
         <span className="text-xs font-semibold text-(color:--ash-800)">{t(`endsIn.${left.unit}`, { count: left.count })}</span>
       </div>
@@ -313,7 +313,7 @@ export default function CampaignsSection({ onUnauthorized, onAction }: { onUnaut
               const recessed = state === "expired" || state === "inactive";
               const timing = state === "live" ? remaining(parseDate(campaign.endsAt), now) : state === "scheduled" ? remaining(parseDate(campaign.startsAt), now) : null;
               return (
-                <li key={campaign.id} className="grid grid-cols-[minmax(5.25rem,auto)_minmax(0,1fr)] gap-x-3 gap-y-3 border-b border-(color:--ash-150) px-4 py-3.5 last:border-b-0 hover:bg-(--ash-50) md:grid-cols-[6rem_minmax(0,1fr)_auto] md:items-center md:gap-x-4">
+                <li key={campaign.id} className="grid grid-cols-[minmax(5.25rem,auto)_minmax(0,1fr)] gap-x-3 gap-y-3 border-b border-(color:--ash-150) px-4 py-3.5 last:border-b-0 hover:bg-(--ash-50) lg:grid-cols-[6rem_minmax(0,1fr)_auto] lg:items-center lg:gap-x-4">
                   <span className={`whitespace-nowrap text-lg font-[680] leading-tight tracking-[-0.02em] tabular-nums ${recessed ? "text-(color:--muted)" : ""}`}>
                     {t("percentOff", { value: campaign.discountPercent })}
                   </span>
@@ -336,7 +336,7 @@ export default function CampaignsSection({ onUnauthorized, onAction }: { onUnaut
                   </div>
                   {confirmId === campaign.id ? (
                     <div
-                      className="col-span-2 flex flex-wrap items-center justify-end gap-1.5 md:col-span-1"
+                      className="col-span-2 flex flex-wrap items-center justify-end gap-1.5 lg:col-span-1"
                       role="group"
                       aria-label={t("deleteLabel", { name: campaign.name })}
                       onKeyDown={(event) => { if (event.key === "Escape" && !busy) cancelDelete(campaign.id); }}
@@ -348,7 +348,7 @@ export default function CampaignsSection({ onUnauthorized, onAction }: { onUnaut
                       <button className={`${ghostButton} ${smallButton}`} type="button" disabled={busy} onClick={() => cancelDelete(campaign.id)}>{common("cancel")}</button>
                     </div>
                   ) : (
-                    <div className="col-span-2 flex flex-wrap items-center justify-end gap-1.5 md:col-span-1">
+                    <div className="col-span-2 flex flex-wrap items-center justify-end gap-1.5 lg:col-span-1">
                       <button className={`${ghostButton} ${smallButton}`} type="button" disabled={Boolean(busyId)} onClick={() => setEditing(campaign)}><Pencil size={14} aria-hidden="true" /> {t("edit")}</button>
                       <button className={`${ghostButton} ${smallButton}`} type="button" disabled={Boolean(busyId)} onClick={() => void toggle(campaign)}>
                         {busy ? <LoaderCircle className="animate-spin" size={14} aria-hidden="true" /> : campaign.active ? <PowerOff size={14} aria-hidden="true" /> : <Power size={14} aria-hidden="true" />}

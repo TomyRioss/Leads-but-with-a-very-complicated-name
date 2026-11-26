@@ -25,7 +25,8 @@ export async function ThreeThings() {
               className={`relative flex min-h-[150px] flex-col justify-center gap-3 rounded-[22px] bg-white px-7 py-7 shadow-[0_1px_2px_color-mix(in_srgb,var(--ash-950)_6%,transparent),0_18px_40px_-24px_color-mix(in_srgb,var(--ash-950)_35%,transparent)] transition-[rotate,translate,box-shadow] duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-1 hover:rotate-0 motion-reduce:transition-none ${TILTS[index % TILTS.length]}`}
             >
               <h3 className="m-0 text-[clamp(1.75rem,1.2rem+1.4vw,2.35rem)]! leading-[1.1]! font-medium! tracking-[-0.03em]! text-(color:--ink)">{item.title}</h3>
-              <p className="m-0 max-w-[48ch] text-[15px] leading-normal text-(color:--muted)">{item.text}</p>
+              {/* pr-17 reserva el ancho de los logos (absolutos) para que el texto no pase por debajo. */}
+              <p className={`m-0 max-w-[48ch] text-[15px] leading-normal text-(color:--muted) ${index === CHANNELS_INDEX ? "pr-17" : ""}`}>{item.text}</p>
               {index === CHANNELS_INDEX ? (
                 <span className="absolute right-7 bottom-6 flex items-center gap-2" aria-hidden="true">
                   <SiWhatsapp size={26} className="text-[#25D366]" />

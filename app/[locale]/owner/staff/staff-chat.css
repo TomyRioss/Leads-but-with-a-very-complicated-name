@@ -83,6 +83,9 @@
 .ls-chat--staff .ls-chat__composer textarea { color: var(--ink); -webkit-text-fill-color: var(--ink); }
 .ls-chat--staff .ls-chat__facts dd svg { flex: none; align-self: center; color: var(--ash-500); }
 .ls-chat--staff .ls-chat__action { max-width: 560px; }
+/* Markdown tables: globals.css styles bare table/th/td for the lead tables (min-width 1160px, fixed cell height, nowrap).
+   Roll those unlayered rules back so the Tailwind classes from lib/markdown.ts apply. */
+.ls-chat--staff .ls-chat__md :is(table, thead, th, td) { all: revert-layer; }
 
 /* Below md the owner top bar already names the section: the chat fills the space under it (main is a flex column)
    and only "New chat" stays, floating in the corner like /leadtita. */

@@ -336,7 +336,8 @@ export default function UserActivity({ userId, onUnauthorized, onDialogChange }:
         {!data.ai || data.ai.byFeature.length === 0 ? <p className={`m-0 ${mutedText}`}>{t("noAi")}</p> : (
           <>
             <div className={`overflow-x-auto ${thinScroll}`}>
-              <table className="w-full border-collapse text-xs tabular-nums">
+              {/* globals.css styles bare table/th/td for the lead tables (min-width 1160px, tall cells): the ! utilities keep this table compact. */}
+              <table className="w-full min-w-0! border-collapse! text-xs tabular-nums [&_:is(th,td)]:h-auto! [&_:is(th,td)]:min-w-0! [&_:is(th,td)]:max-w-none! [&_:is(th,td)]:border-r-0! [&_:is(th,td)]:bg-transparent! [&_:is(th,td)]:py-1.5! [&_:is(th,td)]:pl-3! [&_:is(th,td)]:pr-0! [&_:is(th,td)]:text-xs! [&_:is(th,td):first-child]:pl-0! [&_:is(th,td):first-child]:pr-2! [&_thead_th]:text-[11px]! [&_thead_th]:font-semibold! [&_thead_th]:text-(color:--muted)! [&_tbody_th]:font-normal! [&_tbody_th]:text-(color:--ink)! [&_tfoot_:is(th,td)]:font-semibold! [&_tfoot_:is(th,td)]:text-(color:--ink)!">
                 <thead>
                   <tr className="border-b border-(color:--line) text-[11px] text-(color:--muted)">
                     <th className="py-1.5 pr-2 text-left font-semibold" scope="col">{t("feature")}</th>
