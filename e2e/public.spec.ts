@@ -5,6 +5,13 @@ test("VER LANDING", async ({ page }) => {
   await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
 });
 
+test("HERO DE LANDING PROMETE 25 CLIENTES POTENCIALES", async ({ page }) => {
+  await page.goto("/");
+  await expect(page.getByRole("heading", { level: 1 })).toContainText("25 clientes potenciales");
+  await page.goto("/en");
+  await expect(page.getByRole("heading", { level: 1 })).toContainText("25 potential clients");
+});
+
 test("IR A PLANES DESDE LANDING", async ({ page }) => {
   await page.goto("/");
   await page.getByRole("banner").getByRole("link", { name: "Pricing" }).click();

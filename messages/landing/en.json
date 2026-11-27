@@ -20,7 +20,7 @@
       "signup": "Create account"
     },
     "hero": {
-      "title": "<green>45 potential clients</green> in 24 hours, <lime>FREE</lime>.",
+      "title": "<green>25 potential clients</green> in 24 hours, <lime>FREE</lime>.",
       "badges": ["$10 USD in free credits.", "No payment information required."],
       "explore": {
         "modeLabel": "Input type",
