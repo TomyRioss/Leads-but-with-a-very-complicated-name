@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { LandingFooter } from "@/app/landing/footer";
 import { LandingHeader } from "@/app/landing/header";
 import "@/app/landing/landing.css";
 import "./pricing.css";
@@ -11,6 +12,7 @@ export default function PricingPage({ hero, children }: { hero: ReactNode; child
         {hero}
         {children}
       </main>
+      <LandingFooter />
     </div>
   );
 }

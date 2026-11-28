@@ -11,16 +11,27 @@ function int(name, def, min, max) {
   return n;
 }
 
+const LOCAL_HOSTS = new Set(['localhost', '127.0.0.1', '[::1]']);
+
+// Callbacks carry the shared secret, so plain http is only allowed for local development.
+export function callbackUrlError(raw) {
+  let u;
+  try {
+    u = new URL(raw);
+  } catch {
+    return 'WHATSAPP_CALLBACK_URL is required and must be a valid URL';
+  }
+  if (u.protocol === 'https:') return null;
+  if (u.protocol === 'http:' && LOCAL_HOSTS.has(u.hostname)) return null;
+  return 'WHATSAPP_CALLBACK_URL must use https (http only for localhost, 127.0.0.1 or [::1])';
+}
+
 const secret = process.env.WHATSAPP_WORKER_SECRET ?? '';
 const callbackUrl = process.env.WHATSAPP_CALLBACK_URL ?? '';
 const errors = [];
 if (secret.length < 32) errors.push('WHATSAPP_WORKER_SECRET is required (min 32 chars)');
-try {
-  const u = new URL(callbackUrl);
-  if (u.protocol !== 'https:' && u.protocol !== 'http:') throw new Error();
-} catch {
-  errors.push('WHATSAPP_CALLBACK_URL is required and must be an http(s) URL');
-}
+const callbackError = callbackUrlError(callbackUrl);
+if (callbackError) errors.push(callbackError);
 if (errors.length) {
   for (const e of errors) console.error(`[config] ${e}`);
   process.exit(1);

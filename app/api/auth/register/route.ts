@@ -2,7 +2,7 @@ import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { checkBotId } from "botid/server";
 import { disposableEmailBlocklistSet } from "disposable-email-domains-js";
-import { isValidPhoneNumber } from "libphonenumber-js/min";
+import { isValidPhoneNumber, parsePhoneNumberFromString } from "libphonenumber-js/min";
 import { clientIp, rateLimited } from "@/lib/server/rate-limit";
 import { verifyTurnstile } from "@/lib/server/turnstile";
 import { errorTranslator, localeFrom } from "@/lib/server/locale";
@@ -63,7 +63,7 @@ export async function POST(request: Request) {
   const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
   const password = typeof body.password === "string" ? body.password : "";
   const passwordConfirm = typeof body.passwordConfirm === "string" ? body.passwordConfirm : "";
-  const phone = typeof body.phone === "string" ? body.phone : "";
+  const rawPhone = typeof body.phone === "string" ? body.phone : "";
   const name = typeof body.name === "string" ? body.name.trim().slice(0, 120) : "";
   const locale = localeFrom(request, body.locale);
   t = errorTranslator(request, body.locale);
@@ -78,9 +78,10 @@ export async function POST(request: Request) {
   if (isDisposableEmail(email)) {
     return NextResponse.json({ error: t("disposableEmail") }, { status: 400 });
   }
-  if (!isValidPhoneNumber(phone)) {
+  if (!isValidPhoneNumber(rawPhone)) {
     return NextResponse.json({ error: t("invalidPhone") }, { status: 400 });
   }
+  const phone = parsePhoneNumberFromString(rawPhone)!.number; // E.164: the unique index compares one canonical form
   if (password.length < 6 || password.length > 128) {
     return NextResponse.json({ error: t("passwordLength") }, { status: 400 });
   }

@@ -6,6 +6,8 @@ import { actorSearch, mapPlace, type ActorPlace, type SearchFilters } from "@/li
 import { resolveLocation } from "@/lib/server/geography";
 import { splitEvenly } from "@/lib/search-random-location";
 import { exploreJson, languageRule, objectSchema, str, UNTRUSTED_RULE, type ExploreLocale, type ReasoningEffort } from "@/lib/server/explore/ai";
+import { readAiCache, writeAiCache } from "@/lib/server/ai-cache";
+import { EXPLORE_CACHE_TTL_DAYS, leadsCacheKey } from "@/lib/server/explore/dedupe";
 
 const FALLBACK_COUNTRY = "Argentina";
 // Solo negocios con teléfono (de ahí sale el WhatsApp), y se piden FETCH_FACTOR veces más: se descartan los que no quedan
@@ -33,11 +35,20 @@ export function probableWhatsApp(phone: string, links: string) {
   return parsed?.isValid() ? parsed.number.slice(1) : "";
 }
 
-/** Step 4: up to EXPLORE_LEAD_COUNT businesses for the chosen campaign, from the Apify Maps actor. No credits, nothing persisted here. */
+/**
+ * Step 4: up to EXPLORE_LEAD_COUNT businesses for the chosen campaign, from the Apify Maps actor. No credits.
+ * Cached across visitors for EXPLORE_CACHE_TTL_DAYS (same country, keywords and locale): a hit skips Apify and the
+ * descriptions call. Only complete results are cached (no failed or skipped search, descriptions written).
+ */
 export async function runLeads(product: ExploreProduct, campaign: ExploreCampaign, locale: ExploreLocale): Promise<ExploreLead[]> {
   const token = process.env.APIFY_TOKEN;
   if (!token) throw new Error("APIFY_TOKEN is not configured");
+  const keywords = campaign.keywords.slice(0, 3);
+  const cacheKey = leadsCacheKey(product.country || FALLBACK_COUNTRY, keywords, locale);
+  const cached = await readAiCache<ExploreLead[]>("leads", cacheKey);
+  if (Array.isArray(cached) && cached.length > 0) return cached;
   const startedAt = Date.now();
+  let degraded = false;
   let country = FALLBACK_COUNTRY;
   let countryCode = "";
   try {
@@ -48,7 +59,6 @@ export async function runLeads(product: ExploreProduct, campaign: ExploreCampaig
     // Dataset unavailable: search by the fallback name without the country filter.
   }
   const monitorName = `leadta-explore-${createHash("sha256").update(country.toLowerCase()).digest("hex").slice(0, 24)}`;
-  const keywords = campaign.keywords.slice(0, 3);
   const leads = new Map<string, ExploreLead>();
 
   const add = (places: ActorPlace[]) => {
@@ -82,11 +92,16 @@ export async function runLeads(product: ExploreProduct, campaign: ExploreCampaig
   };
   const search = async (keyword: string, limit: number) => {
     const timeoutMs = BUDGET_MS - (Date.now() - startedAt);
-    if (timeoutMs < MIN_CALL_MS || limit <= 0) return { limit, places: [] as ActorPlace[] };
+    if (limit <= 0) return { limit, places: [] as ActorPlace[] };
+    if (timeoutMs < MIN_CALL_MS) {
+      degraded = true;
+      return { limit, places: [] as ActorPlace[] };
+    }
     try {
       return { limit, places: await actorSearch(token, keyword, country, limit * FETCH_FACTOR, monitorName, FILTERS, timeoutMs) };
     } catch (error) {
       console.error("Explore leads search failed:", error instanceof Error ? error.message : "unknown");
+      degraded = true;
       return { limit, places: [] as ActorPlace[] };
     }
   };
@@ -104,16 +119,17 @@ export async function runLeads(product: ExploreProduct, campaign: ExploreCampaig
   }
   if (leads.size === 0) throw new Error("leads: no results with WhatsApp or email");
   const result = [...leads.values()];
-  await describeLeads(result, locale, BUDGET_MS - (Date.now() - startedAt));
+  const described = await describeLeads(result, locale, BUDGET_MS - (Date.now() - startedAt));
+  if (described && !degraded) await writeAiCache("leads", cacheKey, result, EXPLORE_CACHE_TTL_DAYS);
   return result;
 }
 
 /**
  * One AI call writes every description in its own words (never the Maps text verbatim), using name, category, address
- * and the Maps text as source data. Best effort: on failure each lead keeps the Maps text (or "").
+ * and the Maps text as source data. Best effort: on failure each lead keeps the Maps text (or ""). True when the model answered.
  */
 async function describeLeads(leads: ExploreLead[], locale: ExploreLocale, budgetMs: number) {
-  if (!leads.length || budgetMs < AI_MIN_MS) return;
+  if (!leads.length || budgetMs < AI_MIN_MS) return false;
   const schema = objectSchema({
     items: { type: "array", items: objectSchema({ id: { type: "string" }, description: { type: "string", maxLength: DESCRIPTION_MAX } }) },
   });
@@ -135,7 +151,9 @@ async function describeLeads(leads: ExploreLead[], locale: ExploreLocale, budget
       const description = str(record.description, DESCRIPTION_MAX);
       if (lead && description) lead.description = description;
     }
+    return true;
   } catch (error) {
     console.error("Explore lead descriptions failed:", error instanceof Error ? error.message : "unknown");
+    return false;
   }
 }

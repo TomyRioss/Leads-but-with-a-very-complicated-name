@@ -8,6 +8,7 @@ import { clientIp, rateLimited } from "@/lib/server/rate-limit";
 import { verifyTurnstile } from "@/lib/server/turnstile";
 
 const LOGIN_RATE = { max: 10, windowMs: 10 * 60_000 } as const;
+const LOGIN_EMAIL_RATE = { max: 10, windowMs: 10 * 60_000 } as const;
 
 /** BotID verdict. Only runs on Vercel (local/self-hosted builds have no BotID proxy); fails open on service errors. */
 async function isBotRequest() {
@@ -45,6 +46,9 @@ export async function POST(request: Request) {
   const password = typeof body.password === "string" ? body.password : "";
   if (!/^\S+@\S+\.\S+$/.test(email) || !password || password.length > 128) {
     return NextResponse.json({ error: t("loginInvalidInput") }, { status: 400 });
+  }
+  if (rateLimited(`login-email:${email}`, LOGIN_EMAIL_RATE.max, LOGIN_EMAIL_RATE.windowMs)) {
+    return NextResponse.json({ error: t("authRateLimited") }, { status: 429 });
   }
 
   try {

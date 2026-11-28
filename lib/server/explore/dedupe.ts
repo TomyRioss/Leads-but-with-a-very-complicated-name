@@ -3,7 +3,7 @@
 import { createHash } from "node:crypto";
 import type { ExploreInput, ExploreProduct } from "@/lib/explore/types";
 
-/** Cached research/competitors results live this long (days). */
+/** Cached research/competitors/leads results live this long (days). */
 export const EXPLORE_CACHE_TTL_DAYS = 7;
 /** A step lease older than this is considered abandoned: a new request may take it over. */
 export const LEASE_STALE_MS = 4 * 60_000;
@@ -31,6 +31,15 @@ export function competitorsCacheKey(product: Pick<ExploreProduct, "name" | "doma
   const id = product.domain ? `d:${product.domain.toLowerCase()}` : `h:${hash(`${normalizeText(product.name)}\n${normalizeText(product.summary)}`)}`;
   const market = normalizeText(product.location || product.country || "");
   return `${id}:${market ? hash(market).slice(0, 12) : "-"}:${locale}`;
+}
+
+/**
+ * Leads cache key: what the Apify search and the descriptions depend on. Country (as the run resolves it), the
+ * searched keywords normalized and sorted, and locale. Nothing from the visitor beyond those.
+ */
+export function leadsCacheKey(country: string, keywords: readonly string[], locale: string) {
+  const words = keywords.map(normalizeText).sort();
+  return `${hash(JSON.stringify([normalizeText(country), ...words]))}:${locale}`;
 }
 
 /** PocketBase date ("YYYY-MM-DD HH:MM:SS.sssZ") or ISO → ms, or NaN. */

@@ -2,6 +2,7 @@ import { pocketBaseFetch } from "@/lib/server/pocketbase";
 import type { Lead } from "@/lib/types";
 import { getLeadColumnValue, getLeadColumns, type LeadColumnKey } from "@/lib/types";
 import { getTranslator, resolveLocale } from "@/lib/server/locale";
+import { TOPUP_MAX_MISSING } from "@/lib/lead-rules";
 
 export type ExportTable = { columns: { key: LeadColumnKey; label: string }[]; rows: string[][] };
 
@@ -18,7 +19,7 @@ export async function loadExportTable(request: Request, userId: string, batchId:
 
   const leadsFilter = encodeURIComponent(`batch = "${batchId}"`);
   const result = await pocketBaseFetch<{ items: Lead[] }>(
-    `/api/collections/leads/records?perPage=100&sort=created_at&filter=${leadsFilter}`,
+    `/api/collections/leads/records?perPage=${TOPUP_MAX_MISSING}&skipTotal=1&sort=created_at&filter=${leadsFilter}`,
   );
   const columnT = getTranslator(resolveLocale(request), "Search");
   const columnLabel = (key: string, fallback: string) => {

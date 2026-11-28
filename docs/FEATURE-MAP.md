@@ -31,6 +31,8 @@ VERIFICAR EMAIL | "/verificar" > POST "/api/auth/verify-email"
 RESTABLECER CONTRASEÑA | "/restablecer" > POST "/api/auth/password-reset"
 CERRAR SESIÓN | Sidebar > Botón "Cerrar sesión" > POST "/api/auth/logout"
 CONSULTAR SESIÓN | GET "/api/auth/me"
+CRÉDITOS EN NAVBAR MOBILE | Navbar mobile (<901px) > Pill "Créditos <n>" > "/pricing"
+SCROLL ENCADENADO EN LISTAS DEL CHAT | "/leadtita" > Lista de resultados o revisión de lote > Al llegar al borde, el scroll sigue en el chat
 CHAT LEADTITA | "/leadtita" > Chat > POST "/api/lead-suite/chat"
 CONVERSACIONES DE LEADTITA | "/leadtita" > Historial de conversaciones > "/api/leadtita/conversations"
 LEAD SUITE DASHBOARD | "/lead-suite" > GET "/api/lead-suite/dashboard"

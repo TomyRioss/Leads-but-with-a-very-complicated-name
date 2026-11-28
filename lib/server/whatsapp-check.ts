@@ -3,7 +3,7 @@ import { getUserBatch, isSearchBatch } from "@/lib/server/lead-suite";
 import { deleteBatchLeads } from "@/lib/server/leads";
 import { pocketBaseFetch } from "@/lib/server/pocketbase";
 import { checkWhatsAppNumbers, whatsAppDigits } from "@/lib/server/whatsapp";
-import { TOPUP_MAX_MISSING } from "@/lib/lead-rules";
+import { isWaReplaceAllowed, TOPUP_MAX_MISSING } from "@/lib/lead-rules";
 
 export type WhatsAppStatus = "" | "verified" | "none";
 type Row = { id: string; phone?: string; whatsapp?: string; whatsapp_status?: WhatsAppStatus };
@@ -59,6 +59,8 @@ export async function replaceNoWhatsApp(userId: string, batchId: string, runSear
   if (!none.length) return { replaced: 0, remaining: 0, leads: [] as unknown[] };
   const countries = batch.country.split(", ").map((value) => value.trim()).filter(Boolean);
   if (!isSearchBatch(batch) || !batch.keywords.length || !batch.country || /\s\+\d+$/.test(batch.country)) return { error: "not_replaceable" as const };
+  // Free and repeatable while leads stay without WhatsApp: capped per batch so it can't burn searches without end.
+  if (!isWaReplaceAllowed(batch.topupRounds + 1)) return { error: "replace_limit" as const };
   const multi = countries.length > 1;
   const topUp = signPendingChange({
     uid: userId, kind: "topup_batch", leadId: "", leadName: "", data: {},

@@ -46,9 +46,9 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
     description,
     alternates: {
       canonical: url,
-      languages: other ? { [blogLocale]: url, [other]: absoluteUrl(other, `/blog/${post.slug}`) } : undefined,
+      languages: other ? { [blogLocale]: url, [other]: absoluteUrl(other, `/blog/${post.slug}`), "x-default": absoluteUrl("es", `/blog/${post.slug}`) } : undefined,
     },
-    openGraph: { type: "article", url, title, description, siteName: "Leadta", locale: blogLocale, images, publishedTime: post.publishedAt ?? undefined, modifiedTime: post.updated, authors: post.authorName ? [post.authorName] : undefined, tags: post.tags },
+    openGraph: { type: "article", url, title, description, siteName: "Leadta", locale: blogLocale === "es" ? "es_AR" : "en_US", images, publishedTime: post.publishedAt ?? undefined, modifiedTime: post.updated, authors: post.authorName ? [post.authorName] : undefined, tags: post.tags },
     twitter: { card: post.coverUrl ? "summary_large_image" : "summary", title, description, images: post.coverUrl ? [post.coverUrl] : undefined },
   };
 }

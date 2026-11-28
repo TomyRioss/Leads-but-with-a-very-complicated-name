@@ -72,3 +72,14 @@ export const TOPUP_MAX_MISSING = 150;
 export function isFreeTopUp(round: number, missing: number): boolean {
   return Number.isInteger(round) && round >= 1 && round <= FREE_TOPUP_MAX_ROUNDS && Number.isInteger(missing) && missing >= 1 && missing <= FREE_TOPUP_MAX_MISSING;
 }
+
+/** Free WhatsApp replacements guaranteed per batch on top of its free top-ups (each one runs up to 3 paid search rounds). */
+export const WA_REPLACE_MAX_ROUNDS = 3;
+
+/**
+ * `round` = the batch's topup_rounds + 1 (counter shared with normal top-ups, so a paid top-up also uses one).
+ * ponytail: shared counter, a dedicated wa_replace_rounds column if paid top-ups start blocking replacements.
+ */
+export function isWaReplaceAllowed(round: number): boolean {
+  return Number.isInteger(round) && round >= 1 && round <= FREE_TOPUP_MAX_ROUNDS + WA_REPLACE_MAX_ROUNDS;
+}
