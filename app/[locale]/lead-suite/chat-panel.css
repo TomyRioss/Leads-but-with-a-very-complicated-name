@@ -565,7 +565,7 @@ a.ls-chat__error-primary:focus-visible { outline: 2px solid var(--ink); outline-
 .ls-batch__toggle-all:hover, .ls-batch__expand:hover { background: var(--ash-150); color: var(--ink); }
 .ls-batch__expand svg { transition: transform 160ms ease; }
 .ls-batch__expand[aria-expanded="true"] svg { transform: rotate(180deg); }
-.ls-batch__list { display: grid; max-height: 420px; gap: 6px; margin: 0; padding: 0; overflow-y: auto; list-style: none; overscroll-behavior: contain; }
+.ls-batch__list { display: grid; max-height: 420px; gap: 6px; margin: 0; padding: 0; overflow-y: auto; list-style: none; }
 .ls-batch__row { display: grid; gap: 6px; padding: 10px 10px 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--paper); }
 .ls-batch__row.is-excluded { background: var(--ash-50); }
 .ls-batch__row.is-excluded .ls-batch__who, .ls-batch__row.is-excluded .ls-batch__preview { opacity: 0.55; }
@@ -1005,7 +1005,7 @@ a.ls-chat__error-primary:focus-visible { outline: 2px solid var(--ink); outline-
 .ls-chat__keyword-remove:hover { background: var(--ash-150); color: var(--ink); }
 
 /* Lista completa del lote dentro de la tarjeta: ~5 filas visibles, scroll interno con fade al final. */
-.ls-chat__result-rows.is-scroll { max-height: 480px; overflow-y: auto; overscroll-behavior: contain; padding-bottom: 12px; mask-image: linear-gradient(to bottom, #000 calc(100% - 28px), transparent); scrollbar-width: thin; scrollbar-color: var(--ash-300) transparent; }
+.ls-chat__result-rows.is-scroll { max-height: 480px; overflow-y: auto; padding-bottom: 12px; mask-image: linear-gradient(to bottom, #000 calc(100% - 28px), transparent); scrollbar-width: thin; scrollbar-color: var(--ash-300) transparent; }
 .ls-chat__result-rows.is-scroll:focus-visible { outline: 3px solid var(--ash-950); outline-offset: 2px; }
 .ls-chat__result-name { display: flex; min-width: 0; flex-direction: column; gap: 1px; }
 .ls-chat__result-name small { overflow: hidden; color: var(--muted); font-size: 12.5px; text-overflow: ellipsis; white-space: nowrap; }

@@ -153,7 +153,41 @@ test("CRÉDITOS EN NAVBAR MOBILE visibles arriba en mobile y ocultos en desktop"
   await page.goto("/leadtita");
   const pill = page.locator(".side-nav-head a[href$='/pricing']");
   await expect(pill).toBeVisible();
-  await expect(pill).toContainText("120");
+  await expect(pill).toHaveText(/^créditos\s*120$/i);
   await page.setViewportSize({ width: 1280, height: 900 });
   await expect(pill).toBeHidden();
+});
+
+test("LEADTITA scroll de lista de resultados encadena al chat al llegar al borde (390px)", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  const preview = Array.from({ length: 25 }, (_, i) => ({ id: `p${i}`, name: `Constructora ${i}`, phone: "+541143129229", whatsapp: "", email: `info${i}@ejemplo.com`, socialProfiles: "" }));
+  const resultMessages = [
+    { id: 1, role: "user", content: "Buscame constructoras", at: 1 },
+    { id: 2, role: "assistant", content: "Listo.", at: 2, actions: [{ type: "batch_result", kind: "search", batchId: "b1", count: 25, charged: 0, tags: [], preview }] },
+    { id: 3, role: "user", content: "Gracias", at: 3 },
+    { id: 4, role: "assistant", content: `${LONG_WORD} `.repeat(40), at: 4 },
+  ];
+  await mockApi(page, { history: true });
+  // Registered after mockApi so it replaces the default history.
+  await page.addInitScript(({ userId, messages }) => {
+    localStorage.setItem(`leadta:leadtita-history:${userId}`, JSON.stringify({ activeId: "conv1", conversations: [{ id: "conv1", title: "Scroll", updatedAt: Date.now(), messages }] }));
+  }, { userId: user.id, messages: resultMessages });
+  await page.goto("/leadtita");
+  const list = page.locator(".ls-chat__result-rows.is-scroll").first();
+  await expect(list).toBeVisible();
+  // Position of whatever scrolls the page: the chat log or the window.
+  const outer = () => page.evaluate(() => (document.querySelector(".ls-chat__log")?.scrollTop ?? 0) + window.scrollY);
+  await list.evaluate((el) => el.scrollIntoView({ block: "center" }));
+  await list.evaluate((el) => { el.scrollTop = el.scrollHeight; });
+  const box = (await list.boundingBox())!;
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  const before = await outer();
+  await page.mouse.wheel(0, 400);
+  await expect.poll(outer).toBeGreaterThan(before);
+  await list.evaluate((el) => { el.scrollIntoView({ block: "center" }); el.scrollTop = 0; });
+  const box2 = (await list.boundingBox())!;
+  await page.mouse.move(box2.x + box2.width / 2, box2.y + box2.height / 2);
+  const middle = await outer();
+  await page.mouse.wheel(0, -400);
+  await expect.poll(outer).toBeLessThan(middle);
 });
