@@ -146,3 +146,14 @@ test("INTEGRACIONES el vencimiento del QR queda dentro de la tarjeta (360px)", a
   const expiry = (await card.locator(".wa-expiry").boundingBox())!;
   expect(expiry.x + expiry.width).toBeLessThanOrEqual(cardBox.x + cardBox.width);
 });
+
+test("CRÉDITOS EN NAVBAR MOBILE visibles arriba en mobile y ocultos en desktop", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await mockApi(page, {});
+  await page.goto("/leadtita");
+  const pill = page.locator(".side-nav-head a[href$='/pricing']");
+  await expect(pill).toBeVisible();
+  await expect(pill).toContainText("120");
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await expect(pill).toBeHidden();
+});

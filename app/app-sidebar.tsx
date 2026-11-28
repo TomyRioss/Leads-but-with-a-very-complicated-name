@@ -288,6 +288,13 @@ export function AppSidebar({ active, user, onSignOut }: AppSidebarProps) {
           >
             {isCollapsed ? <PanelLeftOpen size={18} strokeWidth={1.8} aria-hidden="true" /> : <PanelLeftClose size={18} strokeWidth={1.8} aria-hidden="true" />}
           </button>
+          {/* Mobile-only credits pill in the top bar; desktop shows it inside the sidebar list. */}
+          {user ? (
+            <Link className="ml-auto mr-2 inline-flex h-11 items-center gap-1.5 rounded-[10px] bg-(--lime) px-3 text-sm text-(--ash-950) no-underline hover:bg-(--lime-dark) min-[901px]:hidden" href="/pricing" aria-label={s("creditsAria", { credits: user.credits })} title={s("creditsTitle")} onClick={close}>
+              <Stars size={16} strokeWidth={1.8} aria-hidden="true" />
+              <strong>{user.credits.toLocaleString(locale === "es" ? "es-AR" : "en-US")}</strong>
+            </Link>
+          ) : null}
           <button
             type="button"
             className="side-nav-toggle"
