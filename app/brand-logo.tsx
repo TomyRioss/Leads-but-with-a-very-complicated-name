@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useParams } from "next/navigation";
 
 type BrandMarkProps = { className?: string };
 
@@ -13,8 +14,10 @@ export function BrandMark({ className = "" }: BrandMarkProps) {
 }
 
 export function BrandLogo() {
+  // ponytail: href por locale con useParams; el Link de next-intl exige NextIntlClientProvider y app/not-found.tsx (raíz) no lo tiene.
+  const { locale } = useParams<{ locale?: string }>();
   return (
-    <Link className="brand" href="/" aria-label="Leadta, inicio">
+    <Link className="brand" href={locale === "en" ? "/en" : "/"} aria-label="Leadta, inicio">
       <span aria-hidden="true">
         Leadta<span className="brand-period">.</span>
       </span>

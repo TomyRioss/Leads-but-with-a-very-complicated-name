@@ -3,7 +3,7 @@ import { createHash } from "node:crypto";
 import { isPocketBaseConfigured, PocketBaseRequestError, pocketBaseFetch } from "@/lib/server/pocketbase";
 
 // Server-only cache of expensive AI results (`ai_cache` collection, all rules null). One row per (kind, key_hash).
-export type AiCacheKind = "research" | "competitors" | "enrichment" | "pain";
+export type AiCacheKind = "research" | "competitors" | "leads" | "enrichment" | "pain";
 
 type CacheRow = { id: string; payload?: unknown; expires_at?: string };
 type CacheList = { items?: CacheRow[] };

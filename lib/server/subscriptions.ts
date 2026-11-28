@@ -152,6 +152,11 @@ export async function syncOwnerStatusToMercadoPago(externalReference: string | u
 
 // ---------- Webhook ----------
 
+/** Only the unique payment_id index (`validation_not_unique`) means the charge was already claimed; any other 400 is a real failure. */
+export function isAlreadyClaimed(error: unknown) {
+  return error instanceof PocketBaseRequestError && error.status === 400 && error.detail.includes("validation_not_unique");
+}
+
 /** Credits one approved charge. The unique payment_id row is claimed first, so retries and duplicate events never pay twice. */
 async function creditPayment(row: SubscriptionRow, paymentId: string, amount: number, currency: string) {
   const user = await pocketBaseFetch<{ credits?: number; email?: string; name?: string }>(`/api/collections/users/records/${row.user}?fields=credits,email,name`);
@@ -162,8 +167,8 @@ async function creditPayment(row: SubscriptionRow, paymentId: string, amount: nu
       body: JSON.stringify({ subscription: row.id, user: row.user, payment_id: paymentId, status: "processing", amount_ars: currency === "ARS" && Number.isFinite(amount) ? amount : 0, credits: row.monthly_credits, balance_before: Math.max(0, user.credits ?? 0) }),
     });
   } catch (error) {
-    if (error instanceof PocketBaseRequestError && error.status === 400) return; // already claimed: credited (or being credited)
-    throw error;
+    if (isAlreadyClaimed(error)) return; // already claimed: credited (or being credited)
+    throw error; // any other failure: the webhook answers 500 and Mercado Pago retries
   }
   try {
     // Relative write: concurrent searches debiting credits are not overwritten.

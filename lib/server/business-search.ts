@@ -11,7 +11,7 @@ import { countriesLabel, planRandomSearch, remainingCallTimeoutMs, splitEvenly, 
 import { cleanWebsiteUrl } from "@/lib/url-display";
 import { parseCardKey } from "@/lib/people";
 import { resolveLocation, type LocationResolution, type ResolvedLocation } from "@/lib/server/geography";
-import { isFreeTopUp, matchesLeadRules, parseLeadRules, TOPUP_MAX_MISSING } from "@/lib/lead-rules";
+import { isFreeTopUp, isWaReplaceAllowed, matchesLeadRules, parseLeadRules, TOPUP_MAX_MISSING } from "@/lib/lead-rules";
 import { verifyPendingChange } from "@/lib/server/lead-suite-agent";
 import { checkWhatsAppNumbers, whatsAppDigits } from "@/lib/server/whatsapp";
 
@@ -429,6 +429,7 @@ export async function runBusinessSearch(user: Pick<AppUser, "id">, rawBody: unkn
       if (!waVerify) count = Math.min(count, requested - results);
       if (count <= 0) return empty(0);
       if (topUpFree && !waVerify && !isFreeTopUp(topUpRound, count)) return { status: 400, body: { error: t("invalidRequestBody") } };
+      if (waVerify && !isWaReplaceAllowed(topUpRound)) return { status: 429, body: { error: "replace_limit" } };
       await pocketBaseFetch(`/api/collections/lead_batches/records/${existing.id}`, { method: "PATCH", body: JSON.stringify({ topup_rounds: topUpRound }) });
       const ownLeads = encodeURIComponent(`batch = "${existing.id}"`);
       const previous = await pocketBaseFetch<{ items: { maps_url?: string }[] }>(`/api/collections/leads/records?perPage=150&skipTotal=1&fields=maps_url&filter=${ownLeads}`);

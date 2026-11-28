@@ -25,6 +25,11 @@ test("EXPORTAR LEADS CSV/XLSX exige sesión", async ({ request }) => {
   expect((await request.get("/api/export/xlsx")).status()).toBe(401);
 });
 
+test("REEMPLAZAR LEADS SIN WHATSAPP exige sesión", async ({ request }) => {
+  const response = await request.post("/api/lead-suite/leads/whatsapp", { data: { batchId: "abcdefghijklmno", action: "replace" } });
+  expect(response.status()).toBe(401);
+});
+
 test("CONECTAR INTEGRACIONES (GOOGLE / WHATSAPP) exige sesión", async ({ page, request }) => {
   expect((await request.get("/api/integrations/google/status")).status()).toBe(401);
   expect((await request.get("/api/integrations/whatsapp/status")).status()).toBe(401);

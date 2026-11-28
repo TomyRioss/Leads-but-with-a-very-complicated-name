@@ -40,6 +40,7 @@ export async function POST(request: Request) {
     if ("error" in result) {
       if (result.error === "batch_not_found") return NextResponse.json({ error: t("batchNotFound") }, { status: 404 });
       if (result.error === "not_replaceable") return NextResponse.json({ error: "not_replaceable" }, { status: 400 });
+      if (result.error === "replace_limit") return NextResponse.json({ error: "replace_limit" }, { status: 429 });
       return NextResponse.json(result.body, { status: result.status });
     }
     return withRefreshedSession(NextResponse.json(result), session.token);

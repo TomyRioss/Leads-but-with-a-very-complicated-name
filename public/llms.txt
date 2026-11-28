@@ -1,14 +1,54 @@
 # Leadta
 
-> Leadta es una herramienta web para encontrar negocios locales para contactar. Buscás por rubro y zona y obtenés leads con teléfono, email, sitio web, redes sociales y dolores detectados en reseñas públicas. Cada lote se guarda en tu historial y se exporta a CSV o XLSX. Incluye Lead Suite para registrar contactos y medir respuestas. Disponible en español e inglés.
+> Leadta is a web app to find local businesses to contact by category and area, analyze their public information and reach them by WhatsApp and Gmail. (ES: Leadta es una app web para encontrar negocios locales por rubro y zona, analizarlos y contactarlos por WhatsApp y Gmail.)
 
-## Páginas clave
+Available in Spanish (default, no URL prefix) and English (under `/en`).
 
-- [Inicio](https://leadta.app/): qué hace Leadta, cómo funciona y preguntas frecuentes.
-- [Planes y precios](https://leadta.app/pricing): desde 15 USD por mes, según el volumen de búsquedas.
-- [Blog](https://leadta.app/blog): guías de prospección y venta a negocios locales.
-- [English](https://leadta.app/en): versión en inglés.
+## What it does
 
-## Contacto
+- Business search: search local businesses by category (rubro) and area (zona); each result includes phone, email, website and social profiles when public.
+- Pain analysis: analysis of public information about each business to detect pain points.
+- Outreach: send messages to leads by WhatsApp and Gmail, immediately or scheduled.
+- Lead Suite: light CRM to record contacts, track status (contacted, replied, meeting, won, lost) and measure reply rate.
+- Export: download each batch as CSV or XLSX.
+- History: every search batch is saved in the user's history.
 
-- Ventas y soporte: support@leadta.app
+## Plans (monthly, no annual option)
+
+- Starter: US$15 / ARS 25,000 per month. 350 credits per month. Monthly limits: 150 WhatsApp messages, 150 emails, 20 scheduled messages.
+- Growth: US$50 / ARS 75,000 per month. 1,750 credits per month. Monthly limits: 750 WhatsApp messages, 750 emails, 100 scheduled messages.
+- Custom: tailored to volume and channels, agreed directly over WhatsApp from the pricing page.
+
+## Pages (Spanish)
+
+- [Inicio](https://leadta.app/)
+- [Planes y precios](https://leadta.app/pricing)
+- [Blog](https://leadta.app/blog)
+- [Términos](https://leadta.app/terminos)
+- [Privacidad](https://leadta.app/privacidad)
+
+## Pages (English)
+
+- [Home](https://leadta.app/en)
+- [Pricing](https://leadta.app/en/pricing)
+- [Blog](https://leadta.app/en/blog)
+- [Terms](https://leadta.app/en/terminos)
+- [Privacy](https://leadta.app/en/privacidad)
+
+## MCP
+
+- [MCP server](https://leadta.app/api/mcp): endpoint for AI clients to work with the user's Leadta account.
+- Authentication: OAuth. Discovery at [/.well-known/oauth-protected-resource](https://leadta.app/.well-known/oauth-protected-resource) and [/.well-known/oauth-authorization-server](https://leadta.app/.well-known/oauth-authorization-server).
+- Requires a paid plan.
+- Scopes:
+  - `read`: read leads, batches, contacts, message models, stats and account.
+  - `write`: create and edit leads, contacts, message models and the commercial profile; delete records.
+  - `credits`: actions that spend credits (business and people searches, batch filters, paid pain analysis).
+  - `send`: send emails and WhatsApp messages and create meetings.
+- Rate limit: 60 calls per minute per connection.
+- Tokens: access token valid 1 hour; refresh token valid 30 days.
+- Two-step changes: credit spends, deletes, lead edits and every send use a `propose_*` tool that returns a summary and a confirmation token; `confirm_change` runs it only after the user approves. Confirmation tokens expire in 15 minutes.
+
+## Contact
+
+- Sales and support / Ventas y soporte: support@leadta.app

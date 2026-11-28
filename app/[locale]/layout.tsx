@@ -25,8 +25,9 @@ export async function generateMetadata({ params }: { params: Promise<{ locale: s
     title: t("title"),
     description: t("description"),
     applicationName: "Leadta",
-    openGraph: { type: "website", siteName: "Leadta", locale: locale === "es" ? "es_AR" : "en_US", title: t("title"), description: t("description") },
-    twitter: { card: "summary", title: t("title"), description: t("description") },
+    // Sin title/description: Next los completa desde cada página (title/openGraph) en vez de heredar los del layout.
+    openGraph: { type: "website", siteName: "Leadta", locale: locale === "es" ? "es_AR" : "en_US" },
+    twitter: { card: "summary_large_image" },
   };
 }
 

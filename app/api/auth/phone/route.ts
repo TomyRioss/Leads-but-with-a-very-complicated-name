@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { isValidPhoneNumber } from "libphonenumber-js/min";
+import { isValidPhoneNumber, parsePhoneNumberFromString } from "libphonenumber-js/min";
 import { clearPendingPhoneCookie, getCurrentUser, getPendingPhoneUser, setSessionCookie } from "@/lib/server/auth";
 import { sendStaffAlert } from "@/lib/server/email";
 import { errorTranslator } from "@/lib/server/locale";
@@ -14,8 +14,9 @@ export async function POST(request: Request) {
     body = {};
   }
   const t = errorTranslator(request, body.locale);
-  const phone = typeof body.phone === "string" ? body.phone : "";
-  if (!isValidPhoneNumber(phone)) return NextResponse.json({ error: t("invalidPhone") }, { status: 400 });
+  const rawPhone = typeof body.phone === "string" ? body.phone : "";
+  if (!isValidPhoneNumber(rawPhone)) return NextResponse.json({ error: t("invalidPhone") }, { status: 400 });
+  const phone = parsePhoneNumberFromString(rawPhone)!.number; // E.164: the unique index compares one canonical form
 
   try {
     const pending = await getPendingPhoneUser(request);
